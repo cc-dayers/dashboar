@@ -1,5 +1,5 @@
 import { subscribeLogs } from '$lib/server/events';
-import { LOG_STREAM_HEARTBEAT_MS } from '$lib/server/constants';
+import { LOG_STREAM_HEARTBEAT_MS, LOG_STREAM_RETRY_MS } from '$lib/server/constants';
 import type { SessionLog } from '$lib/server/types';
 import type { RequestHandler } from './$types';
 
@@ -11,7 +11,7 @@ export const GET: RequestHandler = ({ params }) => {
 
 	const stream = new ReadableStream({
 		start(controller) {
-			controller.enqueue(encoder.encode('retry: 1000\n\n'));
+			controller.enqueue(encoder.encode(`retry: ${LOG_STREAM_RETRY_MS}\n\n`));
 
 			const send = (log: SessionLog) => {
 				controller.enqueue(encoder.encode(`data: ${JSON.stringify(log)}\n\n`));

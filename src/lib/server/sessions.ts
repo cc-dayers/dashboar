@@ -49,7 +49,14 @@ export async function createSession(input: CreateSessionInput) {
 	insertAndEmitLog(session.id, 'system', `Session created for branch "${session.branch}"`);
 
 	if (input.autoStart) {
-		await startSession(session.id);
+		try {
+			await startSession(session.id);
+		} catch (error) {
+			patchSession(session.id, { status: 'failed', pid: null });
+			const message = error instanceof Error ? error.message : 'Failed to auto-start session';
+			insertAndEmitLog(session.id, 'system', `Auto-start failed: ${message}`);
+			throw new Error(`Session created but failed to auto-start: ${message}`);
+		}
 	}
 
 	return getSessionDetail(session.id);

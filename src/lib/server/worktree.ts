@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -21,7 +22,7 @@ function normalizeBranchName(name: string) {
 
 export async function createWorktree(repoPath: string, worktreeBaseDir: string, branch: string, baseBranch: string) {
 	const safeBranch = normalizeBranchName(branch);
-	const worktreePath = path.join(worktreeBaseDir, `${safeBranch}-${Date.now()}`);
+	const worktreePath = path.join(worktreeBaseDir, `${safeBranch}-${randomUUID()}`);
 	mkdirSync(worktreeBaseDir, { recursive: true });
 	await execFileAsync('git', ['-C', repoPath, 'worktree', 'add', '-b', safeBranch, worktreePath, baseBranch]);
 	return worktreePath;

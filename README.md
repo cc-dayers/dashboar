@@ -39,6 +39,10 @@ You can configure settings from the `/config` page or with environment variables
 - `DASHBOAR_AGENT_ARGS`
 - `DASHBOAR_DB_PATH`
 
+Notes:
+- If `DASHBOAR_DB_PATH` is not set, the DB path is resolved from the process working directory (`$PWD/.dashboar/data.db`).
+- The default agent command is a placeholder; set `DASHBOAR_AGENT_COMMAND` and `DASHBOAR_AGENT_ARGS` to run a real agent CLI.
+
 ## CI
 
 The workflow at `.github/workflows/deploy.yml` runs install, type checks, and production build on pushes and pull requests.

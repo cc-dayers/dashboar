@@ -64,13 +64,7 @@
 					if (!config) return;
 					const target = event.currentTarget as HTMLInputElement;
 					config = {
-						repoPath: config.repoPath,
-						worktreeBaseDir: config.worktreeBaseDir,
-						defaultBaseBranch: config.defaultBaseBranch,
-						defaultModel: config.defaultModel,
-						maxConcurrentSessions: config.maxConcurrentSessions,
-						logRetentionDays: config.logRetentionDays,
-						agentCliCommand: config.agentCliCommand,
+						...config,
 						agentCliArgs: target.value.split(' ').filter(Boolean)
 					};
 				}}

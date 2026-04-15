@@ -53,6 +53,9 @@ export function startAgentProcess({ session, config, onLog, onExit }: StartAgent
 		env,
 		stdio: 'pipe'
 	});
+	if (!child.pid) {
+		throw new Error('Agent process failed to start');
+	}
 	let stdoutRemainder = '';
 	let stderrRemainder = '';
 
@@ -86,5 +89,5 @@ export function startAgentProcess({ session, config, onLog, onExit }: StartAgent
 		sessionProcesses.delete(session.id);
 	});
 
-	return child.pid ?? null;
+	return child.pid;
 }
