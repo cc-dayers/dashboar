@@ -9,21 +9,19 @@
 	};
 
 	let {
-		initial,
 		submitLabel = 'Create Session',
 		onSubmit
 	}: {
-		initial?: Partial<FormDataShape>;
 		submitLabel?: string;
 		onSubmit: (data: FormDataShape) => void | Promise<void>;
 	} = $props();
 
-	let name = $state(initial?.name ?? '');
-	let task = $state(initial?.task ?? '');
-	let branch = $state(initial?.branch ?? '');
-	let baseBranch = $state(initial?.baseBranch ?? 'main');
-	let model = $state(initial?.model ?? 'default');
-	let autoStart = $state(initial?.autoStart ?? true);
+	let name = $state('');
+	let task = $state('');
+	let branch = $state('');
+	let baseBranch = $state('main');
+	let model = $state('default');
+	let autoStart = $state(true);
 	let loading = $state(false);
 
 	async function submit() {

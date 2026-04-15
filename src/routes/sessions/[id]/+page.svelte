@@ -9,13 +9,12 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let session = $state(data.session);
-	let logs = $state<SessionLog[]>(data.logs);
-	let artifacts = $state<SessionArtifact[]>(data.artifacts);
-	let diff = $state('');
-	let tab = $state<'logs' | 'diff' | 'artifacts'>('logs');
-	let error = $state('');
-	let eventSource = $state<EventSource | null>(null);
+	let session = data.session;
+	let logs: SessionLog[] = data.logs;
+	let artifacts: SessionArtifact[] = data.artifacts;
+	let diff = '';
+	let tab: 'logs' | 'diff' | 'artifacts' = 'logs';
+	let error = '';
 
 	async function action(endpoint: 'start' | 'stop') {
 		error = '';
@@ -56,10 +55,8 @@
 				// ignore malformed events
 			}
 		};
-		eventSource = source;
 		return () => {
 			source.close();
-			eventSource = null;
 		};
 	});
 </script>

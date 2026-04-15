@@ -56,13 +56,21 @@
 			</label>
 			<label>Log Retention (Days) <input type="number" min="1" bind:value={config.logRetentionDays} /></label>
 			<label>Agent CLI Command <input bind:value={config.agentCliCommand} /></label>
-			<label>Agent CLI Args (space-separated)</label>
+			<label for="agent-cli-args">Agent CLI Args (space-separated)</label>
 			<input
+				id="agent-cli-args"
 				value={config.agentCliArgs.join(' ')}
 				oninput={(event) => {
+					if (!config) return;
 					const target = event.currentTarget as HTMLInputElement;
 					config = {
-						...config,
+						repoPath: config.repoPath,
+						worktreeBaseDir: config.worktreeBaseDir,
+						defaultBaseBranch: config.defaultBaseBranch,
+						defaultModel: config.defaultModel,
+						maxConcurrentSessions: config.maxConcurrentSessions,
+						logRetentionDays: config.logRetentionDays,
+						agentCliCommand: config.agentCliCommand,
 						agentCliArgs: target.value.split(' ').filter(Boolean)
 					};
 				}}

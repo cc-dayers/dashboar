@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import Database from 'better-sqlite3';
 import type {
 	AgentSession,
@@ -127,7 +128,7 @@ export function deleteSessionRow(id: string) {
 
 export function insertLog(sessionId: string, level: LogLevel, message: string) {
 	const log: SessionLog = {
-		id: crypto.randomUUID(),
+		id: randomUUID(),
 		session_id: sessionId,
 		timestamp: nowIso(),
 		level,
@@ -150,7 +151,7 @@ export function listLogs(sessionId: string, limit = 200, offset = 0) {
 
 export function insertArtifact(sessionId: string, kind: ArtifactKind, content: string) {
 	const artifact: SessionArtifact = {
-		id: crypto.randomUUID(),
+		id: randomUUID(),
 		session_id: sessionId,
 		kind,
 		content,

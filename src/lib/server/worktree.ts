@@ -29,7 +29,10 @@ export async function createWorktree(repoPath: string, worktreeBaseDir: string, 
 
 export async function listWorktrees(repoPath: string) {
 	const { stdout } = await execFileAsync('git', ['-C', repoPath, 'worktree', 'list', '--porcelain']);
-	const blocks = stdout.trim().split('\n\n').filter(Boolean);
+	const blocks = stdout
+		.trim()
+		.split('\n\n')
+		.filter((value) => Boolean(value));
 	return blocks.map((block): WorktreeInfo => {
 		const info: WorktreeInfo = { worktree: '' };
 		for (const line of block.split('\n')) {

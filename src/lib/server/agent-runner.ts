@@ -8,7 +8,7 @@ function splitLines(chunk: Buffer | string) {
 	return chunk
 		.toString()
 		.split(/\r?\n/)
-		.map((line) => line.trimEnd())
+		.map((line: string) => line.trimEnd())
 		.filter(Boolean);
 }
 
@@ -56,19 +56,19 @@ export function startAgentProcess({ session, config, onLog, onExit }: StartAgent
 
 	sessionProcesses.set(session.id, child);
 
-	child.stdout.on('data', (chunk) => {
+	child.stdout.on('data', (chunk: Buffer) => {
 		for (const line of splitLines(chunk)) onLog('stdout', line);
 	});
-	child.stderr.on('data', (chunk) => {
+	child.stderr.on('data', (chunk: Buffer) => {
 		for (const line of splitLines(chunk)) onLog('stderr', line);
 	});
 
-	child.once('error', (error) => {
+	child.once('error', (error: Error) => {
 		onExit('failed', `Agent process failed: ${error.message}`, null);
 		sessionProcesses.delete(session.id);
 	});
 
-	child.once('exit', (code, signal) => {
+	child.once('exit', (code: number | null, signal: NodeJS.Signals | null) => {
 		const status: SessionStatus = code === 0 ? 'completed' : 'failed';
 		const message =
 			code === 0
