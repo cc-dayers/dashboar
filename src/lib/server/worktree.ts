@@ -21,10 +21,10 @@ function normalizeBranchName(name: string) {
 
 export async function createWorktree(repoPath: string, worktreeBaseDir: string, branch: string, baseBranch: string) {
 	const safeBranch = normalizeBranchName(branch);
-	const dir = path.join(worktreeBaseDir, `${safeBranch}-${Date.now()}`);
+	const worktreePath = path.join(worktreeBaseDir, `${safeBranch}-${Date.now()}`);
 	mkdirSync(worktreeBaseDir, { recursive: true });
-	await execFileAsync('git', ['-C', repoPath, 'worktree', 'add', '-b', safeBranch, dir, baseBranch]);
-	return dir;
+	await execFileAsync('git', ['-C', repoPath, 'worktree', 'add', '-b', safeBranch, worktreePath, baseBranch]);
+	return worktreePath;
 }
 
 export async function listWorktrees(repoPath: string) {

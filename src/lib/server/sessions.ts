@@ -14,6 +14,7 @@ import { readConfig } from './config';
 import { createWorktree, getWorktreeDiff, removeWorktree } from './worktree';
 import { emitLog } from './events';
 import { getSessionPid, isPidRunning, startAgentProcess, stopAgentProcess } from './agent-runner';
+import { DEFAULT_LOG_LIMIT } from './constants';
 import type {
 	AgentSession,
 	CreateSessionInput,
@@ -126,7 +127,7 @@ export async function deleteSession(id: string) {
 	return true;
 }
 
-export function getSessionLogs(id: string, limit = 200, offset = 0) {
+export function getSessionLogs(id: string, limit = DEFAULT_LOG_LIMIT, offset = 0) {
 	return listLogs(id, limit, offset);
 }
 

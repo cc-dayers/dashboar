@@ -40,7 +40,8 @@
 	}
 
 	async function removeSession() {
-		if (!confirm('Delete this session and its worktree?')) return;
+		if (!confirm(`Delete session "${session.name}" and its worktree? This action cannot be undone.`))
+			return;
 		const response = await fetch(`/api/sessions/${session.id}`, { method: 'DELETE' });
 		if (response.ok) window.location.href = '/sessions';
 	}

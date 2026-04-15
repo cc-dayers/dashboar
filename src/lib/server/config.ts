@@ -3,7 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import type { AppConfig } from './types';
 
-const CONFIG_DIR = path.join(os.homedir(), '.config', 'dashboar');
+const configRoot = process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), '.config');
+const CONFIG_DIR = path.join(configRoot, 'dashboar');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
 function defaultConfig(): AppConfig {
@@ -15,6 +16,7 @@ function defaultConfig(): AppConfig {
 		defaultModel: process.env.DASHBOAR_DEFAULT_MODEL ?? 'default',
 		maxConcurrentSessions: Number(process.env.DASHBOAR_MAX_CONCURRENT ?? 3),
 		logRetentionDays: Number(process.env.DASHBOAR_LOG_RETENTION_DAYS ?? 14),
+		// Placeholder default command; set DASHBOAR_AGENT_COMMAND/ARGS for real agent usage.
 		agentCliCommand: process.env.DASHBOAR_AGENT_COMMAND ?? 'bash',
 		agentCliArgs: process.env.DASHBOAR_AGENT_ARGS
 			? process.env.DASHBOAR_AGENT_ARGS.split(' ')

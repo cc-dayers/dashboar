@@ -11,7 +11,7 @@ import type {
 	SessionStatus
 } from './types';
 
-const dbPath = process.env.DASHBOAR_DB_PATH ?? path.join(process.cwd(), '.dashboar', 'dashboar.db');
+const dbPath = process.env.DASHBOAR_DB_PATH ?? path.join(process.cwd(), '.dashboar', 'data.db');
 mkdirSync(path.dirname(dbPath), { recursive: true });
 
 const db = new Database(dbPath);

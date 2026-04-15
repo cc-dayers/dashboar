@@ -4,12 +4,12 @@ import type { AgentSession, AppConfig, LogLevel, SessionStatus } from './types';
 
 const sessionProcesses = new Map<string, ChildProcessWithoutNullStreams>();
 
-function splitLines(chunk: Buffer | string) {
-	return chunk
-		.toString()
-		.split(/\r?\n/)
-		.map((line: string) => line.trimEnd())
-		.filter(Boolean);
+function consumeCompleteLines(chunk: Buffer, remainder: string) {
+	const text = `${remainder}${chunk.toString()}`;
+	const parts = text.split(/\r?\n/);
+	const nextRemainder = parts.pop() ?? '';
+	const lines = parts.map((line: string) => line.trimEnd()).filter(Boolean);
+	return { lines, nextRemainder };
 }
 
 export function getSessionPid(sessionId: string) {
@@ -53,14 +53,20 @@ export function startAgentProcess({ session, config, onLog, onExit }: StartAgent
 		env,
 		stdio: 'pipe'
 	});
+	let stdoutRemainder = '';
+	let stderrRemainder = '';
 
 	sessionProcesses.set(session.id, child);
 
 	child.stdout.on('data', (chunk: Buffer) => {
-		for (const line of splitLines(chunk)) onLog('stdout', line);
+		const result = consumeCompleteLines(chunk, stdoutRemainder);
+		stdoutRemainder = result.nextRemainder;
+		for (const line of result.lines) onLog('stdout', line);
 	});
 	child.stderr.on('data', (chunk: Buffer) => {
-		for (const line of splitLines(chunk)) onLog('stderr', line);
+		const result = consumeCompleteLines(chunk, stderrRemainder);
+		stderrRemainder = result.nextRemainder;
+		for (const line of result.lines) onLog('stderr', line);
 	});
 
 	child.once('error', (error: Error) => {
@@ -69,6 +75,8 @@ export function startAgentProcess({ session, config, onLog, onExit }: StartAgent
 	});
 
 	child.once('exit', (code: number | null, signal: NodeJS.Signals | null) => {
+		if (stdoutRemainder.trim()) onLog('stdout', stdoutRemainder.trimEnd());
+		if (stderrRemainder.trim()) onLog('stderr', stderrRemainder.trimEnd());
 		const status: SessionStatus = code === 0 ? 'completed' : 'failed';
 		const message =
 			code === 0

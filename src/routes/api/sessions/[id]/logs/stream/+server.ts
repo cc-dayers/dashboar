@@ -1,4 +1,5 @@
 import { subscribeLogs } from '$lib/server/events';
+import { LOG_STREAM_HEARTBEAT_MS } from '$lib/server/constants';
 import type { SessionLog } from '$lib/server/types';
 import type { RequestHandler } from './$types';
 
@@ -19,7 +20,7 @@ export const GET: RequestHandler = ({ params }) => {
 			unsubscribe = subscribeLogs(sessionId, send);
 			heartbeat = setInterval(() => {
 				controller.enqueue(encoder.encode(': keep-alive\n\n'));
-			}, 15000);
+			}, LOG_STREAM_HEARTBEAT_MS);
 		},
 		cancel() {
 			if (heartbeat) clearInterval(heartbeat);
