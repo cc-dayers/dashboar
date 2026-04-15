@@ -64,7 +64,7 @@ export function startAgentProcess({ session, config, onLog, onExit }: StartAgent
 	});
 
 	child.once('error', (error: Error) => {
-		onExit('failed', `Agent process failed: ${error.message}`, null);
+		onLog('stderr', `Agent process failed: ${error.message}`);
 		sessionProcesses.delete(session.id);
 	});
 

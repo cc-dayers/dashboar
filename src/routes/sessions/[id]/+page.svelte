@@ -8,13 +8,14 @@
 	import type { SessionLog, SessionArtifact } from '$lib/server/types';
 
 	let { data }: { data: PageData } = $props();
+	const getInitialData = () => data;
 
-	let session = data.session;
-	let logs: SessionLog[] = data.logs;
-	let artifacts: SessionArtifact[] = data.artifacts;
-	let diff = '';
-	let tab: 'logs' | 'diff' | 'artifacts' = 'logs';
-	let error = '';
+	let session = $state(getInitialData().session);
+	let logs = $state<SessionLog[]>(getInitialData().logs);
+	let artifacts = $state<SessionArtifact[]>(getInitialData().artifacts);
+	let diff = $state('');
+	let tab = $state<'logs' | 'diff' | 'artifacts'>('logs');
+	let error = $state('');
 
 	async function action(endpoint: 'start' | 'stop') {
 		error = '';
