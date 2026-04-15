@@ -1,6 +1,6 @@
 # dashboar
 
-A super lightweight dashboard composition app built with SvelteKit and Vite.
+A lightweight SvelteKit app for dashboard widgets plus local agent session/worktree management.
 
 ## Local development
 
@@ -13,16 +13,32 @@ npm run dev
 
 ```sh
 npm run build
-npm run preview
+npm run start
 ```
 
-## Deploy to GitHub Pages (free)
+## Features
 
-This repo includes a workflow at `.github/workflows/deploy.yml` that builds and deploys on pushes to `main`.
+- Dashboard widgets persisted in browser localStorage
+- Agent sessions persisted in SQLite (`.dashboar/dashboar.db` by default)
+- Git worktree lifecycle management
+- Agent process lifecycle controls (start/stop)
+- Session logs, artifacts, and live SSE log streaming
+- Session, worktree, health, and config APIs under `/api/*`
 
-1. Push this repository to GitHub.
-2. In GitHub, open `Settings > Pages`.
-3. Under `Build and deployment`, select `Source: GitHub Actions`.
-4. Push to `main` (or run the workflow manually).
+## Runtime configuration
 
-The project automatically sets SvelteKit `paths.base` to `/<repo-name>` during the workflow so assets load correctly on GitHub Pages.
+You can configure settings from the `/config` page or with environment variables:
+
+- `DASHBOAR_REPO_PATH`
+- `DASHBOAR_WORKTREE_DIR`
+- `DASHBOAR_BASE_BRANCH`
+- `DASHBOAR_DEFAULT_MODEL`
+- `DASHBOAR_MAX_CONCURRENT`
+- `DASHBOAR_LOG_RETENTION_DAYS`
+- `DASHBOAR_AGENT_COMMAND`
+- `DASHBOAR_AGENT_ARGS`
+- `DASHBOAR_DB_PATH`
+
+## CI
+
+The workflow at `.github/workflows/deploy.yml` runs install, type checks, and production build on pushes and pull requests.
