@@ -19,7 +19,7 @@ npm run start
 ## Features
 
 - Dashboard widgets persisted in browser localStorage
-- Agent sessions persisted in SQLite (`.dashboar/dashboar.db` by default)
+- Agent sessions persisted in SQLite (`.dashboar/data.db` by default)
 - Git worktree lifecycle management
 - Agent process lifecycle controls (start/stop)
 - Session logs, artifacts, and live SSE log streaming

@@ -20,7 +20,7 @@
 		saved = false;
 		const response = await fetch('/api/config', {
 			method: 'PUT',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(config)
 		});
 		const payload = (await response.json()) as AppConfig & { error?: string };

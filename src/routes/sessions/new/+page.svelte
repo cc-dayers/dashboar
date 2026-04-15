@@ -15,7 +15,7 @@
 		error = '';
 		const response = await fetch('/api/sessions', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(data)
 		});
 		const payload = (await response.json()) as { session?: { id: string }; error?: string };
