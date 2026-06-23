@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "report.schema.json",
+  "title": "Show Me Report",
+  "description": "Schema for JSON payloads rendered by the Show Me dashboard viewer.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Matches the blob filename (without .json). Shown as fallback title."
+    },
+    "reportId": {
+      "type": "string",
+      "description": "Alias for 'id' — either query param is accepted."
+    },
+    "title": {
+      "type": "string",
+      "description": "Display name in the dashboard header."
+    },
+    "subtitle": {
+      "type": "string",
+      "description": "Secondary line shown under the title."
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp shown in the header (e.g. '2026-06-19T08:00:00Z')."
+    },
+    "status": {
+      "$ref": "#/definitions/status",
+      "description": "Overall report status. Drives the header badge colour."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Flat key-value pairs rendered as a summary table when no category is selected (or when there are no categories). Keys should be human-readable.",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "string" },
+          { "type": "number" },
+          { "type": "boolean" },
+          { "type": "null" }
+        ]
+      }
+    },
+    "categories": {
+      "type": "array",
+      "description": "Sections listed in the sidebar. Each one contains items rendered as cards in the main area.",
+      "items": { "$ref": "#/definitions/category" }
+    }
+  },
+  "definitions": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "warning", "error", "info", "neutral"],
+      "description": "success=green  warning=amber  error=red  info=blue  neutral=grey"
+    },
+    "category": {
+      "type": "object",
+      "required": ["id", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable identifier used for sidebar selection state. Use kebab-case."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable label shown in the sidebar."
+        },
+        "status": {
+          "$ref": "#/definitions/status",
+          "description": "Coloured dot next to the category name. Derive from worst item status if unsure."
+        },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/item" }
+        }
+      }
+    },
+    "item": {
+      "type": "object",
+      "required": ["id", "label"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier within the category. Use kebab-case."
+        },
+        "label": {
+          "type": "string",
+          "description": "Card heading — name of the metric, check, or log entry."
+        },
+        "value": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "boolean" }
+          ],
+          "description": "Primary value shown in monospace below the label. Keep it short — a number, percentage, state string, or boolean."
+        },
+        "status": {
+          "$ref": "#/definitions/status",
+          "description": "Badge colour on the card."
+        },
+        "details": {
+          "type": "string",
+          "description": "One or two sentences of explanatory context shown below the value."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp for when this data point was recorded."
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Short pill labels for grouping or filtering (e.g. 'cpu', 'prod', 'oom')."
+        }
+      }
+    }
+  }
+}

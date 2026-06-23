@@ -1,0 +1,142 @@
+{
+  "id": "example",
+  "title": "Q2 Infrastructure Health Report",
+  "subtitle": "Automated snapshot — production cluster",
+  "generatedAt": "2026-06-19T08:00:00Z",
+  "status": "warning",
+  "metadata": {
+    "environment": "production",
+    "region": "eastus",
+    "cluster": "aks-prod-01",
+    "version": "3.14.2",
+    "nodeCount": 12,
+    "podCount": 147
+  },
+  "categories": [
+    {
+      "id": "compute",
+      "name": "Compute",
+      "status": "success",
+      "items": [
+        {
+          "id": "cpu-usage",
+          "label": "CPU Utilization",
+          "value": "41%",
+          "status": "success",
+          "details": "Average across all nodes over the last 24h. Peak was 68% at 14:32 UTC.",
+          "timestamp": "2026-06-19T07:55:00Z",
+          "tags": ["metrics", "cpu"]
+        },
+        {
+          "id": "memory-usage",
+          "label": "Memory Usage",
+          "value": "62%",
+          "status": "warning",
+          "details": "Trending upward over 7 days. Consider reviewing pod resource limits.",
+          "timestamp": "2026-06-19T07:55:00Z",
+          "tags": ["metrics", "memory"]
+        },
+        {
+          "id": "node-health",
+          "label": "Node Health",
+          "value": "12 / 12 Ready",
+          "status": "success",
+          "details": "All nodes are schedulable and passing readiness checks.",
+          "timestamp": "2026-06-19T07:59:00Z"
+        }
+      ]
+    },
+    {
+      "id": "storage",
+      "name": "Storage",
+      "status": "warning",
+      "items": [
+        {
+          "id": "pv-usage",
+          "label": "Persistent Volume Usage",
+          "value": "78%",
+          "status": "warning",
+          "details": "Three volumes are above 75% capacity. Review data retention policies.",
+          "timestamp": "2026-06-19T07:55:00Z",
+          "tags": ["storage", "pvc"]
+        },
+        {
+          "id": "blob-latency",
+          "label": "Blob Storage Latency (p99)",
+          "value": "142ms",
+          "status": "success",
+          "details": "Within acceptable range. SLA threshold is 500ms.",
+          "timestamp": "2026-06-19T07:55:00Z",
+          "tags": ["latency", "storage"]
+        }
+      ]
+    },
+    {
+      "id": "networking",
+      "name": "Networking",
+      "status": "success",
+      "items": [
+        {
+          "id": "ingress-rps",
+          "label": "Ingress Requests / sec",
+          "value": "3,412",
+          "status": "success",
+          "details": "Normal traffic levels. No anomalies detected.",
+          "timestamp": "2026-06-19T07:58:00Z",
+          "tags": ["ingress", "traffic"]
+        },
+        {
+          "id": "error-rate",
+          "label": "5xx Error Rate",
+          "value": "0.02%",
+          "status": "success",
+          "details": "Well below 0.1% alert threshold.",
+          "timestamp": "2026-06-19T07:58:00Z"
+        },
+        {
+          "id": "cert-expiry",
+          "label": "TLS Certificate Expiry",
+          "value": "87 days",
+          "status": "info",
+          "details": "Certificate expires 2026-09-14. Renewal will auto-trigger at 30 days.",
+          "timestamp": "2026-06-19T07:58:00Z",
+          "tags": ["tls", "security"]
+        }
+      ]
+    },
+    {
+      "id": "deployments",
+      "name": "Deployments",
+      "status": "error",
+      "items": [
+        {
+          "id": "worker-deploy",
+          "label": "background-worker",
+          "value": "CrashLoopBackOff",
+          "status": "error",
+          "details": "3 of 5 replicas are failing. OOMKilled — memory limit is 256Mi, increase to 512Mi.",
+          "timestamp": "2026-06-19T06:41:00Z",
+          "tags": ["deployment", "oom"]
+        },
+        {
+          "id": "api-deploy",
+          "label": "api-gateway",
+          "value": "Healthy",
+          "status": "success",
+          "details": "4/4 replicas running. Last rollout 3 days ago.",
+          "timestamp": "2026-06-19T07:59:00Z",
+          "tags": ["deployment"]
+        },
+        {
+          "id": "scheduler-deploy",
+          "label": "job-scheduler",
+          "value": "Healthy",
+          "status": "success",
+          "details": "2/2 replicas running. Next scheduled run in 14 minutes.",
+          "timestamp": "2026-06-19T07:59:00Z",
+          "tags": ["deployment", "cron"]
+        }
+      ]
+    }
+  ]
+}

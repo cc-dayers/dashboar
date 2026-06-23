@@ -1,0 +1,299 @@
+{
+  "title": "PR Review Agent · Monthly Report",
+  "subtitle": "CareContinuity Platform",
+  "generatedAt": "2026-06-19T08:00:00Z",
+  "period": "May – June 2026",
+  "reviews": [
+    {
+      "id": "rev-001",
+      "prNumber": 342,
+      "prTitle": "Add patient discharge summary modal",
+      "repository": "cc/patient-portal",
+      "branch": "feat/discharge-modal",
+      "author": "sarah.chen",
+      "reviewedAt": "2026-05-20T09:15:00Z",
+      "timeToReviewMs": 510000,
+      "accuracyRating": 94,
+      "result": "approved",
+      "hats": ["react-expert", "typescript-expert"],
+      "tokensUsed": 18000,
+      "estimatedCostUsd": 0.23,
+      "hatDetails": [
+        {
+          "name": "react-expert",
+          "findings": [
+            { "type": "issue",      "severity": "minor", "description": "Missing PropTypes validation for PatientCard component", "file": "src/components/PatientCard.tsx", "line": 42 },
+            { "type": "suggestion", "severity": "minor", "description": "Consider memoising handleDismiss with useCallback to prevent unnecessary child re-renders", "file": "src/components/DischargeModal.tsx", "line": 78 },
+            { "type": "praise",                          "description": "Excellent use of React.memo on the expensive PatientList component" }
+          ]
+        },
+        {
+          "name": "typescript-expert",
+          "findings": [
+            { "type": "issue",  "severity": "minor", "description": "Implicit 'any' type in parseApiResponse — add explicit generic parameter", "file": "src/utils/api.ts", "line": 15 },
+            { "type": "praise",                      "description": "Strong generic typing throughout custom hooks — very maintainable" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rev-002",
+      "prNumber": 189,
+      "prTitle": "Refactor authentication middleware to use JWT RS256",
+      "repository": "cc/api-gateway",
+      "branch": "refactor/jwt-rs256",
+      "author": "marcus.obi",
+      "reviewedAt": "2026-05-21T14:30:00Z",
+      "timeToReviewMs": 920000,
+      "accuracyRating": 91,
+      "result": "changes-requested",
+      "hats": ["security-reviewer", "api-designer"],
+      "tokensUsed": 28000,
+      "estimatedCostUsd": 0.38
+    },
+    {
+      "id": "rev-003",
+      "prNumber": 78,
+      "prTitle": "Design system: add Tooltip and Popover primitives",
+      "repository": "cc/shared-ui",
+      "branch": "feat/tooltip-popover",
+      "author": "priya.nair",
+      "reviewedAt": "2026-05-22T10:05:00Z",
+      "timeToReviewMs": 370000,
+      "accuracyRating": 97,
+      "result": "approved",
+      "hats": ["react-expert", "accessibility-checker"],
+      "tokensUsed": 14000,
+      "estimatedCostUsd": 0.18
+    },
+    {
+      "id": "rev-004",
+      "prNumber": 343,
+      "prTitle": "Appointment booking — add conflict detection",
+      "repository": "cc/patient-portal",
+      "branch": "feat/booking-conflicts",
+      "author": "james.wu",
+      "reviewedAt": "2026-05-23T16:45:00Z",
+      "timeToReviewMs": 700000,
+      "accuracyRating": 85,
+      "result": "commented",
+      "hats": ["e2e-engineer"],
+      "tokensUsed": 22000,
+      "estimatedCostUsd": 0.29
+    },
+    {
+      "id": "rev-005",
+      "prNumber": 190,
+      "prTitle": "Rate limiting — sliding window implementation",
+      "repository": "cc/api-gateway",
+      "branch": "feat/rate-limiting",
+      "author": "marcus.obi",
+      "reviewedAt": "2026-05-26T11:20:00Z",
+      "timeToReviewMs": 1090000,
+      "accuracyRating": 92,
+      "result": "changes-requested",
+      "hats": ["security-reviewer", "typescript-expert"],
+      "tokensUsed": 32000,
+      "estimatedCostUsd": 0.44
+    },
+    {
+      "id": "rev-006",
+      "prNumber": 79,
+      "prTitle": "Design system: update Button variants for dark mode",
+      "repository": "cc/shared-ui",
+      "branch": "feat/button-dark-mode",
+      "author": "priya.nair",
+      "reviewedAt": "2026-05-27T09:00:00Z",
+      "timeToReviewMs": 330000,
+      "accuracyRating": 95,
+      "result": "approved",
+      "hats": ["react-expert"],
+      "tokensUsed": 12000,
+      "estimatedCostUsd": 0.16
+    },
+    {
+      "id": "rev-007",
+      "prNumber": 344,
+      "prTitle": "Patient timeline — real-time updates via WebSocket",
+      "repository": "cc/patient-portal",
+      "branch": "feat/timeline-realtime",
+      "author": "sarah.chen",
+      "reviewedAt": "2026-05-28T13:10:00Z",
+      "timeToReviewMs": 1320000,
+      "accuracyRating": 88,
+      "result": "changes-requested",
+      "hats": ["react-expert", "e2e-engineer", "accessibility-checker"],
+      "tokensUsed": 41000,
+      "estimatedCostUsd": 0.55,
+      "hatDetails": [
+        {
+          "name": "react-expert",
+          "findings": [
+            { "type": "issue", "severity": "critical",  "description": "useState called conditionally inside an if-block — violates Rules of Hooks and will cause runtime errors", "file": "src/components/PatientTimeline.tsx", "line": 23 },
+            { "type": "issue", "severity": "major",     "description": "Missing key prop on mapped timeline entries causes React reconciliation bugs under re-ordering", "file": "src/pages/PatientDetail.tsx", "line": 87 }
+          ]
+        },
+        {
+          "name": "e2e-engineer",
+          "findings": [
+            { "type": "issue",      "severity": "critical", "description": "No end-to-end test coverage for the WebSocket reconnection flow — this is a critical resilience path" },
+            { "type": "suggestion", "severity": "major",    "description": "Add data-testid attributes to timeline entries so tests don't rely on fragile CSS selectors" }
+          ]
+        },
+        {
+          "name": "accessibility-checker",
+          "findings": [
+            { "type": "issue",      "severity": "major", "description": "Live update announcements are missing — screen readers will not detect new timeline entries", "file": "src/components/PatientTimeline.tsx", "line": 56 },
+            { "type": "issue",      "severity": "minor", "description": "Status pill text colour fails WCAG AA contrast ratio (3.2:1, minimum 4.5:1)" },
+            { "type": "suggestion", "severity": "minor", "description": "Wrap the WebSocket status indicator in an aria-live='polite' region" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rev-008",
+      "prNumber": 191,
+      "prTitle": "Billing service — add insurance verification endpoint",
+      "repository": "cc/api-gateway",
+      "branch": "feat/insurance-verification",
+      "author": "aisha.ford",
+      "reviewedAt": "2026-05-29T10:40:00Z",
+      "timeToReviewMs": 800000,
+      "accuracyRating": 93,
+      "result": "approved",
+      "hats": ["api-designer", "performance-analyst"],
+      "tokensUsed": 24000,
+      "estimatedCostUsd": 0.32
+    },
+    {
+      "id": "rev-009",
+      "prNumber": 345,
+      "prTitle": "Migrate patient search to full-text index",
+      "repository": "cc/patient-portal",
+      "branch": "feat/fulltext-search",
+      "author": "james.wu",
+      "reviewedAt": "2026-06-02T08:55:00Z",
+      "timeToReviewMs": 470000,
+      "accuracyRating": 96,
+      "result": "approved",
+      "hats": ["typescript-expert"],
+      "tokensUsed": 15000,
+      "estimatedCostUsd": 0.20
+    },
+    {
+      "id": "rev-010",
+      "prNumber": 80,
+      "prTitle": "Design system: form field accessibility pass",
+      "repository": "cc/shared-ui",
+      "branch": "fix/form-a11y",
+      "author": "priya.nair",
+      "reviewedAt": "2026-06-04T14:00:00Z",
+      "timeToReviewMs": 260000,
+      "accuracyRating": 98,
+      "result": "approved",
+      "hats": ["react-expert", "accessibility-checker"],
+      "tokensUsed": 10000,
+      "estimatedCostUsd": 0.13
+    },
+    {
+      "id": "rev-011",
+      "prNumber": 192,
+      "prTitle": "Patient records API — bulk export endpoint",
+      "repository": "cc/api-gateway",
+      "branch": "feat/bulk-export",
+      "author": "marcus.obi",
+      "reviewedAt": "2026-06-05T15:25:00Z",
+      "timeToReviewMs": 1540000,
+      "accuracyRating": 89,
+      "result": "changes-requested",
+      "hats": ["security-reviewer", "api-designer", "performance-analyst"],
+      "tokensUsed": 48000,
+      "estimatedCostUsd": 0.64,
+      "notes": "High-risk PR — touches PHI export flow. Security and performance issues must be resolved before merge.",
+      "hatDetails": [
+        {
+          "name": "security-reviewer",
+          "findings": [
+            { "type": "issue", "severity": "critical", "description": "Export query built via string concatenation — SQL injection vulnerability on patient IDs parameter", "file": "src/routes/patients.ts", "line": 134 },
+            { "type": "issue", "severity": "major",    "description": "No authorisation check verifying the requesting user has access to all requested patient records" },
+            { "type": "issue", "severity": "major",    "description": "Export endpoint missing audit log entry — PHI access must be logged per HIPAA requirements", "file": "src/routes/patients.ts", "line": 158 }
+          ]
+        },
+        {
+          "name": "api-designer",
+          "findings": [
+            { "type": "issue",      "severity": "major", "description": "Synchronous export will timeout for large patient sets — move to async job with status polling endpoint" },
+            { "type": "suggestion", "severity": "minor", "description": "Add Content-Disposition header so browsers prompt a save dialog instead of rendering the JSON" }
+          ]
+        },
+        {
+          "name": "performance-analyst",
+          "findings": [
+            { "type": "issue",      "severity": "major", "description": "Fetching all fields for every patient record — use SELECT projection to return only requested columns", "file": "src/services/patient.ts", "line": 67 },
+            { "type": "suggestion", "severity": "minor", "description": "Stream the JSON response rather than buffering the entire result set in memory" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rev-012",
+      "prNumber": 346,
+      "prTitle": "Patient portal — add medication refill request flow",
+      "repository": "cc/patient-portal",
+      "branch": "feat/refill-request",
+      "author": "sarah.chen",
+      "reviewedAt": "2026-06-09T11:30:00Z",
+      "timeToReviewMs": 550000,
+      "accuracyRating": 94,
+      "result": "approved",
+      "hats": ["react-expert"],
+      "tokensUsed": 17000,
+      "estimatedCostUsd": 0.23
+    },
+    {
+      "id": "rev-013",
+      "prNumber": 81,
+      "prTitle": "Design system: add DataTable with sorting and pagination",
+      "repository": "cc/shared-ui",
+      "branch": "feat/data-table",
+      "author": "priya.nair",
+      "reviewedAt": "2026-06-11T09:45:00Z",
+      "timeToReviewMs": 630000,
+      "accuracyRating": 87,
+      "result": "commented",
+      "hats": ["react-expert", "typescript-expert"],
+      "tokensUsed": 20000,
+      "estimatedCostUsd": 0.27
+    },
+    {
+      "id": "rev-014",
+      "prNumber": 193,
+      "prTitle": "API gateway — add request tracing with OpenTelemetry",
+      "repository": "cc/api-gateway",
+      "branch": "feat/otel-tracing",
+      "author": "aisha.ford",
+      "reviewedAt": "2026-06-16T13:00:00Z",
+      "timeToReviewMs": 720000,
+      "accuracyRating": 96,
+      "result": "approved",
+      "hats": ["security-reviewer"],
+      "tokensUsed": 23000,
+      "estimatedCostUsd": 0.31
+    },
+    {
+      "id": "rev-015",
+      "prNumber": 347,
+      "prTitle": "Patient portal — care plan progress tracker",
+      "repository": "cc/patient-portal",
+      "branch": "feat/care-plan-tracker",
+      "author": "james.wu",
+      "reviewedAt": "2026-06-19T07:30:00Z",
+      "timeToReviewMs": 680000,
+      "accuracyRating": 93,
+      "result": "approved",
+      "hats": ["react-expert", "e2e-engineer"],
+      "tokensUsed": 21000,
+      "estimatedCostUsd": 0.28
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pr-review.schema.json",
+  "title": "Show Me — PR Review Report",
+  "description": "Schema for AI PR review agent reports rendered by the pr-review dashboard.",
+  "type": "object",
+  "required": ["reviews"],
+  "properties": {
+    "title":       { "type": "string", "description": "Report title shown in the header." },
+    "subtitle":    { "type": "string", "description": "Secondary heading, e.g. team or project name." },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "period":      { "type": "string", "description": "Human-readable time window, e.g. 'May – June 2026'." },
+    "reviews": {
+      "type": "array",
+      "description": "All PR review records. The overview derives aggregate stats from this array.",
+      "items": { "$ref": "#/definitions/review" }
+    }
+  },
+  "definitions": {
+    "review": {
+      "type": "object",
+      "required": ["id", "prNumber", "prTitle", "repository", "reviewedAt",
+                   "timeToReviewMs", "accuracyRating", "result", "hats",
+                   "tokensUsed", "estimatedCostUsd"],
+      "properties": {
+        "id":               { "type": "string",  "description": "Unique review identifier. Use kebab-case." },
+        "prNumber":         { "type": "integer", "description": "PR number from the VCS platform." },
+        "prTitle":          { "type": "string",  "description": "PR title as shown in the VCS." },
+        "repository":       { "type": "string",  "description": "Short repo path, e.g. 'org/repo'." },
+        "branch":           { "type": "string",  "description": "Source branch name." },
+        "author":           { "type": "string",  "description": "PR author username." },
+        "reviewedAt":       { "type": "string",  "format": "date-time" },
+        "timeToReviewMs":   { "type": "integer", "description": "Wall-clock time the agent spent reviewing, in milliseconds." },
+        "accuracyRating":   { "type": "number",  "minimum": 0, "maximum": 100, "description": "Agent self-assessed accuracy score (0–100)." },
+        "result": {
+          "type": "string",
+          "enum": ["approved", "changes-requested", "commented"],
+          "description": "Review decision posted to the VCS."
+        },
+        "hats": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of reviewer personas active during this review, e.g. 'react-expert', 'security-reviewer'."
+        },
+        "hatDetails": {
+          "type": "array",
+          "description": "Per-hat findings. Include for detailed drill-down; omit for summary-only reviews.",
+          "items": { "$ref": "#/definitions/hatDetail" }
+        },
+        "tokensUsed":       { "type": "integer", "description": "Total tokens consumed by the agent for this review." },
+        "estimatedCostUsd": { "type": "number",  "description": "Estimated USD cost for the tokens consumed." },
+        "notes":            { "type": "string",  "description": "Free-text note shown as a callout in the detail view." }
+      }
+    },
+    "hatDetail": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name":     { "type": "string", "description": "Hat name — must match an entry in the parent review's 'hats' array." },
+        "findings": { "type": "array", "items": { "$ref": "#/definitions/finding" } }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["type", "description"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["issue", "suggestion", "praise"],
+          "description": "issue = something wrong; suggestion = optional improvement; praise = good practice noted."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "major", "minor"],
+          "description": "Only required for 'issue' type. critical = must fix before merge."
+        },
+        "description": { "type": "string", "description": "Human-readable finding, written for the PR author." },
+        "file":        { "type": "string", "description": "Relative file path, if applicable." },
+        "line":        { "type": "integer", "description": "Line number within the file, if applicable." }
+      }
+    }
+  }
+}
