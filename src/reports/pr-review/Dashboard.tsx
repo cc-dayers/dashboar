@@ -316,7 +316,7 @@ export default function Dashboard({ data, reportId }: Props) {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#f8fafc' }}>
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', background: '#f8fafc' }}>
       {/* Overlay */}
       {isMobile && sidebarOpen && (
         <div

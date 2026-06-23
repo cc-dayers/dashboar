@@ -19,7 +19,7 @@ export default function Dashboard({ data, reportId }: Props) {
   const activeCategory = categories.find(c => c.id === activeCategoryId) ?? null
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+    <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
       <Header data={report} reportId={reportId} />
       <div className="flex flex-1 overflow-hidden">
         {categories.length > 0 && (

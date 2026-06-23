@@ -1,0 +1,51 @@
+{
+  "title": "Legacy PR Review Report",
+  "subtitle": "Pre-versioning report — no schemaVersion or $schema field",
+  "period": "Jan – Mar 2026",
+  "reviews": [
+    {
+      "id": "rev-legacy-001",
+      "prNumber": 101,
+      "prTitle": "Migrate auth module to JWT",
+      "repository": "cc/api-gateway",
+      "branch": "feat/jwt-auth",
+      "author": "alice.morgan",
+      "reviewedAt": "2026-01-15T10:30:00Z",
+      "timeToReviewMs": 420000,
+      "accuracyRating": 91,
+      "result": "approved",
+      "hats": ["dotnet-service", "dotnet-best-practices"],
+      "tokensUsed": 14200,
+      "estimatedCostUsd": 0.18,
+      "notes": "This is a legacy report with no schemaVersion field. The dashboard should render it gracefully using the latest known schema shape."
+    },
+    {
+      "id": "rev-legacy-002",
+      "prNumber": 112,
+      "prTitle": "Add rate limiting middleware",
+      "repository": "cc/api-gateway",
+      "author": "bob.chen",
+      "reviewedAt": "2026-02-03T14:00:00Z",
+      "timeToReviewMs": 185000,
+      "accuracyRating": 87,
+      "result": "changes-requested",
+      "hats": ["dotnet-service"],
+      "tokensUsed": 9800,
+      "estimatedCostUsd": 0.12,
+      "hatDetails": [
+        {
+          "name": "dotnet-service",
+          "findings": [
+            {
+              "type": "issue",
+              "severity": "major",
+              "description": "Rate limiter does not account for distributed deployments — per-instance counters will allow N×limit requests across pods.",
+              "file": "src/Middleware/RateLimitMiddleware.cs",
+              "line": 44
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

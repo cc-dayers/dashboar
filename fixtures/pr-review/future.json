@@ -1,0 +1,36 @@
+{
+  "$schema": "report.v99.schema.json",
+  "schemaVersion": "99",
+  "title": "Future PR Review Report",
+  "subtitle": "Produced by a hypothetical future version of the review-agent",
+  "generatedAt": "2027-01-01T00:00:00Z",
+  "period": "Dec 2026",
+  "unknownTopLevelField": "dashboar should not crash on unrecognised fields",
+  "reviews": [
+    {
+      "id": "rev-future-001",
+      "prNumber": 999,
+      "prTitle": "Add quantum-resistant auth layer",
+      "repository": "cc/api-gateway",
+      "branch": "feat/pqc-auth",
+      "author": "future.dev",
+      "reviewedAt": "2026-12-20T09:00:00Z",
+      "timeToReviewMs": 600000,
+      "accuracyRating": 96,
+      "result": "approved",
+      "hats": ["dotnet-service"],
+      "tokensUsed": 50000,
+      "estimatedCostUsd": 0.65,
+      "aicCreditsUsed": 8,
+      "newFieldUnknownToV1": { "someKey": "some value" },
+      "modelsUsed": [
+        {
+          "provider": "azure",
+          "model": "gpt-5-turbo",
+          "tier": "ultra",
+          "source": "fan-out"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pr-review.v1.schema.json",
+  "title": "PR Review Report — schema version 1",
+  "description": "Frozen contract for schemaVersion: \"1\" reports produced by the CC review-agent. Do not modify — future breaking changes must create pr-review.v2.schema.json.",
+  "type": "object",
+  "required": ["reviews"],
+  "properties": {
+    "$schema":       { "type": "string" },
+    "schemaVersion": { "type": "string", "const": "1" },
+    "title":         { "type": "string" },
+    "subtitle":      { "type": "string" },
+    "generatedAt":   { "type": "string", "format": "date-time" },
+    "period":        { "type": "string" },
+    "reviews": {
+      "type": "array",
+      "description": "All PR review records.",
+      "items": { "$ref": "#/definitions/review" }
+    }
+  },
+  "definitions": {
+    "review": {
+      "type": "object",
+      "required": ["id", "prNumber", "prTitle", "repository", "reviewedAt",
+                   "timeToReviewMs", "accuracyRating", "result", "hats",
+                   "tokensUsed", "estimatedCostUsd"],
+      "properties": {
+        "id":               { "type": "string" },
+        "prNumber":         { "type": "integer" },
+        "prTitle":          { "type": "string" },
+        "repository":       { "type": "string" },
+        "branch":           { "type": "string" },
+        "author":           { "type": "string" },
+        "reviewedAt":       { "type": "string", "format": "date-time" },
+        "timeToReviewMs":   { "type": "integer" },
+        "accuracyRating":   { "type": "number", "minimum": 0, "maximum": 100 },
+        "result":           { "type": "string", "enum": ["approved", "changes-requested", "commented"] },
+        "hats":             { "type": "array", "items": { "type": "string" } },
+        "hatDetails":       { "type": "array", "items": { "$ref": "#/definitions/hatDetail" } },
+        "tokensUsed":       { "type": "integer" },
+        "estimatedCostUsd": { "type": "number" },
+        "aicCreditsUsed":   { "type": "number" },
+        "model":            { "type": "string" },
+        "provider":         { "type": "string", "enum": ["azure", "copilot", "codex"] },
+        "modelsUsed":       { "type": "array", "items": { "$ref": "#/definitions/modelUsageEntry" } },
+        "notes":            { "type": "string" },
+        "jiraTicket":       { "$ref": "#/definitions/jiraTicketRef" },
+        "downstreamImpact": { "$ref": "#/definitions/downstreamImpactSummary" }
+      }
+    },
+    "hatDetail": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name":     { "type": "string" },
+        "findings": { "type": "array", "items": { "$ref": "#/definitions/finding" } }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["description"],
+      "properties": {
+        "type":        { "type": "string", "enum": ["issue", "suggestion", "praise"] },
+        "severity":    { "type": "string", "enum": ["critical", "major", "minor"] },
+        "description": { "type": "string" },
+        "file":        { "type": "string" },
+        "line":        { "type": "integer" }
+      }
+    },
+    "modelUsageEntry": {
+      "type": "object",
+      "required": ["provider", "model"],
+      "properties": {
+        "provider":        { "type": "string", "enum": ["azure", "copilot", "codex"] },
+        "model":           { "type": "string" },
+        "label":           { "type": "string" },
+        "source":          { "type": "string" },
+        "tier":            { "type": "string" },
+        "reasoningEffort": { "type": "string" },
+        "attemptedModels": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "jiraTicketRef": {
+      "type": "object",
+      "required": ["key"],
+      "properties": {
+        "key":   { "type": "string" },
+        "title": { "type": "string" }
+      }
+    },
+    "downstreamImpactSummary": {
+      "type": "object",
+      "required": ["triggered", "contractCount", "referenceCount", "hasBreakingChanges"],
+      "properties": {
+        "triggered":          { "type": "boolean" },
+        "contractCount":      { "type": "integer" },
+        "referenceCount":     { "type": "integer" },
+        "hasBreakingChanges": { "type": "boolean" }
+      }
+    }
+  }
+}

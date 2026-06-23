@@ -9,7 +9,13 @@ export interface RegistryEntry {
   component: LazyExoticComponent<ComponentType<ReportProps>>
   label: string
   description: string
-  schemaFile?: string
+  /**
+   * Maps resolved schema version strings to public URLs for the JSON Schema
+   * used to validate reports of that version. 'legacy' is the sentinel for
+   * pre-versioned reports. Add a new entry when a new report.v{N}.schema.json
+   * is introduced in the review-agent.
+   */
+  schemaVersions?: Record<string, string>
   fixtures?: string[]
 }
 
@@ -18,7 +24,6 @@ export const registry: Record<string, RegistryEntry> = {
     component: lazy(() => import('./infrastructure/Dashboard')),
     label: 'Infrastructure',
     description: 'System health: compute, storage, networking, and deployments.',
-    schemaFile: 'infrastructure.schema.json',
     fixtures: ['example'],
   },
   simple: {
@@ -31,8 +36,11 @@ export const registry: Record<string, RegistryEntry> = {
     component: lazy(() => import('./pr-review/Dashboard')),
     label: 'PR Review',
     description: 'AI PR review agent: accuracy trends, review time, cost, hats, and per-PR findings.',
-    schemaFile: 'pr-review.schema.json',
-    fixtures: ['example', 'report'],
+    schemaVersions: {
+      '1':      '/schemas/pr-review.v1.schema.json',
+      'legacy': '/schemas/pr-review.v1.schema.json',
+    },
+    fixtures: ['example', 'report', 'legacy', 'v1', 'future'],
   },
   'playwright-trace': {
     component: lazy(() => import('./playwright-trace/Dashboard')),

@@ -1,8 +1,9 @@
 import { Suspense, useEffect, useState } from 'react'
 import { registry, DEFAULT_TYPE } from './reports'
 import LandingPage from './components/LandingPage'
+import ReportTopBar from './components/ReportTopBar'
 import { validateAgainstSchema, type ValidationResult } from './lib/validateSchema'
-import { KNOWN_SCHEMA_VERSIONS } from './reports/pr-review/types'
+import { resolveSchemaVersion, isSupportedVersion } from './lib/schemaVersion'
 
 // ── Loading / error screens ───────────────────────────────────────────────────
 
@@ -70,7 +71,7 @@ function VersionBanner({ version, onDismiss }: { version: string; onDismiss: () 
   return (
     <div style={{
       position: 'fixed', top: '16px', right: '16px', zIndex: 9999,
-      maxWidth: '380px', width: 'calc(100vw - 32px)',
+      maxWidth: '420px', width: 'calc(100vw - 32px)',
       background: '#eff6ff', border: '1px solid #bfdbfe',
       borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,.1)',
       fontSize: '12px',
@@ -80,9 +81,15 @@ function VersionBanner({ version, onDismiss }: { version: string; onDismiss: () 
           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
         </svg>
         <div style={{ flex: 1, minWidth: 0, color: '#1e40af' }}>
-          <div style={{ fontWeight: 600, marginBottom: '2px' }}>Report format may be newer than this viewer</div>
-          <div style={{ color: '#3b82f6' }}>
-            <code style={{ fontFamily: 'ui-monospace,monospace', fontSize: '11px' }}>schemaVersion: {version}</code> — some fields may not be displayed.
+          <div style={{ fontWeight: 600, marginBottom: '4px' }}>Unsupported schema version</div>
+          <div style={{ color: '#3b82f6', marginBottom: '3px' }}>
+            This report uses{' '}
+            <code style={{ fontFamily: 'ui-monospace,monospace', fontSize: '11px' }}>schemaVersion: &quot;{version}&quot;</code>,
+            which this dashboard does not yet support.
+          </div>
+          <div style={{ color: '#60a5fa' }}>
+            The report will render using the closest known schema. Some fields may be missing or displayed incorrectly.
+            Update the dashboard to add support for v{version}.
           </div>
         </div>
         <button
@@ -189,20 +196,25 @@ export default function App() {
 
         setData(json)
 
-        // Check schema version
-        const sv = (json as Record<string, unknown>)?.schemaVersion as string | undefined
-        const version = sv ?? '0'
-        if (!KNOWN_SCHEMA_VERSIONS.has(version)) {
-          setUnknownVersion(version)
+        // Resolve schema version from the payload
+        const resolved = resolveSchemaVersion(json)
+        if (!isSupportedVersion(resolved.version)) {
+          setUnknownVersion(resolved.version)
         }
 
-        // Fetch schema (report.schema.json lives alongside the report blobs)
-        const schemaUrl = `/api/get-blob?id=${encodeURIComponent(id)}.schema&report=${encodeURIComponent(reportType)}${fixture ? `&_fixture=${encodeURIComponent(fixture)}` : ''}`
-        const schemaRes = await fetch(schemaUrl)
-        if (!cancelled && schemaRes.ok) {
-          const schema = await schemaRes.json()
-          const result = validateAgainstSchema(json, schema)
-          if (!result.valid) setValidation(result)
+        // Load the versioned schema for validation (served as a static asset from public/)
+        // Only validate if we have a schema registered for the resolved version.
+        // Skip for unknown future versions — we can't validate against an unknown schema.
+        const schemaUrl = isSupportedVersion(resolved.version)
+          ? entry.schemaVersions?.[resolved.version]
+          : null
+        if (schemaUrl) {
+          const schemaRes = await fetch(schemaUrl)
+          if (!cancelled && schemaRes.ok) {
+            const schema = await schemaRes.json()
+            const result = validateAgainstSchema(json, schema)
+            if (!result.valid) setValidation(result)
+          }
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Unexpected error')
@@ -224,16 +236,19 @@ export default function App() {
   const Dashboard = entry.component
 
   return (
-    <>
-      <Suspense fallback={<LoadingScreen />}>
-        <Dashboard data={data} reportId={id} />
-      </Suspense>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <ReportTopBar />
+      <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+        <Suspense fallback={<LoadingScreen />}>
+          <Dashboard data={data} reportId={id} />
+        </Suspense>
+      </div>
       {unknownVersion && !verDismissed && (
         <VersionBanner version={unknownVersion} onDismiss={() => setVerDismissed(true)} />
       )}
       {validation && !dismissed && (
         <SchemaBanner result={validation} onDismiss={() => setDismissed(true)} />
       )}
-    </>
+    </div>
   )
 }

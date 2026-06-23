@@ -1,0 +1,126 @@
+{
+  "$schema": "report.v1.schema.json",
+  "schemaVersion": "1",
+  "title": "PR Review Report — v1",
+  "subtitle": "Agentic code review results",
+  "generatedAt": "2026-06-23T08:00:00Z",
+  "period": "Jun 2026",
+  "reviews": [
+    {
+      "id": "rev-v1-001",
+      "prNumber": 410,
+      "prTitle": "Add patient discharge summary modal",
+      "repository": "cc/patient-portal",
+      "branch": "feat/discharge-modal",
+      "author": "sarah.chen",
+      "reviewedAt": "2026-06-10T09:15:00Z",
+      "timeToReviewMs": 510000,
+      "accuracyRating": 94,
+      "result": "approved",
+      "hats": ["portals-react", "e2e-playwright"],
+      "tokensUsed": 22400,
+      "estimatedCostUsd": 0.29,
+      "aicCreditsUsed": 3,
+      "modelsUsed": [
+        {
+          "provider": "azure",
+          "model": "gpt-4o",
+          "label": "portals-react",
+          "tier": "strong",
+          "source": "fan-out"
+        },
+        {
+          "provider": "azure",
+          "model": "gpt-4o",
+          "label": "e2e-playwright",
+          "tier": "strong",
+          "source": "fan-out"
+        }
+      ],
+      "jiraTicket": { "key": "CC-1042", "title": "Discharge summary UI — phase 2" },
+      "hatDetails": [
+        {
+          "name": "portals-react",
+          "findings": [
+            {
+              "type": "suggestion",
+              "severity": "minor",
+              "description": "Consider memoising the discharge summary formatter — it runs on every render and builds a non-trivial object graph.",
+              "file": "src/components/DischargeSummary/formatter.ts",
+              "line": 18
+            }
+          ]
+        },
+        {
+          "name": "e2e-playwright",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "rev-v1-002",
+      "prNumber": 418,
+      "prTitle": "Refactor API contract layer for downstream consumers",
+      "repository": "cc/api-gateway",
+      "branch": "refactor/contract-layer",
+      "author": "james.park",
+      "reviewedAt": "2026-06-18T13:45:00Z",
+      "timeToReviewMs": 730000,
+      "accuracyRating": 88,
+      "result": "changes-requested",
+      "hats": ["dotnet-service", "interfacing"],
+      "tokensUsed": 31000,
+      "estimatedCostUsd": 0.40,
+      "aicCreditsUsed": 4,
+      "modelsUsed": [
+        {
+          "provider": "azure",
+          "model": "gpt-4o",
+          "tier": "strong",
+          "source": "fan-out",
+          "label": "dotnet-service"
+        },
+        {
+          "provider": "azure",
+          "model": "gpt-4o",
+          "tier": "strong",
+          "source": "fan-out",
+          "label": "interfacing"
+        }
+      ],
+      "jiraTicket": { "key": "CC-1091", "title": "Contract refactor — breaking change window" },
+      "downstreamImpact": {
+        "triggered": true,
+        "contractCount": 3,
+        "referenceCount": 7,
+        "hasBreakingChanges": true
+      },
+      "hatDetails": [
+        {
+          "name": "dotnet-service",
+          "findings": [
+            {
+              "type": "issue",
+              "severity": "critical",
+              "description": "IPatientContractService.GetActive() return type changed from IEnumerable<Contract> to IQueryable<Contract> without a version bump — this silently breaks callers that materialise the result inside a using block.",
+              "file": "src/Services/PatientContractService.cs",
+              "line": 67
+            }
+          ]
+        },
+        {
+          "name": "interfacing",
+          "findings": [
+            {
+              "type": "issue",
+              "severity": "major",
+              "description": "ContractSummaryDto drops the expiresAt field that three downstream portals depend on. Add a deprecation header or keep the field as nullable.",
+              "file": "src/Contracts/ContractSummaryDto.cs",
+              "line": 12
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

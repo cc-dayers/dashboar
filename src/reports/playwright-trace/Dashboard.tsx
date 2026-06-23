@@ -133,7 +133,7 @@ function Sidebar({ report, reportId, selId, isMobile, sidebarOpen, onSelect }: S
       background: '#0f172a',
       borderRight: '1px solid #1e293b',
       display: 'flex', flexDirection: 'column',
-      height: '100vh',
+      height: '100%',
       position: isMobile ? 'fixed' : 'relative',
       top: 0, left: 0, bottom: 0,
       zIndex: isMobile ? 50 : 'auto',
@@ -262,7 +262,7 @@ export default function Dashboard({ data, reportId }: ReportProps) {
     : null
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* Mobile overlay */}
       {isMobile && sidebarOpen && (
         <div

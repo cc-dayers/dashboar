@@ -72,4 +72,3 @@ export interface PrReviewReport {
   reviews: PrReview[]
 }
 
-export const KNOWN_SCHEMA_VERSIONS = new Set(['0', '1'])
