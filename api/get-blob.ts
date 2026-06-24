@@ -13,6 +13,21 @@ function buildBlobUrl(baseUrl: string, storagePath: string, id: string, sasToken
   return url.toString()
 }
 
+// Resolves the SAS token for a report type.
+// AZURE_SAS_TOKENS format: "type:token,type:token"
+// Split on first ':' only — SAS tokens contain ':' inside timestamps (e.g. st=2026-04-25T00:19:11Z).
+// Commas are safe delimiters because SAS tokens encode commas as %2C.
+// Falls back to AZURE_SAS_TOKEN if no per-type entry is found.
+function resolveToken(reportType: string): string | undefined {
+  const perType = process.env['AZURE_SAS_TOKENS'] ?? ''
+  for (const entry of perType.split(',').map(s => s.trim()).filter(Boolean)) {
+    const colon = entry.indexOf(':')
+    if (colon === -1) continue
+    if (entry.slice(0, colon) === reportType) return entry.slice(colon + 1) || undefined
+  }
+  return process.env['AZURE_SAS_TOKEN']
+}
+
 interface ResolvedEntry { storagePath: string; defaultId: string | null }
 
 function resolveEntry(reportType: string): ResolvedEntry {
@@ -83,7 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { storagePath: resolvedPath, defaultId } = resolveEntry(reportType)
   const storagePath = (Array.isArray(rawPath) ? rawPath[0] : rawPath) || resolvedPath
 
-  const sasToken = process.env['AZURE_SAS_TOKEN']
+  const sasToken = resolveToken(reportType)
 
   // Determine which filename(s) to try:
   //   explicit ?id=  →  that one only

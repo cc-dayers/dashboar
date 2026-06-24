@@ -20,9 +20,10 @@ Open `http://localhost:5173` — the landing page lists all configured reports a
 
 | Variable | Required | Description |
 |---|---|---|
-| `AZURE_BLOB_BASE_URL` | yes | Base URL of your Azure Blob container, e.g. `https://account.blob.core.windows.net/container` |
-| `AZURE_SAS_TOKEN` | if private | SAS token string (with or without leading `?`). Appended server-side; never reaches the browser. |
-| `REPORT_NAMES` | yes | Comma-separated report entries — see format below. |
+| `AZURE_BLOB_BASE_URL` | yes | Azure Blob account URL — account-level only, no container, e.g. `https://account.blob.core.windows.net` |
+| `REPORT_NAMES` | yes | Comma-separated report entries — see format below. Container and path go here, not in the base URL. |
+| `AZURE_SAS_TOKEN` | if private | Global SAS token (with or without leading `?`). Used for any report without a per-type token. |
+| `AZURE_SAS_TOKENS` | optional | Per-report-type SAS tokens — see format below. Takes precedence over `AZURE_SAS_TOKEN`. |
 | `FIXTURE_SECRET` | dev/staging | Enables fixture serving when `?_fixture=<secret>` is in the URL. |
 
 ### REPORT_NAMES format
@@ -30,14 +31,26 @@ Open `http://localhost:5173` — the landing page lists all configured reports a
 Each entry is `type:path` or `type:path:filename`:
 
 ```
-REPORT_NAMES=pr-review:reports/pr-review,review-audit:reports/pr-review:review-audit
+REPORT_NAMES=pr-review:cc-review-agent/reports/pr-review,review-audit:cc-review-agent/reports:review-audit
 ```
 
 - **`type`** — must match a registered report type (`pr-review`, `review-audit`, etc.)
-- **`path`** — blob path under the base URL, e.g. `reports/pr-review`
+- **`path`** — full blob path including container, e.g. `cc-review-agent/reports/pr-review`
 - **`filename`** _(optional)_ — JSON filename without extension. Defaults to `report`; if not found, falls back to `{type}` (e.g. `review-audit.json`).
 
 The full blob URL becomes `{AZURE_BLOB_BASE_URL}/{path}/{filename}.json`.
+
+### AZURE_SAS_TOKENS format
+
+Each entry is `type:token` where token is the raw SAS query string:
+
+```
+AZURE_SAS_TOKENS=pr-review:sp=r&st=2026-01-01T00:00:00Z&se=2027-01-01T00:00:00Z&sig=...,review-audit:sp=r&st=...
+```
+
+- Entries are comma-separated; the type and token are split on the **first `:` only** — colons inside SAS timestamps (e.g. `00:19:11Z`) are preserved.
+- `AZURE_SAS_TOKEN` (singular) is used as a fallback for any type not listed here.
+- Rotate one token without touching others by updating only that entry.
 
 ---
 

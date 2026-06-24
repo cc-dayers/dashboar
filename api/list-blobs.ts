@@ -27,6 +27,21 @@ function parseReportNames(): ReportEntry[] {
   })
 }
 
+// Resolves the SAS token for a report type.
+// AZURE_SAS_TOKENS format: "type:token,type:token"
+// Split on first ':' only — SAS tokens contain ':' inside timestamps (e.g. st=2026-04-25T00:19:11Z).
+// Commas are safe delimiters because SAS tokens encode commas as %2C.
+// Falls back to AZURE_SAS_TOKEN if no per-type entry is found.
+function resolveToken(reportType: string): string | undefined {
+  const perType = process.env['AZURE_SAS_TOKENS'] ?? ''
+  for (const entry of perType.split(',').map(s => s.trim()).filter(Boolean)) {
+    const colon = entry.indexOf(':')
+    if (colon === -1) continue
+    if (entry.slice(0, colon) === reportType) return entry.slice(colon + 1) || undefined
+  }
+  return process.env['AZURE_SAS_TOKEN']
+}
+
 function buildUrl(baseUrl: string, storagePath: string, id: string, sasToken: string | undefined): string {
   const url = new URL(baseUrl)
   const segs = storagePath.split('/').filter(Boolean).map(s => encodeURIComponent(s))
@@ -50,9 +65,8 @@ async function probe(url: string): Promise<{ ok: boolean; lastModified?: string;
 }
 
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
-  const baseUrl  = process.env['AZURE_BLOB_BASE_URL']
-  const sasToken = process.env['AZURE_SAS_TOKEN']
-  const entries  = parseReportNames()
+  const baseUrl = process.env['AZURE_BLOB_BASE_URL']
+  const entries = parseReportNames()
 
   if (!baseUrl || entries.length === 0) {
     return res.status(200).json({ blobs: [] })
@@ -60,7 +74,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
 
   const settled = await Promise.allSettled(
     entries.map(async ({ type, storagePath, defaultId }): Promise<BlobEntry | null> => {
-      // Explicit 3rd-segment → probe only that file
+      const sasToken = resolveToken(type)
       const candidates = defaultId ? [defaultId] : ['report', type]
 
       for (const id of candidates) {
