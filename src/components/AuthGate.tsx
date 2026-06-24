@@ -173,10 +173,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           </div>
         </form>
 
-        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', color: '#cbd5e1' }}>
-          Your token is{' '}
-          <code style={{ fontFamily: 'ui-monospace,monospace' }}>btoa(&quot;{'{'}username{'}'}:{'{'}hash{'}'}&quot;)</code>
-        </div>
       </div>
 
       <style>{`
