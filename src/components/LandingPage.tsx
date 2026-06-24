@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { registry } from '../reports'
 import BoarMark from './BoarMark'
 
@@ -103,9 +103,11 @@ type BrowseState = 'idle' | 'loading' | 'done'
 
 export default function LandingPage() {
   const types = Object.entries(registry)
-  const [browseState, setBrowseState] = useState<BrowseState>('idle')
+  const [browseState, setBrowseState] = useState<BrowseState>('loading')
   const [reports,     setReports]     = useState<DiscoveredReport[]>([])
   const [errors,      setErrors]      = useState<FetchError[]>([])
+
+  useEffect(() => { void loadFromStorage() }, [])
 
   async function loadFromStorage() {
     setBrowseState('loading')
@@ -160,22 +162,6 @@ export default function LandingPage() {
           ))}
         </div>
 
-        {/* Browse storage */}
-        {browseState === 'idle' && (
-          <div className="text-center">
-            <button
-              onClick={() => { void loadFromStorage() }}
-              className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 bg-white border border-indigo-200 hover:border-indigo-400 px-4 py-2 rounded-xl shadow-sm transition-all cursor-pointer"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
-                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
-              Browse reports in storage
-            </button>
-          </div>
-        )}
-
         {browseState === 'loading' && (
           <div className="bg-white rounded-2xl border border-slate-200 px-5 py-8 flex flex-col items-center gap-3 text-slate-400">
             <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
@@ -187,9 +173,18 @@ export default function LandingPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
               <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Storage</h2>
-              {reports.length > 0 && (
-                <span className="text-xs text-slate-400">{reports.length} report{reports.length !== 1 ? 's' : ''}</span>
-              )}
+              <div className="flex items-center gap-3">
+                {reports.length > 0 && (
+                  <span className="text-xs text-slate-400">{reports.length} report{reports.length !== 1 ? 's' : ''}</span>
+                )}
+                <button
+                  onClick={() => { void loadFromStorage() }}
+                  className="text-xs text-indigo-500 hover:text-indigo-700 cursor-pointer"
+                  title="Refresh"
+                >
+                  ↻
+                </button>
+              </div>
             </div>
 
             {reports.length > 0 && reports.map(r => (
