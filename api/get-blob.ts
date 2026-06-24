@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { isAuthenticated } from './_auth'
 
 function buildBlobUrl(baseUrl: string, storagePath: string, id: string, sasToken: string | undefined): string {
   const url = new URL(baseUrl)
@@ -69,6 +70,10 @@ function tryServeFixture(reportType: string, id: string, res: VercelResponse): b
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!isAuthenticated(req.headers['cookie'])) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
   const rawReport  = req.query['report']
   const reportType = (Array.isArray(rawReport) ? rawReport[0] : rawReport) ?? ''
 

@@ -24,6 +24,8 @@ Open `http://localhost:5173` — the landing page lists all configured reports a
 | `REPORT_NAMES` | yes | Comma-separated report entries — see format below. Container and path go here, not in the base URL. |
 | `AZURE_SAS_TOKEN` | if private | Global SAS token (with or without leading `?`). Used for any report without a per-type token. |
 | `AZURE_SAS_TOKENS` | optional | Per-report-type SAS tokens — see format below. Takes precedence over `AZURE_SAS_TOKEN`. |
+| `AUTH_HASH` | optional | Enables the auth gate. Secret hash appended to usernames to form credentials. Leave unset to disable auth (local dev). |
+| `AUTHORIZED_USERS` | with `AUTH_HASH` | Comma-separated list of usernames that may log in, e.g. `don,gabriel,rick`. |
 | `FIXTURE_SECRET` | dev/staging | Enables fixture serving when `?_fixture=<secret>` is in the URL. |
 
 ### REPORT_NAMES format
@@ -98,6 +100,24 @@ The `path` parameter overrides the `REPORT_NAMES` storage path for that request.
 | `2` | `pr-review.v2.schema.json` | Adds expanded `downstreamImpact` fields (`riskClasses`, `affectedAreas`, `validationCount`, `warningCount`) |
 
 Frozen schema snapshots live in `public/schemas/`. When a new schema version is introduced, add `pr-review.v{N}.schema.json` there, add the version to `SUPPORTED_VERSIONS` in `src/lib/schemaVersion.ts`, and register it in `src/reports/index.ts`.
+
+---
+
+## Auth gate
+
+When `AUTH_HASH` is set, all visitors see a login screen before accessing any reports.
+
+Each user's token is their username concatenated with the hash, base64-encoded:
+
+```js
+btoa("don:one-does-not-simply-dash-boar")  // → "ZG9uOm9uZS1kb2VzLW5vdC1zaW1wbHktZGFzaC1ib2Fy"
+```
+
+Paste that string into the **Access token** field on the login screen. The session cookie lasts 30 days.
+
+To revoke access for everyone simultaneously, change `AUTH_HASH` in your environment. All existing cookies become invalid immediately — users must re-authenticate with the new token.
+
+To disable auth (e.g. for local development), leave `AUTH_HASH` unset.
 
 ---
 

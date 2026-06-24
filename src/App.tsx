@@ -1,6 +1,7 @@
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState, type ReactNode } from 'react'
 import { registry, DEFAULT_TYPE } from './reports'
 import LandingPage from './components/LandingPage'
+import AuthGate from './components/AuthGate'
 import { validateAgainstSchema, type ValidationResult } from './lib/validateSchema'
 import { resolveSchemaVersion, isSupportedVersion } from './lib/schemaVersion'
 
@@ -229,25 +230,34 @@ export default function App() {
     return () => { cancelled = true }
   }, [idParam, reportType, storagePath, fixture, entry])
 
-  if (!hasReport) return <LandingPage />
-  if (!entry) return <UnknownTypeScreen type={reportType} />
-  if (loading) return <LoadingScreen />
-  if (error) return <ErrorScreen id={id} message={error} />
-  if (!data) return null
+  let content: ReactNode
 
-  const Dashboard = entry.component
+  if (!hasReport) {
+    content = <LandingPage />
+  } else if (!entry) {
+    content = <UnknownTypeScreen type={reportType} />
+  } else if (loading) {
+    content = <LoadingScreen />
+  } else if (error) {
+    content = <ErrorScreen id={id} message={error} />
+  } else if (!data) {
+    content = null
+  } else {
+    const Dashboard = entry.component
+    content = (
+      <div style={{ height: '100vh', overflow: 'hidden' }}>
+        <Suspense fallback={<LoadingScreen />}>
+          <Dashboard data={data} reportId={id} />
+        </Suspense>
+        {unknownVersion && !verDismissed && (
+          <VersionBanner version={unknownVersion} onDismiss={() => setVerDismissed(true)} />
+        )}
+        {validation && !dismissed && (
+          <SchemaBanner result={validation} onDismiss={() => setDismissed(true)} />
+        )}
+      </div>
+    )
+  }
 
-  return (
-    <div style={{ height: '100vh', overflow: 'hidden' }}>
-      <Suspense fallback={<LoadingScreen />}>
-        <Dashboard data={data} reportId={id} />
-      </Suspense>
-      {unknownVersion && !verDismissed && (
-        <VersionBanner version={unknownVersion} onDismiss={() => setVerDismissed(true)} />
-      )}
-      {validation && !dismissed && (
-        <SchemaBanner result={validation} onDismiss={() => setDismissed(true)} />
-      )}
-    </div>
-  )
+  return <AuthGate>{content}</AuthGate>
 }

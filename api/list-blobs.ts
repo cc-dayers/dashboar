@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { isAuthenticated } from './_auth'
 
 export interface BlobEntry {
   id:            string
@@ -64,7 +65,11 @@ async function probe(url: string): Promise<{ ok: boolean; lastModified?: string;
   }
 }
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!isAuthenticated(req.headers['cookie'])) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
   const baseUrl = process.env['AZURE_BLOB_BASE_URL']
   const entries = parseReportNames()
 
