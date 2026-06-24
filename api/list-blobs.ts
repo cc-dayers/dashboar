@@ -1,5 +1,24 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { isAuthenticated } from './authCore'
+
+function isAuthenticated(cookieHeader: string | string[] | undefined): boolean {
+  const authHash = process.env['AUTH_HASH']
+  if (!authHash) return true
+  const header = Array.isArray(cookieHeader) ? cookieHeader.join('; ') : cookieHeader
+  if (!header) return false
+  let token: string | null = null
+  for (const part of header.split(';')) {
+    const eq = part.indexOf('=')
+    if (eq !== -1 && part.slice(0, eq).trim() === 'dashboar_session') { token = part.slice(eq + 1).trim() || null; break }
+  }
+  if (!token) return false
+  try {
+    const decoded  = Buffer.from(token, 'base64').toString('utf-8')
+    const colonIdx = decoded.indexOf(':')
+    if (colonIdx < 1) return false
+    const allowed = (process.env['AUTHORIZED_USERS'] ?? '').split(',').map(s => s.trim()).filter(Boolean)
+    return allowed.includes(decoded.slice(0, colonIdx)) && decoded.slice(colonIdx + 1) === authHash
+  } catch { return false }
+}
 
 export interface BlobEntry {
   id:            string

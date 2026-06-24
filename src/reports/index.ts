@@ -20,12 +20,6 @@ export interface RegistryEntry {
 }
 
 export const registry: Record<string, RegistryEntry> = {
-  infrastructure: {
-    component: lazy(() => import('./infrastructure/Dashboard')),
-    label: 'Infrastructure',
-    description: 'System health: compute, storage, networking, and deployments.',
-    fixtures: ['example'],
-  },
   simple: {
     component: lazy(() => import('./simple/Dashboard')),
     label: 'Simple',
@@ -56,4 +50,4 @@ export const registry: Record<string, RegistryEntry> = {
   },
 }
 
-export const DEFAULT_TYPE = 'infrastructure'
+export const DEFAULT_TYPE = 'pr-review'

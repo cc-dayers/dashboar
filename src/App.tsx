@@ -178,7 +178,7 @@ export default function App() {
   const [verDismissed,    setVerDismissed]   = useState(false)
 
   useEffect(() => {
-    if (!id || !entry) return
+    if (!hasReport || !id || !entry) return
 
     let cancelled = false
 
@@ -228,7 +228,7 @@ export default function App() {
 
     load()
     return () => { cancelled = true }
-  }, [idParam, reportType, storagePath, fixture, entry])
+  }, [hasReport, idParam, reportType, storagePath, fixture, entry])
 
   let content: ReactNode
 
