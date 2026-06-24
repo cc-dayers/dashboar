@@ -2,27 +2,10 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-function resolveBaseUrl(reportType: string): string | undefined {
-  if (reportType) {
-    const envKey = `AZURE_BLOB_${reportType.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_URL`
-    const perTypeUrl = process.env[envKey]
-    if (perTypeUrl) return perTypeUrl
-  }
-  return process.env['AZURE_BLOB_BASE_URL']
-}
-
-function resolveSasToken(reportType: string): string | undefined {
-  if (reportType) {
-    const envKey = `AZURE_SAS_${reportType.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_TOKEN`
-    const perTypeToken = process.env[envKey]
-    if (perTypeToken) return perTypeToken
-  }
-  return process.env['AZURE_SAS_TOKEN']
-}
-
-function buildBlobUrl(baseUrl: string, id: string, sasToken: string | undefined): string {
+function buildBlobUrl(baseUrl: string, storagePath: string, id: string, sasToken: string | undefined): string {
   const url = new URL(baseUrl)
-  url.pathname = `${url.pathname.replace(/\/$/, '')}/${encodeURIComponent(id)}.json`
+  const segments = storagePath.split('/').filter(Boolean).map(s => encodeURIComponent(s))
+  url.pathname = [url.pathname.replace(/\/$/, ''), ...segments, `${encodeURIComponent(id)}.json`].join('/')
   if (sasToken) {
     const token = sasToken.startsWith('?') ? sasToken.slice(1) : sasToken
     new URLSearchParams(token).forEach((v, k) => url.searchParams.set(k, v))
@@ -30,11 +13,27 @@ function buildBlobUrl(baseUrl: string, id: string, sasToken: string | undefined)
   return url.toString()
 }
 
-function tryServeFixture(
-  reportType: string,
-  id: string,
-  res: VercelResponse,
-): boolean {
+interface ResolvedEntry { storagePath: string; defaultId: string | null }
+
+function resolveEntry(reportType: string): ResolvedEntry {
+  const raw = process.env['REPORT_NAMES'] ?? ''
+  for (const entry of raw.split(',').map(s => s.trim()).filter(Boolean)) {
+    const firstColon = entry.indexOf(':')
+    if (firstColon === -1) {
+      if (entry === reportType) return { storagePath: entry, defaultId: null }
+      continue
+    }
+    const type = entry.slice(0, firstColon)
+    if (type !== reportType) continue
+    const rest = entry.slice(firstColon + 1)
+    const lastColon = rest.lastIndexOf(':')
+    if (lastColon === -1) return { storagePath: rest, defaultId: null }
+    return { storagePath: rest.slice(0, lastColon), defaultId: rest.slice(lastColon + 1) || null }
+  }
+  return { storagePath: reportType, defaultId: null }
+}
+
+function tryServeFixture(reportType: string, id: string, res: VercelResponse): boolean {
   const fixtureSecret = process.env['FIXTURE_SECRET']
   if (!fixtureSecret) return false
 
@@ -55,42 +54,69 @@ function tryServeFixture(
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const rawId = req.query['id'] ?? req.query['reportId']
-  const id = Array.isArray(rawId) ? rawId[0] : rawId
-
-  if (!id) {
-    return res.status(400).json({ error: 'Missing required query parameter: id or reportId' })
-  }
-
-  const rawReport = req.query['report']
+  const rawReport  = req.query['report']
   const reportType = (Array.isArray(rawReport) ? rawReport[0] : rawReport) ?? ''
 
-  const rawFixture = req.query['_fixture']
-  const fixtureParam = Array.isArray(rawFixture) ? rawFixture[0] : rawFixture
-  const fixtureSecret = process.env['FIXTURE_SECRET']
-  if (fixtureParam && fixtureSecret && fixtureParam === fixtureSecret) {
-    return tryServeFixture(reportType, id, res)
+  if (!reportType) {
+    return res.status(400).json({ error: 'Missing required query parameter: report' })
   }
 
-  const baseUrl = resolveBaseUrl(reportType)
+  // rawId is only set when the caller explicitly passed ?id=
+  const rawId    = req.query['id'] ?? req.query['reportId']
+  const rawIdStr = (Array.isArray(rawId) ? rawId[0] : rawId) ?? null  // null = not provided
+
+  const rawFixture    = req.query['_fixture']
+  const fixtureParam  = Array.isArray(rawFixture) ? rawFixture[0] : rawFixture
+  const fixtureSecret = process.env['FIXTURE_SECRET']
+  if (fixtureParam && fixtureSecret && fixtureParam === fixtureSecret) {
+    const fixtureId = rawIdStr ?? 'report'
+    return tryServeFixture(reportType, fixtureId, res)
+  }
+
+  const baseUrl = process.env['AZURE_BLOB_BASE_URL']
   if (!baseUrl) {
     return res.status(500).json({ error: 'Server misconfiguration: no AZURE_BLOB_BASE_URL configured' })
   }
 
-  let blobUrl: string
-  try {
-    blobUrl = buildBlobUrl(baseUrl, id, resolveSasToken(reportType))
-  } catch {
-    return res.status(500).json({ error: 'Server misconfiguration: AZURE_BLOB_BASE_URL is not a valid URL' })
-  }
+  // Explicit ?path= override takes precedence over REPORT_NAMES lookup
+  const rawPath    = req.query['path']
+  const { storagePath: resolvedPath, defaultId } = resolveEntry(reportType)
+  const storagePath = (Array.isArray(rawPath) ? rawPath[0] : rawPath) || resolvedPath
 
-  try {
+  const sasToken = process.env['AZURE_SAS_TOKEN']
+
+  // Determine which filename(s) to try:
+  //   explicit ?id=  →  that one only
+  //   REPORT_NAMES 3rd segment →  that one only
+  //   otherwise  →  'report' first, then {reportType} as fallback
+  const candidates: string[] = rawIdStr
+    ? [rawIdStr]
+    : defaultId
+    ? [defaultId]
+    : ['report', reportType]
+
+  for (const id of candidates) {
+    let blobUrl: string
+    try {
+      blobUrl = buildBlobUrl(baseUrl, storagePath, id, sasToken)
+    } catch {
+      return res.status(500).json({ error: 'Server misconfiguration: AZURE_BLOB_BASE_URL is not a valid URL' })
+    }
+
     console.log(`[api] fetching → ${blobUrl}`)
-    const upstream = await fetch(blobUrl)
-    console.log(`[api] azure response: HTTP ${upstream.status}`)
+    let upstream: Response
+    try {
+      upstream = await fetch(blobUrl)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      return res.status(500).json({ error: `Failed to fetch report: ${message}` })
+    }
+
+    console.log(`[api] azure response: HTTP ${upstream.status} (candidate: ${id})`)
 
     if (upstream.status === 404) {
-      return res.status(404).json({ error: `Report '${id}' not found` })
+      // Try next candidate; if this was the last one, fall through to final 404
+      continue
     }
     if (!upstream.ok) {
       return res.status(502).json({ error: `Upstream storage error: HTTP ${upstream.status}` })
@@ -99,8 +125,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const data: unknown = await upstream.json()
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300')
     return res.status(200).json(data)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return res.status(500).json({ error: `Failed to fetch report: ${message}` })
   }
+
+  // All candidates 404'd
+  const triedNames = candidates.map(c => `${c}.json`).join(', ')
+  return res.status(404).json({ error: `Report not found at path '${storagePath}' (tried: ${triedNames})` })
 }

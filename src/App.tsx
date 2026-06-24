@@ -1,7 +1,6 @@
 import { Suspense, useEffect, useState } from 'react'
 import { registry, DEFAULT_TYPE } from './reports'
 import LandingPage from './components/LandingPage'
-import ReportTopBar from './components/ReportTopBar'
 import { validateAgainstSchema, type ValidationResult } from './lib/validateSchema'
 import { resolveSchemaVersion, isSupportedVersion } from './lib/schemaVersion'
 
@@ -159,10 +158,13 @@ function SchemaBanner({ result, onDismiss }: { result: ValidationResult; onDismi
 // ── Main app ──────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const params     = new URLSearchParams(window.location.search)
-  const id         = params.get('id') ?? params.get('reportId')
-  const reportType = params.get('report') ?? DEFAULT_TYPE
-  const fixture    = params.get('_fixture')
+  const params      = new URLSearchParams(window.location.search)
+  const hasReport   = params.has('report')
+  const idParam     = params.get('id') ?? params.get('reportId')  // null when not in URL
+  const id          = idParam ?? 'report'
+  const reportType  = params.get('report') ?? DEFAULT_TYPE
+  const storagePath = params.get('path')
+  const fixture     = params.get('_fixture')
 
   const entry = registry[reportType]
 
@@ -188,7 +190,7 @@ export default function App() {
       setVerDismissed(false)
 
       try {
-        const blobUrl = `/api/get-blob?id=${encodeURIComponent(id)}&report=${encodeURIComponent(reportType)}${fixture ? `&_fixture=${encodeURIComponent(fixture)}` : ''}`
+        const blobUrl = `/api/get-blob?report=${encodeURIComponent(reportType)}${storagePath ? `&path=${encodeURIComponent(storagePath)}` : ''}${idParam != null ? `&id=${encodeURIComponent(idParam)}` : ''}${fixture ? `&_fixture=${encodeURIComponent(fixture)}` : ''}`
         const res  = await fetch(blobUrl)
         const json = await res.json()
         if (!res.ok) throw new Error((json as { error?: string }).error ?? `HTTP ${res.status}`)
@@ -225,9 +227,9 @@ export default function App() {
 
     load()
     return () => { cancelled = true }
-  }, [id, reportType, fixture, entry])
+  }, [idParam, reportType, storagePath, fixture, entry])
 
-  if (!id) return <LandingPage />
+  if (!hasReport) return <LandingPage />
   if (!entry) return <UnknownTypeScreen type={reportType} />
   if (loading) return <LoadingScreen />
   if (error) return <ErrorScreen id={id} message={error} />
@@ -236,13 +238,10 @@ export default function App() {
   const Dashboard = entry.component
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      <ReportTopBar />
-      <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-        <Suspense fallback={<LoadingScreen />}>
-          <Dashboard data={data} reportId={id} />
-        </Suspense>
-      </div>
+    <div style={{ height: '100vh', overflow: 'hidden' }}>
+      <Suspense fallback={<LoadingScreen />}>
+        <Dashboard data={data} reportId={id} />
+      </Suspense>
       {unknownVersion && !verDismissed && (
         <VersionBanner version={unknownVersion} onDismiss={() => setVerDismissed(true)} />
       )}

@@ -39,7 +39,7 @@ export function resolveSchemaVersion(report: unknown): ResolvedVersion {
 // All schema versions this dashboard can fully render.
 // 'legacy' = pre-versioned reports (no schemaVersion field).
 // Add new versions here as they are introduced in the report generator.
-export const SUPPORTED_VERSIONS = new Set<string>(['1', 'legacy'])
+export const SUPPORTED_VERSIONS = new Set<string>(['1', '2', 'legacy'])
 
 export function isSupportedVersion(version: string): boolean {
   return SUPPORTED_VERSIONS.has(version)

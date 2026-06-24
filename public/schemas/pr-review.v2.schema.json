@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pr-review.v2.schema.json",
+  "title": "PR Review Report — schema version 2",
+  "description": "Frozen contract for schemaVersion: \"2\" reports produced by the CC review-agent. Adds expanded DownstreamImpactSummary fields (riskClasses, affectedAreas, validationCount, warningCount). Do not modify — future breaking changes must create pr-review.v3.schema.json.",
+  "type": "object",
+  "required": ["reviews"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema":       { "type": "string" },
+    "schemaVersion": { "type": "string", "const": "2" },
+    "title":         { "type": "string" },
+    "subtitle":      { "type": "string" },
+    "generatedAt":   { "type": "string", "format": "date-time" },
+    "period":        { "type": "string" },
+    "reviews": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/review" }
+    }
+  },
+  "definitions": {
+    "review": {
+      "type": "object",
+      "required": ["id", "prNumber", "prTitle", "repository", "reviewedAt",
+                   "timeToReviewMs", "accuracyRating", "result", "hats",
+                   "tokensUsed", "estimatedCostUsd"],
+      "additionalProperties": false,
+      "properties": {
+        "id":               { "type": "string", "pattern": "^pr-\\d+$" },
+        "prNumber":         { "type": "integer", "minimum": 1 },
+        "prTitle":          { "type": "string" },
+        "repository":       { "type": "string" },
+        "branch":           { "type": "string" },
+        "author":           { "type": "string" },
+        "reviewedAt":       { "type": "string", "format": "date-time" },
+        "timeToReviewMs":   { "type": "integer", "minimum": 0 },
+        "accuracyRating":   { "type": "number", "minimum": 0, "maximum": 100 },
+        "result":           { "type": "string", "enum": ["approved", "changes-requested", "commented"] },
+        "hats":             { "type": "array", "items": { "type": "string" } },
+        "hatDetails":       { "type": "array", "items": { "$ref": "#/definitions/hatDetail" } },
+        "tokensUsed":       { "type": "integer", "minimum": 0 },
+        "estimatedCostUsd": { "type": "number", "minimum": 0 },
+        "aicCreditsUsed":   { "type": "integer", "minimum": 1 },
+        "model":            { "type": "string" },
+        "provider":         { "type": "string", "enum": ["azure", "copilot", "codex"] },
+        "modelsUsed":       { "type": "array", "items": { "$ref": "#/definitions/modelUsageEntry" } },
+        "notes":            { "type": "string" },
+        "jiraTicket":       { "$ref": "#/definitions/jiraTicketRef" },
+        "downstreamImpact": { "$ref": "#/definitions/downstreamImpactSummary" }
+      }
+    },
+    "hatDetail": {
+      "type": "object",
+      "required": ["name", "findings"],
+      "additionalProperties": false,
+      "properties": {
+        "name":     { "type": "string" },
+        "findings": { "type": "array", "items": { "$ref": "#/definitions/finding" } }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["type", "severity", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "type":        { "type": "string", "enum": ["issue", "suggestion", "praise"] },
+        "severity":    { "type": "string", "enum": ["critical", "major", "minor"] },
+        "description": { "type": "string" },
+        "file":        { "type": "string" },
+        "line":        { "type": "integer", "minimum": 1 }
+      }
+    },
+    "modelUsageEntry": {
+      "type": "object",
+      "required": ["provider", "model"],
+      "additionalProperties": false,
+      "properties": {
+        "label":           { "type": "string" },
+        "source":          { "type": "string" },
+        "provider":        { "type": "string", "enum": ["azure", "copilot", "codex"] },
+        "model":           { "type": "string" },
+        "tier":            { "type": "string" },
+        "reasoningEffort": { "type": "string" },
+        "attemptedModels": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "jiraTicketRef": {
+      "type": "object",
+      "required": ["key"],
+      "additionalProperties": false,
+      "properties": {
+        "key":   { "type": "string", "pattern": "^[A-Z][A-Z0-9]+-\\d+$" },
+        "title": { "type": "string" }
+      }
+    },
+    "downstreamImpactSummary": {
+      "type": "object",
+      "required": ["triggered", "contractCount", "referenceCount", "hasBreakingChanges"],
+      "additionalProperties": false,
+      "properties": {
+        "triggered":          { "type": "boolean" },
+        "contractCount":      { "type": "integer", "minimum": 0 },
+        "referenceCount":     { "type": "integer", "minimum": 0 },
+        "hasBreakingChanges": { "type": "boolean" },
+        "riskClasses":        { "type": "array", "items": { "type": "string" } },
+        "affectedAreas":      { "type": "array", "items": { "type": "string" } },
+        "validationCount":    { "type": "integer", "minimum": 0 },
+        "warningCount":       { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

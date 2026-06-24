@@ -36,6 +36,10 @@ export interface DownstreamImpactSummary {
   contractCount: number
   referenceCount: number
   hasBreakingChanges: boolean
+  riskClasses?: string[]
+  affectedAreas?: string[]
+  validationCount?: number
+  warningCount?: number
 }
 
 export interface PrReview {

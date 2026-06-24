@@ -359,6 +359,7 @@ function ModelsUsedSection({ entries }: { entries: ModelUsageEntry[] }) {
 
 function DownstreamImpactBanner({ impact }: { impact: DownstreamImpactSummary }) {
   const breaking = impact.hasBreakingChanges
+  const accent   = breaking ? { text: '#991b1b', sub: '#b91c1c', tagBg: '#fee2e2' } : { text: '#92400e', sub: '#b45309', tagBg: '#fef3c7' }
   return (
     <div style={{
       background: breaking ? '#fef2f2' : '#fff7ed',
@@ -369,14 +370,35 @@ function DownstreamImpactBanner({ impact }: { impact: DownstreamImpactSummary })
         <svg width="15" height="15" viewBox="0 0 20 20" fill={breaking ? '#dc2626' : '#d97706'}>
           <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
         </svg>
-        <span style={{ fontSize: '12px', fontWeight: 700, color: breaking ? '#991b1b' : '#92400e' }}>
+        <span style={{ fontSize: '12px', fontWeight: 700, color: accent.text }}>
           Downstream Impact Detected{breaking ? ' — Breaking Changes' : ''}
         </span>
       </div>
-      <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: breaking ? '#b91c1c' : '#b45309' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '12px', color: accent.sub, marginBottom: '6px' }}>
         <span><strong>{impact.contractCount}</strong> contract{impact.contractCount !== 1 ? 's' : ''} changed</span>
         <span><strong>{impact.referenceCount}</strong> downstream reference{impact.referenceCount !== 1 ? 's' : ''}</span>
+        {impact.validationCount != null && (
+          <span><strong>{impact.validationCount}</strong> validation hint{impact.validationCount !== 1 ? 's' : ''}</span>
+        )}
+        {(impact.warningCount ?? 0) > 0 && (
+          <span><strong>{impact.warningCount}</strong> warning{impact.warningCount !== 1 ? 's' : ''}</span>
+        )}
       </div>
+      {impact.riskClasses && impact.riskClasses.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+          {impact.riskClasses.map(c => (
+            <span key={c} style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '4px', background: accent.tagBg, color: accent.text, fontWeight: 500 }}>{c}</span>
+          ))}
+        </div>
+      )}
+      {impact.affectedAreas && impact.affectedAreas.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', alignItems: 'center' }}>
+          <span style={{ fontSize: '10px', color: accent.sub }}>areas:</span>
+          {impact.affectedAreas.map(a => (
+            <span key={a} style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#f8fafc', color: '#475569', fontFamily: 'ui-monospace,monospace' }}>{a}</span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

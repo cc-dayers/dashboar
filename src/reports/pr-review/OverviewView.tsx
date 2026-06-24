@@ -4,6 +4,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import type { PrReview, PrReviewReport, LlmProvider } from './types'
+import PanelTopBar from '../../components/PanelTopBar'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -277,46 +278,49 @@ export default function OverviewView({ report, reportId }: Props) {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
-      {/* Header */}
-      <header style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>{reportId}</div>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{report.title ?? 'PR Review Report'}</div>
-          {report.subtitle && (
-            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '1px' }}>{report.subtitle}</div>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginRight: '6px', gap: '2px' }}>
-            {report.period && (
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>{report.period}</span>
-            )}
-            {report.generatedAt && (
-              <span style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                Generated {new Date(report.generatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-              </span>
+      <PanelTopBar
+        left={
+          <div>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>{reportId}</div>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{report.title ?? 'PR Review Report'}</div>
+            {report.subtitle && (
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '1px' }}>{report.subtitle}</div>
             )}
           </div>
-          {RANGE_OPTIONS.map(opt => {
-            const active = filterDays === opt.days
-            return (
-              <button
-                key={opt.label}
-                onClick={() => setFilterDays(opt.days)}
-                style={{
-                  fontSize: '12px', fontWeight: 500, padding: '4px 12px',
-                  borderRadius: '6px', cursor: 'pointer', border: 'none',
-                  background: active ? '#0f172a' : '#f1f5f9',
-                  color: active ? '#f1f5f9' : '#475569',
-                  transition: 'background 0.12s, color 0.12s',
-                }}
-              >
-                {opt.label}
-              </button>
-            )
-          })}
-        </div>
-      </header>
+        }
+        right={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginRight: '6px', gap: '2px' }}>
+              {report.period && (
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>{report.period}</span>
+              )}
+              {report.generatedAt && (
+                <span style={{ fontSize: '10px', color: '#cbd5e1' }}>
+                  Generated {new Date(report.generatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                </span>
+              )}
+            </div>
+            {RANGE_OPTIONS.map(opt => {
+              const active = filterDays === opt.days
+              return (
+                <button
+                  key={opt.label}
+                  onClick={() => setFilterDays(opt.days)}
+                  style={{
+                    fontSize: '12px', fontWeight: 500, padding: '4px 12px',
+                    borderRadius: '6px', cursor: 'pointer', border: 'none',
+                    background: active ? '#0f172a' : '#f1f5f9',
+                    color: active ? '#f1f5f9' : '#475569',
+                    transition: 'background 0.12s, color 0.12s',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
+        }
+      />
 
       <div style={{ padding: '20px 24px', maxWidth: '1100px', margin: '0 auto' }}>
 

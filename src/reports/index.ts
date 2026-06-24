@@ -37,6 +37,7 @@ export const registry: Record<string, RegistryEntry> = {
     label: 'PR Review',
     description: 'AI PR review agent: accuracy trends, review time, cost, hats, and per-PR findings.',
     schemaVersions: {
+      '2':      '/schemas/pr-review.v2.schema.json',
       '1':      '/schemas/pr-review.v1.schema.json',
       'legacy': '/schemas/pr-review.v1.schema.json',
     },
@@ -47,6 +48,11 @@ export const registry: Record<string, RegistryEntry> = {
     label: 'Playwright Traces',
     description: 'Automated test run trace viewer — opens Playwright traces directly in the browser.',
     fixtures: ['example'],
+  },
+  'review-audit': {
+    component: lazy(() => import('./review-audit/Dashboard')),
+    label: 'Review Audit',
+    description: 'PR review audit: per-review feedback, improvement signals, downstream impact, and summary stats.',
   },
 }
 

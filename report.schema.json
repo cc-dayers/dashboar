@@ -1,0 +1,206 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "report.schema.json",
+    "title": "PR Review Report (latest)",
+    "description": "Latest schema for the CC Review Bot agentic PR review report JSON. This file is the 'latest' alias and is updated in-place with each schema version bump. Frozen per-version snapshots live at report.v{N}.schema.json. Report files embed $schema: 'report.v{N}.schema.json' so historical reports always validate against their frozen snapshot. CURRENT_SCHEMA_VERSION in review-report-builder.mjs is the single source of truth for which version is active.",
+    "type": "object",
+    "required": ["reviews"],
+    "additionalProperties": false,
+    "properties": {
+        "$schema":       { "type": "string" },
+        "schemaVersion": {
+            "type": "string",
+            "description": "Report schema version. '2' for reports that include expanded downstream-impact summary fields; older reports reference their frozen versioned schema."
+        },
+        "title":       { "type": "string" },
+        "subtitle":    { "type": "string" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "period":      { "type": "string", "description": "Human-readable date span, e.g. '2026-06-01 – 2026-06-22' or a single date." },
+        "reviews": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/ReviewEntry" }
+        }
+    },
+    "$defs": {
+        "ReviewEntry": {
+            "type": "object",
+            "required": [
+                "id",
+                "prNumber",
+                "prTitle",
+                "repository",
+                "reviewedAt",
+                "timeToReviewMs",
+                "accuracyRating",
+                "result",
+                "hats",
+                "tokensUsed",
+                "estimatedCostUsd"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Stable identifier of the form `pr-{prNumber}`.",
+                    "pattern": "^pr-\\d+$"
+                },
+                "prNumber":   { "type": "integer", "minimum": 1 },
+                "prTitle":    { "type": "string" },
+                "repository": {
+                    "type": "string",
+                    "description": "workspace/repo short path, e.g. carecontinuity/carecontinuity.app."
+                },
+                "branch": {
+                    "type": "string",
+                    "description": "Source branch name. Omitted when unavailable."
+                },
+                "author": {
+                    "type": "string",
+                    "description": "PR author username. Omitted when unavailable or 'unknown'."
+                },
+                "reviewedAt":     { "type": "string", "format": "date-time" },
+                "timeToReviewMs": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Wall-clock duration of the review run in milliseconds."
+                },
+                "accuracyRating": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Deterministic 0–100 completeness/confidence score computed by computeAccuracyScore()."
+                },
+                "result": {
+                    "type": "string",
+                    "enum": ["approved", "changes-requested", "commented"],
+                    "description": "approved = ready, changes-requested = not-ready, commented = ready-with-followups or inconclusive."
+                },
+                "hats": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Reviewer hat name(s) used during this review run."
+                },
+                "hatDetails": {
+                    "type": "array",
+                    "description": "Per-hat findings. Populated only for single-hat reviews; absent for fan-out runs.",
+                    "items": { "$ref": "#/$defs/HatDetail" }
+                },
+                "tokensUsed":       { "type": "integer", "minimum": 0 },
+                "estimatedCostUsd": { "type": "number",  "minimum": 0 },
+                "aicCreditsUsed": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "GitHub Copilot AI credits (AIC) consumed by this review run. Present only when Copilot CLI reports AIC usage in its JSON event stream; absent for Azure, Codex, and Copilot runs that predate AIC telemetry."
+                },
+                "model": {
+                    "type": "string",
+                    "description": "Primary model used for this review run (resolved from 'auto' or explicit override). Omitted when unavailable."
+                },
+                "provider": {
+                    "type": "string",
+                    "enum": ["azure", "copilot", "codex"],
+                    "description": "LLM provider that executed this review. Omitted when unavailable."
+                },
+                "modelsUsed": {
+                    "type": "array",
+                    "description": "Per-track model usage. Single entry for standard reviews; one entry per hat for fan-out runs.",
+                    "items": { "$ref": "#/$defs/ModelUsageEntry" }
+                },
+                "notes": {
+                    "type": "string",
+                    "description": "Human-readable summary of notable run signals: calibration, fan-out, downstream impact, human replies ingested, etc."
+                },
+                "jiraTicket": { "$ref": "#/$defs/JiraTicketRef" },
+                "downstreamImpact": { "$ref": "#/$defs/DownstreamImpactSummary" }
+            }
+        },
+        "JiraTicketRef": {
+            "type": "object",
+            "description": "Reference to the Jira ticket associated with the PR. Present only when a ticket key was detected in the PR title, branch, or description.",
+            "required": ["key"],
+            "additionalProperties": false,
+            "properties": {
+                "key":   { "type": "string", "description": "Jira issue key, e.g. CCW-18539.", "pattern": "^[A-Z][A-Z0-9]+-\\d+$" },
+                "title": { "type": "string", "description": "Jira issue summary (ticket title). Present when Jira context was successfully fetched during the review." }
+            }
+        },
+        "HatDetail": {
+            "type": "object",
+            "required": ["name", "findings"],
+            "additionalProperties": false,
+            "properties": {
+                "name": { "type": "string" },
+                "findings": {
+                    "type": "array",
+                    "items": { "$ref": "#/$defs/HatFinding" }
+                }
+            }
+        },
+        "HatFinding": {
+            "type": "object",
+            "required": ["type", "severity", "description"],
+            "additionalProperties": false,
+            "properties": {
+                "type":        { "type": "string" },
+                "severity":    { "type": "string", "enum": ["critical", "major", "minor"] },
+                "description": { "type": "string" },
+                "file":        { "type": "string" },
+                "line":        { "type": "integer", "minimum": 1 }
+            }
+        },
+        "ModelUsageEntry": {
+            "type": "object",
+            "description": "Model and provider used for one review track.",
+            "required": ["provider", "model"],
+            "additionalProperties": false,
+            "properties": {
+                "label":            { "type": "string", "description": "Track label, e.g. 'single-review' or the hat name for fan-out runs." },
+                "source":           { "type": "string", "description": "How this track was invoked: 'single', 'fan-out', etc." },
+                "provider":         { "type": "string", "enum": ["azure", "copilot", "codex"] },
+                "model":            { "type": "string" },
+                "tier":             { "type": "string", "description": "Model tier when tier-selection was active." },
+                "reasoningEffort":  { "type": "string", "description": "Reasoning effort passed to the model, e.g. 'high'." },
+                "attemptedModels":  {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Models attempted in order when fallback chain was triggered. Only present when >1 model was tried."
+                }
+            }
+        },
+        "DownstreamImpactSummary": {
+            "type": "object",
+            "description": "Present only when the downstream-impact detector was triggered by a shared-contract change.",
+            "required": ["triggered", "contractCount", "referenceCount", "hasBreakingChanges"],
+            "additionalProperties": false,
+            "properties": {
+                "triggered":          { "type": "boolean" },
+                "contractCount":      { "type": "integer", "minimum": 0 },
+                "referenceCount":     { "type": "integer", "minimum": 0 },
+                "hasBreakingChanges": {
+                    "type": "boolean",
+                    "description": "True when any contract has changeType 'removed' or 'type-change'."
+                },
+                "riskClasses": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Downstream risk classes detected from the changed contracts, e.g. shared-package-contract or data-persistence-contract."
+                },
+                "affectedAreas": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Repo areas where downstream references were found."
+                },
+                "validationCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of bounded validation hints generated for the downstream references."
+                },
+                "warningCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of warnings emitted while collecting downstream-impact evidence."
+                }
+            }
+        }
+    }
+}

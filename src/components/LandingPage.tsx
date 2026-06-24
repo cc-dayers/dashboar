@@ -7,6 +7,7 @@ import BoarMark from './BoarMark'
 interface DiscoveredReport {
   id:            string
   reportType:    string
+  storagePath:   string
   lastModified?: string
   sizeBytes?:    number
 }
@@ -29,9 +30,13 @@ function fmtSize(bytes: number) {
   return `${bytes} B`
 }
 
-function reportHref(id: string, reportType: string, fixture?: boolean) {
-  const base = `/?id=${encodeURIComponent(id)}&report=${encodeURIComponent(reportType)}`
-  return fixture ? `${base}&_fixture=dev` : base
+function reportHref(reportType: string, storagePath: string, id: string): string {
+  const base = `/?report=${encodeURIComponent(reportType)}&path=${encodeURIComponent(storagePath)}`
+  return id !== 'report' ? `${base}&id=${encodeURIComponent(id)}` : base
+}
+
+function fixtureHref(id: string, reportType: string): string {
+  return `/?id=${encodeURIComponent(id)}&report=${encodeURIComponent(reportType)}&_fixture=dev`
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -57,7 +62,7 @@ function TypeCard({ reportType, entry }: { reportType: string; entry: typeof reg
             {entry.fixtures.map(id => (
               <a
                 key={id}
-                href={reportHref(id, reportType, true)}
+                href={fixtureHref(id, reportType)}
                 className="text-xs text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded font-mono transition-colors"
               >
                 {id}
@@ -73,7 +78,7 @@ function TypeCard({ reportType, entry }: { reportType: string; entry: typeof reg
 function StorageReportRow({ r }: { r: DiscoveredReport }) {
   return (
     <a
-      href={reportHref(r.id, r.reportType)}
+      href={reportHref(r.reportType, r.storagePath, r.id)}
       className="group flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0"
       style={{ textDecoration: 'none' }}
     >
@@ -98,40 +103,28 @@ type BrowseState = 'idle' | 'loading' | 'done'
 
 export default function LandingPage() {
   const types = Object.entries(registry)
-
   const [browseState, setBrowseState] = useState<BrowseState>('idle')
   const [reports,     setReports]     = useState<DiscoveredReport[]>([])
   const [errors,      setErrors]      = useState<FetchError[]>([])
 
   async function loadFromStorage() {
     setBrowseState('loading')
-
-    const results = await Promise.all(
-      types.map(async ([reportType]) => {
-        try {
-          const res  = await fetch(`/api/list-blobs?report=${encodeURIComponent(reportType)}`)
-          const json = await res.json() as {
-            blobs?: Array<{ id: string; lastModified?: string; sizeBytes?: number }>
-            error?: string
-            hint?:  string
-          }
-          const blobs = (json.blobs ?? []).map(b => ({ ...b, reportType }))
-          const err   = json.error ? { reportType, error: json.error, hint: json.hint } : null
-          return { blobs, err }
-        } catch (e) {
-          return { blobs: [], err: { reportType, error: e instanceof Error ? e.message : 'Network error' } }
-        }
-      }),
-    )
-
-    const all = results.flatMap(r => r.blobs)
-    all.sort((a, b) => {
-      if (!a.lastModified || !b.lastModified) return 0
-      return new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
-    })
-
-    setReports(all)
-    setErrors(results.flatMap(r => r.err ? [r.err] : []))
+    try {
+      const res  = await fetch('/api/list-blobs')
+      const json = await res.json() as {
+        blobs?: Array<{ id: string; reportType: string; storagePath: string; lastModified?: string; sizeBytes?: number }>
+        error?: string
+      }
+      const all = (json.blobs ?? []).filter(b => b.reportType in registry)
+      all.sort((a, b) => {
+        if (!a.lastModified || !b.lastModified) return 0
+        return new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
+      })
+      setReports(all)
+      setErrors(json.error ? [{ reportType: '', error: json.error }] : [])
+    } catch (e) {
+      setErrors([{ reportType: '', error: e instanceof Error ? e.message : 'Network error' }])
+    }
     setBrowseState('done')
   }
 

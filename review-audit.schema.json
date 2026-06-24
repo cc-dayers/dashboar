@@ -1,0 +1,173 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "review-audit.schema.json",
+    "title": "PR Review Audit (latest)",
+    "description": "Latest schema for compact review-audit.json companion files produced from report.json. Frozen per-version snapshots live at review-audit.v{N}.schema.json.",
+    "type": "object",
+    "required": ["$schema", "schemaVersion", "generatedAt", "sourceReport", "summary", "reviews"],
+    "additionalProperties": false,
+    "properties": {
+        "$schema": { "type": "string" },
+        "schemaVersion": { "type": "string" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "period": { "type": "string" },
+        "sourceReport": { "$ref": "#/$defs/SourceReport" },
+        "summary": { "$ref": "#/$defs/AuditSummary" },
+        "reviews": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/AuditReview" }
+        }
+    },
+    "$defs": {
+        "SourceReport": {
+            "type": "object",
+            "required": ["reportJsonUri", "reportSchemaUri", "reportSchemaVersion", "reportGeneratedAt", "reportTitle"],
+            "additionalProperties": false,
+            "properties": {
+                "reportJsonUri": { "type": ["string", "null"] },
+                "reportSchemaUri": { "type": ["string", "null"] },
+                "reportSchemaVersion": { "type": ["string", "null"] },
+                "reportGeneratedAt": { "type": ["string", "null"], "format": "date-time" },
+                "reportTitle": { "type": ["string", "null"] }
+            }
+        },
+        "AuditSummary": {
+            "type": "object",
+            "required": [
+                "reviewCount",
+                "findingCount",
+                "reviewsWithFindings",
+                "downstreamImpactReviewCount",
+                "resultCounts",
+                "totalTokensUsed",
+                "estimatedCostUsd",
+                "feedbackCollectionStatus",
+                "humanReplyCount",
+                "acceptedOrThankedCount",
+                "falsePositiveClaimedCount",
+                "noObservedReplyCount"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "reviewCount": { "type": "integer", "minimum": 0 },
+                "findingCount": { "type": "integer", "minimum": 0 },
+                "reviewsWithFindings": { "type": "integer", "minimum": 0 },
+                "downstreamImpactReviewCount": { "type": "integer", "minimum": 0 },
+                "resultCounts": { "$ref": "#/$defs/ResultCounts" },
+                "totalTokensUsed": { "type": "integer", "minimum": 0 },
+                "estimatedCostUsd": { "type": "number", "minimum": 0 },
+                "feedbackCollectionStatus": { "type": "string", "enum": ["not-collected", "partial", "complete"] },
+                "humanReplyCount": { "type": ["integer", "null"], "minimum": 0 },
+                "acceptedOrThankedCount": { "type": ["integer", "null"], "minimum": 0 },
+                "falsePositiveClaimedCount": { "type": ["integer", "null"], "minimum": 0 },
+                "noObservedReplyCount": { "type": ["integer", "null"], "minimum": 0 }
+            }
+        },
+        "ResultCounts": {
+            "type": "object",
+            "required": ["approved", "changes-requested", "commented"],
+            "additionalProperties": false,
+            "properties": {
+                "approved": { "type": "integer", "minimum": 0 },
+                "changes-requested": { "type": "integer", "minimum": 0 },
+                "commented": { "type": "integer", "minimum": 0 }
+            }
+        },
+        "AuditReview": {
+            "type": "object",
+            "required": [
+                "id",
+                "prNumber",
+                "prTitle",
+                "repository",
+                "workspace",
+                "repoSlug",
+                "branch",
+                "authorPresent",
+                "reviewedAt",
+                "timeToReviewMs",
+                "accuracyRating",
+                "result",
+                "hats",
+                "findingCount",
+                "tokensUsed",
+                "estimatedCostUsd",
+                "aicCreditsUsed",
+                "model",
+                "provider",
+                "modelsUsedCount",
+                "jiraTicketKey",
+                "downstreamImpact",
+                "feedback",
+                "improvementSignals"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "id": { "type": "string" },
+                "prNumber": { "type": "integer", "minimum": 0 },
+                "prTitle": { "type": "string" },
+                "repository": { "type": "string" },
+                "workspace": { "type": ["string", "null"] },
+                "repoSlug": { "type": ["string", "null"] },
+                "branch": { "type": ["string", "null"] },
+                "authorPresent": { "type": "boolean" },
+                "reviewedAt": { "type": ["string", "null"], "format": "date-time" },
+                "timeToReviewMs": { "type": "integer", "minimum": 0 },
+                "accuracyRating": { "type": "number", "minimum": 0 },
+                "result": { "type": "string", "enum": ["approved", "changes-requested", "commented"] },
+                "hats": { "type": "array", "items": { "type": "string" } },
+                "findingCount": { "type": "integer", "minimum": 0 },
+                "tokensUsed": { "type": "integer", "minimum": 0 },
+                "estimatedCostUsd": { "type": "number", "minimum": 0 },
+                "aicCreditsUsed": { "type": ["integer", "null"], "minimum": 1 },
+                "model": { "type": ["string", "null"] },
+                "provider": { "type": ["string", "null"] },
+                "modelsUsedCount": { "type": "integer", "minimum": 0 },
+                "jiraTicketKey": { "type": ["string", "null"] },
+                "downstreamImpact": { "type": ["object", "null"] },
+                "feedback": { "$ref": "#/$defs/FeedbackSummary" },
+                "improvementSignals": { "$ref": "#/$defs/ImprovementSignals" }
+            }
+        },
+        "FeedbackSummary": {
+            "type": "object",
+            "required": [
+                "collectionStatus",
+                "botCommentCount",
+                "humanReplyCount",
+                "firstHumanReplyAt",
+                "labels",
+                "threadResolvedCount",
+                "commitsAfterBotComment"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "collectionStatus": { "type": "string", "enum": ["not-collected", "partial", "complete"] },
+                "botCommentCount": { "type": ["integer", "null"], "minimum": 0 },
+                "humanReplyCount": { "type": ["integer", "null"], "minimum": 0 },
+                "firstHumanReplyAt": { "type": ["string", "null"], "format": "date-time" },
+                "labels": { "type": "array", "items": { "type": "string" } },
+                "threadResolvedCount": { "type": ["integer", "null"], "minimum": 0 },
+                "commitsAfterBotComment": { "type": ["integer", "null"], "minimum": 0 }
+            }
+        },
+        "ImprovementSignals": {
+            "type": "object",
+            "required": [
+                "hasFindingDetails",
+                "findingDetailsSource",
+                "downstreamImpactTriggered",
+                "hasModelTelemetry",
+                "hasCostTelemetry"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "hasFindingDetails": { "type": "boolean" },
+                "findingDetailsSource": { "type": "string", "enum": ["hatDetails", "state", "bitbucket", "missing"] },
+                "downstreamImpactTriggered": { "type": "boolean" },
+                "hasModelTelemetry": { "type": "boolean" },
+                "hasCostTelemetry": { "type": "boolean" }
+            }
+        }
+    }
+}
