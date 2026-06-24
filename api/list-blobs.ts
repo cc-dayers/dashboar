@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { isAuthenticated } from './_auth'
+import { isAuthenticated } from './authCore'
 
 export interface BlobEntry {
   id:            string

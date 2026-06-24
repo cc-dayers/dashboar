@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { isAuthenticated } from './_auth'
+import { isAuthenticated } from './authCore'
 
 function buildBlobUrl(baseUrl: string, storagePath: string, id: string, sasToken: string | undefined): string {
   const url = new URL(baseUrl)

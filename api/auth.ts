@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { validateToken, getSessionToken } from './_auth'
+import { validateToken, getSessionToken } from './authCore'
 
 const COOKIE_NAME = 'dashboar_session'
 const MAX_AGE     = 60 * 60 * 24 * 30  // 30 days
