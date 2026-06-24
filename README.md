@@ -1,22 +1,43 @@
-# Show Me
+# Dashboar
 
-A lightweight, zero-cost report viewer hosted on Vercel. Pass an `id` in the URL — it fetches the corresponding JSON blob from Azure Storage and renders it as a clean dashboard.
-
-```
-https://your-app.vercel.app?id=my-report-id
-```
+A lightweight report viewer hosted on Vercel. JSON report files live in Azure Blob Storage; the app fetches and renders them as interactive dashboards with a sidebar + main panel layout.
 
 ---
 
 ## Local development
 
 ```bash
-cp .env.example .env.local   # fill in AZURE_BLOB_BASE_URL
+cp .env.example .env.local   # fill in the vars below
 npm install
-npm run dev                   # starts Vite + API server together
+npm run dev                   # Vite dev server + API server together
 ```
 
-Open `http://localhost:5173?id=example` — the `fixtures/example.json` file works as a reference payload once uploaded to your blob container.
+Open `http://localhost:5173` — the landing page lists all configured reports and any local fixtures.
+
+---
+
+## Environment variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `AZURE_BLOB_BASE_URL` | yes | Base URL of your Azure Blob container, e.g. `https://account.blob.core.windows.net/container` |
+| `AZURE_SAS_TOKEN` | if private | SAS token string (with or without leading `?`). Appended server-side; never reaches the browser. |
+| `REPORT_NAMES` | yes | Comma-separated report entries — see format below. |
+| `FIXTURE_SECRET` | dev/staging | Enables fixture serving when `?_fixture=<secret>` is in the URL. |
+
+### REPORT_NAMES format
+
+Each entry is `type:path` or `type:path:filename`:
+
+```
+REPORT_NAMES=pr-review:reports/pr-review,review-audit:reports/pr-review:review-audit
+```
+
+- **`type`** — must match a registered report type (`pr-review`, `review-audit`, etc.)
+- **`path`** — blob path under the base URL, e.g. `reports/pr-review`
+- **`filename`** _(optional)_ — JSON filename without extension. Defaults to `report`; if not found, falls back to `{type}` (e.g. `review-audit.json`).
+
+The full blob URL becomes `{AZURE_BLOB_BASE_URL}/{path}/{filename}.json`.
 
 ---
 
@@ -26,131 +47,53 @@ Open `http://localhost:5173?id=example` — the `fixtures/example.json` file wor
 vercel deploy
 ```
 
-Set `AZURE_BLOB_BASE_URL` as an environment variable in the Vercel project settings. The `/api/get-blob` function runs server-side so the storage URL is never exposed to the browser.
+Set all env vars in the Vercel project settings (or via `vercel env add`). The API functions run server-side so the storage URL and SAS token are never exposed to the browser.
 
 ---
 
-## JSON payload format
+## URL scheme
 
-Every blob is a JSON file named `{id}.json` stored in your Azure container. The full schema is in [`report.schema.json`](./report.schema.json). Here is a field-by-field reference:
-
-### Top level
-
-| Field | Type | Required | Rendered as |
-|---|---|---|---|
-| `title` | string | no | Header — main heading |
-| `subtitle` | string | no | Header — secondary line |
-| `generatedAt` | ISO 8601 string | no | Header — timestamp |
-| `status` | [Status](#status-values) | no | Header — coloured badge |
-| `metadata` | `{ [key: string]: string \| number \| boolean }` | no | Key-value table in the content area (when no category is selected) |
-| `categories` | Category[] | no | Sidebar nav + card grids |
-
-If `categories` is absent the dashboard shows `metadata` and any remaining top-level keys as a raw JSON view — useful for quick data dumps that don't need a structured layout.
-
-### Category
-
-| Field | Type | Required | Rendered as |
-|---|---|---|---|
-| `id` | string | **yes** | Internal key for sidebar selection |
-| `name` | string | **yes** | Sidebar label |
-| `status` | [Status](#status-values) | no | Coloured dot in the sidebar |
-| `items` | Item[] | no | Card grid in the content area |
-
-### Item
-
-| Field | Type | Required | Rendered as |
-|---|---|---|---|
-| `id` | string | **yes** | Internal key |
-| `label` | string | **yes** | Card heading |
-| `value` | string \| number \| boolean | no | Monospace value below the label |
-| `status` | [Status](#status-values) | no | Coloured badge on the card |
-| `details` | string | no | Explanatory sentence(s) below the value |
-| `timestamp` | ISO 8601 string | no | Small timestamp at the bottom of the card |
-| `tags` | string[] | no | Pill labels at the bottom of the card |
-
-### Status values
-
-| Value | Colour |
+| URL | What it loads |
 |---|---|
-| `success` | Green |
-| `warning` | Amber |
-| `error` | Red |
-| `info` | Blue |
-| `neutral` | Grey |
+| `/` | Landing page — lists all configured reports |
+| `/?report=pr-review&path=reports/pr-review` | Loads `report.json` (or `pr-review.json` as fallback) from the given path |
+| `/?report=review-audit&path=reports/pr-review&id=review-audit` | Loads `review-audit.json` explicitly |
+| `/?report=pr-review&id=example&_fixture=dev` | Serves `fixtures/pr-review/example.json` locally |
 
-A complete working example is in [`fixtures/example.json`](./fixtures/example.json).
+The `path` parameter overrides the `REPORT_NAMES` storage path for that request. The `id` parameter overrides the filename (without `.json`).
 
 ---
 
-## Using an AI agent to transform arbitrary JSON
+## Report types
 
-The schema is designed to be consumed by an LLM. Give an agent the schema plus the source data and ask it to produce a conforming payload.
+| Type | Schema | Description |
+|---|---|---|
+| `pr-review` | `report.schema.json` / `report.v{N}.schema.json` | AI PR review agent — accuracy trends, review time, cost, hats, per-PR findings |
+| `review-audit` | `review-audit.schema.json` | PR review audit — feedback signals, improvement data, downstream impact, summary stats |
+| `playwright-trace` | — | Playwright test trace viewer |
+| `infrastructure` | — | Generic system health dashboard |
+| `simple` | — | Raw JSON viewer, useful as a starting point |
 
-### Prompt template
+### Schema versioning (pr-review)
 
-Paste this as a system prompt (or the first user message) when calling an AI API, then provide the raw source data as the next message:
+`pr-review` reports embed a `schemaVersion` field. The dashboard validates each report against its frozen schema snapshot and shows a warning banner if there are mismatches.
 
-```
-You are a data transformer. Convert the JSON I provide into the Show Me report format.
+| schemaVersion | Schema file | Notes |
+|---|---|---|
+| `legacy` | `pr-review.v1.schema.json` | Pre-versioned reports |
+| `1` | `pr-review.v1.schema.json` | Initial schema |
+| `2` | `pr-review.v2.schema.json` | Adds expanded `downstreamImpact` fields (`riskClasses`, `affectedAreas`, `validationCount`, `warningCount`) |
 
-Show Me renders JSON as a dashboard:
-- A header shows title, subtitle, status badge, and generatedAt.
-- A sidebar lists categories (each with a coloured status dot and item count).
-- The main area shows items for the selected category as cards.
+Frozen schema snapshots live in `public/schemas/`. When a new schema version is introduced, add `pr-review.v{N}.schema.json` there, add the version to `SUPPORTED_VERSIONS` in `src/lib/schemaVersion.ts`, and register it in `src/reports/index.ts`.
 
-Schema rules:
-1. Map logical groupings in the source data to categories. Use kebab-case ids.
-2. Map individual data points, metrics, or log entries to items within categories.
-3. Choose status (success / warning / error / info / neutral) based on semantic meaning:
-   - success  → passing, healthy, completed, ok
-   - warning  → degraded, approaching limit, needs attention
-   - error    → failing, crashed, exceeded threshold
-   - info     → informational, pending, scheduled
-   - neutral  → unknown, not applicable, no data
-4. Derive category status from the worst item status within it.
-5. Derive top-level status from the worst category status.
-6. Put identifying or summary fields (environment, version, region, etc.) in metadata.
-7. item.value should be the primary metric — keep it short (a number, percentage, state string).
-8. item.details should provide 1-2 sentences of context for a human reader.
-9. Use ISO 8601 (e.g. "2026-06-19T08:00:00Z") for all timestamps.
-10. Every id must be unique within its scope. Use kebab-case.
+---
 
-The full JSON Schema is:
+## Adding a new report type
 
-<SCHEMA>
-PASTE THE CONTENTS OF report.schema.json HERE
-</SCHEMA>
+1. Create `src/reports/{type}/types.ts` — TypeScript types matching your JSON schema
+2. Create `src/reports/{type}/Dashboard.tsx` — React component receiving `{ data: unknown, reportId: string }`
+3. Register it in `src/reports/index.ts`
+4. Add a fixture at `fixtures/{type}/example.json` for local testing
+5. Add to `REPORT_NAMES` in your env file
 
-Return only a single valid JSON object. No markdown fences, no explanation.
-```
-
-### Calling Claude via API (example)
-
-```typescript
-import Anthropic from '@anthropic-ai/sdk'
-import schema from './report.schema.json'
-
-const client = new Anthropic()
-
-const message = await client.messages.create({
-  model: 'claude-sonnet-4-6',
-  max_tokens: 4096,
-  system: `You are a data transformer. Convert JSON into the Show Me report format.
-Follow these rules: ...  (paste rules above)
-Schema: ${JSON.stringify(schema, null, 2)}`,
-  messages: [
-    {
-      role: 'user',
-      content: `Transform this data:\n\n${JSON.stringify(sourceData, null, 2)}`,
-    },
-  ],
-})
-
-const reportJson = JSON.parse((message.content[0] as { text: string }).text)
-```
-
-### Using structured output (recommended for reliability)
-
-If the API supports JSON Schema–constrained output, pass `report.schema.json` directly as the response schema. This guarantees the model can't return malformed JSON.
-
-With the Anthropic API this looks like defining a tool whose `input_schema` is the report schema, and asking the model to call it with the transformed data.
+Use `PanelTopBar` from `src/components/PanelTopBar.tsx` for the main panel header — it centers the boar home-link and accepts `left` / `right` slots for your own content.
