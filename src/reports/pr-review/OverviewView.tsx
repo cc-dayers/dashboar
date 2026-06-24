@@ -194,7 +194,7 @@ export default function OverviewView({ report, reportId }: Props) {
     }))
     for (const r of reviews) {
       const h = new Date(r.reviewedAt).getHours()
-      ;(hours[h] as Record<string, number>)[r.result]++
+      ;(hours[h] as unknown as Record<string, number>)[r.result]++
     }
     const firstHit = hours.findIndex(h => h.approved + h['changes-requested'] + h.commented > 0)
     const lastHit  = [...hours].reverse().findIndex(h => h.approved + h['changes-requested'] + h.commented > 0)
@@ -204,7 +204,7 @@ export default function OverviewView({ report, reportId }: Props) {
     for (const r of reviews) {
       const key = r.reviewedAt.slice(0, 10)
       if (!dayMap.has(key)) dayMap.set(key, { label: shortDate(key), approved: 0, 'changes-requested': 0, commented: 0 })
-      ;(dayMap.get(key)! as Record<string, number>)[r.result]++
+      ;(dayMap.get(key)! as unknown as Record<string, number>)[r.result]++
     }
     periodData = Array.from(dayMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([, d]) => d)
   } else {
@@ -212,7 +212,7 @@ export default function OverviewView({ report, reportId }: Props) {
     for (const r of reviews) {
       const wk = isoWeekKey(r.reviewedAt)
       if (!weekMap.has(wk)) weekMap.set(wk, { label: shortDate(wk), approved: 0, 'changes-requested': 0, commented: 0 })
-      ;(weekMap.get(wk)! as Record<string, number>)[r.result]++
+      ;(weekMap.get(wk)! as unknown as Record<string, number>)[r.result]++
     }
     periodData = Array.from(weekMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([, d]) => d)
   }
@@ -343,7 +343,7 @@ export default function OverviewView({ report, reportId }: Props) {
                     <CartesianGrid {...GRID} />
                     <XAxis dataKey="label" tick={AXIS} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                     <YAxis tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip content={(p) => <ChartTip {...p} />} />
+                    <Tooltip content={(p) => <ChartTip {...(p as any)} />} />
                     <Bar dataKey="approved"          stackId="a" fill="#4ade80" name="Approved" radius={[0,0,0,0]} />
                     <Bar dataKey="changes-requested" stackId="a" fill="#f87171" name="Changes" radius={[0,0,0,0]} />
                     <Bar dataKey="commented"         stackId="a" fill="#fbbf24" name="Commented" radius={[4,4,0,0]} />
@@ -442,7 +442,7 @@ export default function OverviewView({ report, reportId }: Props) {
                 <CartesianGrid {...GRID} />
                 <XAxis dataKey="bucket" tick={AXIS} axisLine={false} tickLine={false} />
                 <YAxis tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip content={(p) => <ChartTip {...p} />} />
+                <Tooltip content={(p) => <ChartTip {...(p as any)} />} />
                 <Bar dataKey="count" fill="#8b5cf6" radius={[4,4,0,0]} name="Reviews" />
               </BarChart>
             </ResponsiveContainer>
