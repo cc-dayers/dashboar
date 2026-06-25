@@ -224,7 +224,7 @@ function EmptyState({ runCount }: { runCount: number }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export default function Dashboard({ data, reportId }: ReportProps) {
+export default function Dashboard({ data }: ReportProps) {
   const report = data as PlaywrightTraceReport
 
   const [selId,       setSelId]       = useState<string | null>(null)
