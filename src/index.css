@@ -1,1 +1,65 @@
 @import "tailwindcss";
+
+/*
+  Design tokens — defined with @theme so Tailwind generates utility classes
+  (bg-surface, text-foreground, border-border, etc.) that resolve to CSS
+  custom properties at runtime. The @media block flips the values for dark
+  mode with zero JavaScript. Use var(--color-*) in inline styles.
+
+  Sidebar tokens are intentionally excluded from the dark override — the
+  sidebar is always dark-themed regardless of color scheme.
+*/
+
+@theme {
+  /* ── Adaptive surface ──────────────────────────────────────── */
+  --color-background:           #f8fafc;  /* page canvas            */
+  --color-surface:              #ffffff;  /* card / panel           */
+  --color-surface-raised:       #ffffff;  /* elevated card          */
+  --color-surface-sunken:       #f1f5f9;  /* inset / code bg        */
+
+  /* ── Adaptive border ───────────────────────────────────────── */
+  --color-border:               #e2e8f0;
+  --color-border-subtle:        #f1f5f9;
+
+  /* ── Adaptive text ─────────────────────────────────────────── */
+  --color-foreground:           #0f172a;
+  --color-foreground-secondary: #334155;
+  --color-foreground-muted:     #64748b;
+  --color-foreground-subtle:    #94a3b8;
+
+  /* ── Adaptive accent (indigo) ──────────────────────────────── */
+  --color-accent:               #4f46e5;
+  --color-accent-hover:         #4338ca;
+  --color-accent-surface:       #eef2ff;
+  --color-accent-foreground:    #4f46e5;
+  --color-accent-muted:         #818cf8;
+
+  /* ── Sidebar — always dark, no color-scheme flip ───────────── */
+  --color-sidebar:              #0f172a;
+  --color-sidebar-border:       #1e293b;
+  --color-sidebar-raised:       #1e293b;
+  --color-sidebar-foreground:   #f1f5f9;
+  --color-sidebar-secondary:    #94a3b8;
+  --color-sidebar-muted:        #475569;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background:           #020617;
+    --color-surface:              #0f172a;
+    --color-surface-raised:       #1e293b;
+    --color-surface-sunken:       #020617;
+    --color-border:               #1e293b;
+    --color-border-subtle:        #0f172a;
+    --color-foreground:           #f1f5f9;
+    --color-foreground-secondary: #cbd5e1;
+    --color-foreground-muted:     #94a3b8;
+    --color-foreground-subtle:    #475569;
+    --color-accent:               #818cf8;
+    --color-accent-hover:         #a5b4fc;
+    --color-accent-surface:       #1e1b4b;
+    --color-accent-foreground:    #818cf8;
+    --color-accent-muted:         #6366f1;
+    /* sidebar tokens unchanged */
+  }
+}

@@ -79,7 +79,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)',
+      background: 'var(--color-background)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -95,7 +95,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           <div style={{
             fontFamily: "'Russo One', 'Arial Black', sans-serif",
             fontSize: '22px',
-            color: '#0f172a',
+            color: 'var(--color-foreground)',
             letterSpacing: '3px',
             textTransform: 'uppercase',
           }}>
@@ -105,20 +105,20 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
         {/* Login card */}
         <form onSubmit={handleSubmit} style={{
-          background: '#ffffff',
+          background: 'var(--color-surface)',
           borderRadius: '16px',
-          border: '1px solid #e2e8f0',
+          border: '1px solid var(--color-border)',
           boxShadow: '0 4px 24px rgba(15,23,42,.07)',
           overflow: 'hidden',
         }}>
           <div style={{
             padding: '18px 24px',
-            borderBottom: '1px solid #f1f5f9',
+            borderBottom: '1px solid var(--color-border-subtle)',
           }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '3px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-foreground-secondary)', marginBottom: '3px' }}>
               Access required
             </div>
-            <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-foreground-subtle)' }}>
               Paste your access token to continue.
             </div>
           </div>
@@ -137,15 +137,16 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 fontSize: '13px',
                 fontFamily: 'ui-monospace, monospace',
                 letterSpacing: '0.04em',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 outline: 'none',
                 boxSizing: 'border-box',
-                color: '#0f172a',
+                color: 'var(--color-foreground)',
+                background: 'var(--color-surface)',
                 transition: 'border-color .15s',
               }}
-              onFocus={e => { e.currentTarget.style.borderColor = '#818cf8'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(129,140,248,.15)' }}
-              onBlur={e  => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none' }}
+              onFocus={e => { e.currentTarget.style.borderColor = 'var(--color-accent-muted)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(129,140,248,.15)' }}
+              onBlur={e  => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none' }}
             />
 
             {error && (
@@ -161,7 +162,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 fontSize: '13px',
                 fontWeight: 600,
                 color: '#ffffff',
-                background: loading || !token.trim() ? '#a5b4fc' : '#4f46e5',
+                background: loading || !token.trim() ? 'var(--color-accent-muted)' : 'var(--color-accent)',
                 border: 'none',
                 borderRadius: '8px',
                 cursor: loading || !token.trim() ? 'not-allowed' : 'pointer',

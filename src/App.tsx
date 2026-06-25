@@ -9,10 +9,10 @@ import { resolveSchemaVersion, isSupportedVersion } from './lib/schemaVersion'
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
-        <div className="inline-block w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm text-slate-500">Loading report…</p>
+        <div className="inline-block w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm text-foreground-muted">Loading report…</p>
       </div>
     </div>
   )
@@ -20,17 +20,17 @@ function LoadingScreen() {
 
 function ErrorScreen({ id, message }: { id: string; message: string }) {
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-red-100 p-8 max-w-md w-full text-center">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <div className="bg-surface rounded-2xl shadow-sm border border-border p-8 max-w-md w-full text-center">
         <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h2 className="text-lg font-semibold text-slate-900 mb-1">Failed to load report</h2>
-        <p className="text-slate-500 text-sm mb-3">
-          ID: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono text-xs">{id}</code>
+        <h2 className="text-lg font-semibold text-foreground mb-1">Failed to load report</h2>
+        <p className="text-foreground-muted text-sm mb-3">
+          ID: <code className="bg-surface-sunken px-1.5 py-0.5 rounded text-foreground-secondary font-mono text-xs">{id}</code>
         </p>
         <p className="text-sm text-red-500">{message}</p>
       </div>
@@ -41,23 +41,23 @@ function ErrorScreen({ id, message }: { id: string; message: string }) {
 function UnknownTypeScreen({ type }: { type: string }) {
   const available = Object.keys(registry)
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-8 max-w-md w-full text-center">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <div className="bg-surface rounded-2xl shadow-sm border border-border p-8 max-w-md w-full text-center">
         <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg className="w-6 h-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h2 className="text-lg font-semibold text-slate-900 mb-1">Unknown report type</h2>
-        <p className="text-slate-500 text-sm mb-3">
-          <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono text-xs">
+        <h2 className="text-lg font-semibold text-foreground mb-1">Unknown report type</h2>
+        <p className="text-foreground-muted text-sm mb-3">
+          <code className="bg-surface-sunken px-1.5 py-0.5 rounded text-foreground-secondary font-mono text-xs">
             ?report={type}
           </code>
         </p>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-foreground-subtle">
           Available: {available.map(t => (
-            <code key={t} className="mx-0.5 bg-slate-100 px-1 py-0.5 rounded font-mono text-xs text-slate-600">{t}</code>
+            <code key={t} className="mx-0.5 bg-surface-sunken px-1 py-0.5 rounded font-mono text-xs text-foreground-secondary">{t}</code>
           ))}
         </p>
       </div>
