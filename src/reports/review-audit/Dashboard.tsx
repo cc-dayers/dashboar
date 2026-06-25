@@ -208,11 +208,13 @@ function Sidebar({ report, selId, loaded, isMobile, sidebarOpen, search, onSearc
       </div>
 
       {/* Footer */}
-      <div style={{ padding: '11px 16px', borderTop: '1px solid #1e293b', flexShrink: 0 }}>
-        <div style={{ color: '#334155', fontSize: '11px' }}>
-          Generated {new Date(report.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+      {report.generatedAt && (
+        <div style={{ padding: '11px 16px', borderTop: '1px solid #1e293b', flexShrink: 0 }}>
+          <div style={{ color: '#334155', fontSize: '11px' }}>
+            Generated {new Date(report.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </div>
         </div>
-      </div>
+      )}
     </aside>
   )
 }

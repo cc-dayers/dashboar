@@ -1,4 +1,4 @@
-import type { ReviewAuditReport, AuditSummary, ResultCounts } from './types'
+import type { ReviewAuditReport, AuditSummary, SourceReport, ResultCounts } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -87,7 +87,8 @@ interface Props {
 }
 
 export default function OverviewView({ report }: Props) {
-  const { summary, sourceReport } = report
+  const summary     = report.summary     ?? {} as AuditSummary
+  const sourceReport = report.sourceReport ?? {} as SourceReport
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
