@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { registry } from '../reports'
 import BoarMark from './BoarMark'
+import ThemeToggle from './ThemeToggle'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -131,7 +132,10 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6" style={{ position: 'relative' }}>
+      <div style={{ position: 'fixed', top: '16px', left: '16px', zIndex: 10 }}>
+        <ThemeToggle />
+      </div>
       <div className="max-w-lg w-full space-y-4">
 
         {/* Hero */}

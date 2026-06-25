@@ -5,7 +5,6 @@ import {
 } from 'recharts'
 import type { PrReview, PrReviewReport, LlmProvider } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
-import ThemeToggle from '../../components/ThemeToggle'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -301,7 +300,6 @@ export default function OverviewView({ report, reportId }: Props) {
             )}
           </div>
         }
-        center={<ThemeToggle />}
         right={
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
             <div style={{ display: 'flex', gap: '6px' }}>

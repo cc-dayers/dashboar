@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import type { PlaywrightTraceReport, TestRun, RunStatus } from './types'
 import type { ReportProps } from '../index'
+import ReportSidebar from '../../components/ReportSidebar'
+import SidebarBoarHeader from '../../components/SidebarBoarHeader'
+import MobileTopBar from '../../components/MobileTopBar'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -48,14 +51,12 @@ function RunRow({ run, selected, onClick }: { run: TestRun; selected: boolean; o
       onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-        {/* Status dot */}
         <div style={{
           width: '8px', height: '8px', borderRadius: '50%',
           background: st.dot, flexShrink: 0, marginTop: '5px',
         }} />
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Suite name */}
           <div style={{
             fontSize: '13px', fontWeight: 600, lineHeight: 1.35,
             color: selected ? '#f1f5f9' : '#cbd5e1',
@@ -64,7 +65,6 @@ function RunRow({ run, selected, onClick }: { run: TestRun; selected: boolean; o
             {run.suiteName}
           </div>
 
-          {/* Meta row */}
           <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: '11px', color: '#64748b' }}>
               {fmtDate(run.timestamp)} {fmtTime(run.timestamp)}
@@ -74,7 +74,6 @@ function RunRow({ run, selected, onClick }: { run: TestRun; selected: boolean; o
             )}
           </div>
 
-          {/* Stats row */}
           <div style={{ display: 'flex', gap: '6px', marginTop: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
             {passRate && (
               <span style={{
@@ -105,14 +104,14 @@ function RunRow({ run, selected, onClick }: { run: TestRun; selected: boolean; o
 
 interface SidebarProps {
   report:      PlaywrightTraceReport
-  reportId:    string
   selId:       string | null
   isMobile:    boolean
   sidebarOpen: boolean
+  onClose:     () => void
   onSelect:    (id: string) => void
 }
 
-function Sidebar({ report, reportId, selId, isMobile, sidebarOpen, onSelect }: SidebarProps) {
+function Sidebar({ report, selId, isMobile, sidebarOpen, onClose, onSelect }: SidebarProps) {
   const [search, setSearch] = useState('')
 
   const filtered = search.trim()
@@ -125,31 +124,16 @@ function Sidebar({ report, reportId, selId, isMobile, sidebarOpen, onSelect }: S
   const failed = report.runs.filter(r => r.status === 'failed').length
   const flaky  = report.runs.filter(r => r.status === 'flaky').length
 
-  if (isMobile && !sidebarOpen) return null
-
   return (
-    <aside style={{
-      width: '280px', flexShrink: 0,
-      background: '#0f172a',
-      borderRight: '1px solid #1e293b',
-      display: 'flex', flexDirection: 'column',
-      height: '100%',
-      position: isMobile ? 'fixed' : 'relative',
-      top: 0, left: 0, bottom: 0,
-      zIndex: isMobile ? 50 : 'auto',
-      overflow: 'hidden',
-    }}>
-      {/* Header */}
-      <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #1e293b', flexShrink: 0 }}>
-        <div style={{ fontSize: '10px', color: '#475569', fontFamily: 'ui-monospace,monospace', marginBottom: '4px' }}>
-          {reportId}
-        </div>
-        <div style={{ fontSize: '14px', fontWeight: 700, color: '#f1f5f9', marginBottom: '10px' }}>
-          {report.title ?? 'Playwright Test Runs'}
-        </div>
-
-        {/* Status summary pills */}
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+    <ReportSidebar
+      isMobile={isMobile}
+      open={sidebarOpen}
+      onClose={onClose}
+      header={<SidebarBoarHeader />}
+    >
+      {/* Status summary pills */}
+      {(passed > 0 || failed > 0 || flaky > 0) && (
+        <div style={{ padding: '8px 12px 4px', display: 'flex', gap: '6px', flexWrap: 'wrap', flexShrink: 0 }}>
           {passed > 0 && (
             <span style={{ fontSize: '10px', fontWeight: 600, color: '#4ade80', background: '#4ade8018', borderRadius: '4px', padding: '2px 7px' }}>
               ✓ {passed} passed
@@ -166,10 +150,10 @@ function Sidebar({ report, reportId, selId, isMobile, sidebarOpen, onSelect }: S
             </span>
           )}
         </div>
-      </div>
+      )}
 
       {/* Search */}
-      <div style={{ padding: '10px 12px', borderBottom: '1px solid #1e293b', flexShrink: 0 }}>
+      <div style={{ padding: '6px 12px 8px', borderBottom: '1px solid #1e293b', flexShrink: 0 }}>
         <div style={{ position: 'relative' }}>
           <svg
             style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', color: '#475569', pointerEvents: 'none' }}
@@ -210,7 +194,7 @@ function Sidebar({ report, reportId, selId, isMobile, sidebarOpen, onSelect }: S
           ))
         )}
       </div>
-    </aside>
+    </ReportSidebar>
   )
 }
 
@@ -263,42 +247,17 @@ export default function Dashboard({ data, reportId }: ReportProps) {
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-      {/* Mobile overlay */}
-      {isMobile && sidebarOpen && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }}
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       <Sidebar
         report={report}
-        reportId={reportId}
         selId={selId}
         isMobile={isMobile}
         sidebarOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
         onSelect={id => { setSelId(id); if (isMobile) setSidebarOpen(false) }}
       />
 
-      {/* Main panel */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-        {/* Mobile hamburger */}
-        {isMobile && !sidebarOpen && (
-          <button
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open menu"
-            style={{
-              position: 'absolute', top: '12px', left: '12px', zIndex: 30,
-              width: '36px', height: '36px', borderRadius: '8px',
-              background: '#0f172a', border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="#94a3b8">
-              <path fillRule="evenodd" d="M3 5h14a1 1 0 010 2H3a1 1 0 010-2zm0 4h14a1 1 0 010 2H3a1 1 0 010-2zm0 4h14a1 1 0 010 2H3a1 1 0 010-2z" clipRule="evenodd"/>
-            </svg>
-          </button>
-        )}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {isMobile && <MobileTopBar title={report.title ?? 'Playwright Trace'} onToggle={() => setSidebarOpen(s => !s)} />}
 
         {traceViewerUrl ? (
           <iframe

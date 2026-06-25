@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import type { PrReview, PrReviewReport } from './types'
 import OverviewView from './OverviewView'
 import DetailView from './DetailView'
-import BoarMark from '../../components/BoarMark'
+import ReportSidebar from '../../components/ReportSidebar'
+import SidebarBoarHeader from '../../components/SidebarBoarHeader'
+import MobileTopBar from '../../components/MobileTopBar'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -47,15 +49,15 @@ interface SidebarProps {
   isMobile:     boolean
   sidebarOpen:  boolean
   search:       string
+  onClose:      () => void
   onSearch:     (q: string) => void
   onOverview:   () => void
   onSelectPr:   (id: string) => void
   onLoadMore:   () => void
 }
 
-function Sidebar({ report, selId, loaded, isMobile, sidebarOpen, search, onSearch, onOverview, onSelectPr, onLoadMore }: SidebarProps) {
+function Sidebar({ report, selId, loaded, isMobile, sidebarOpen, search, onClose, onSearch, onOverview, onSelectPr, onLoadMore }: SidebarProps) {
   const allReviews = report.reviews
-  const closed     = isMobile && !sidebarOpen
 
   const trimQ = search.trim()
   const reviews = trimQ
@@ -69,32 +71,21 @@ function Sidebar({ report, selId, loaded, isMobile, sidebarOpen, search, onSearc
   const showLoadMore = !trimQ && loaded < allReviews.length
 
   return (
-    <aside style={{
-      background:   '#0f172a',
-      display:      'flex',
-      flexDirection:'column',
-      width:        '280px',
-      borderRight:  '1px solid #1e293b',
-      flexShrink:   0,
-      position:     isMobile ? 'fixed' : 'relative',
-      top:          isMobile ? 0 : 'auto',
-      bottom:       isMobile ? 0 : 'auto',
-      left:         isMobile ? 0 : 'auto',
-      zIndex:       isMobile ? 100 : 1,
-      transform:    closed ? 'translateX(-100%)' : 'translateX(0)',
-      transition:   'transform 0.22s ease',
-    }}>
-      {/* Header */}
-      <div style={{ padding: '16px 16px 14px', borderBottom: '1px solid #1e293b', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
-        <a href="/" style={{ display: 'flex', opacity: 0.85, transition: 'opacity 0.15s', textDecoration: 'none' }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-          onMouseLeave={e => (e.currentTarget.style.opacity = '0.85')}
-        >
-          <BoarMark size={38} />
-        </a>
-      </div>
-
-      {/* Nav */}
+    <ReportSidebar
+      isMobile={isMobile}
+      open={sidebarOpen}
+      onClose={onClose}
+      header={<SidebarBoarHeader />}
+      footer={
+        <div style={{ padding: '11px 16px', borderTop: '1px solid #1e293b', flexShrink: 0 }}>
+          {report.generatedAt && (
+            <div style={{ color: '#334155', fontSize: '11px' }}>
+              Generated {new Date(report.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+          )}
+        </div>
+      }
+    >
       <div style={{ overflowY: 'auto', flex: 1, padding: '8px' }}>
         {/* Overview link */}
         <SidebarLink active={!selId} onClick={onOverview}>
@@ -158,16 +149,7 @@ function Sidebar({ report, selId, loaded, isMobile, sidebarOpen, search, onSearc
           <SidebarLoadMore onClick={onLoadMore} />
         )}
       </div>
-
-      {/* Footer */}
-      <div style={{ padding: '11px 16px', borderTop: '1px solid #1e293b', flexShrink: 0 }}>
-        {report.generatedAt && (
-          <div style={{ color: '#334155', fontSize: '11px' }}>
-            Generated {new Date(report.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </div>
-        )}
-      </div>
-    </aside>
+    </ReportSidebar>
   )
 }
 
@@ -236,30 +218,6 @@ function SidebarLoadMore({ onClick }: { onClick: () => void }) {
   )
 }
 
-// ── Mobile header ─────────────────────────────────────────────────────────────
-
-function MobileHeader({ onToggle }: { onToggle: () => void }) {
-  return (
-    <div style={{
-      padding: '12px 16px', background: '#fff', borderBottom: '1px solid #e2e8f0',
-      display: 'flex', alignItems: 'center', gap: '12px',
-      position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 1px 3px rgba(0,0,0,.06)',
-    }}>
-      <button
-        onClick={onToggle}
-        style={{ cursor: 'pointer', color: '#64748b', background: 'none', border: 'none', display: 'flex', alignItems: 'center', padding: 0 }}
-      >
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-          <rect x="2" y="4" width="16" height="2" rx="1"/>
-          <rect x="2" y="9" width="16" height="2" rx="1"/>
-          <rect x="2" y="14" width="16" height="2" rx="1"/>
-        </svg>
-      </button>
-      <span style={{ fontWeight: 600, fontSize: '14px', color: '#0f172a' }}>PR Review Agent</span>
-    </div>
-  )
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface Props {
@@ -300,15 +258,6 @@ export default function Dashboard({ data, reportId }: Props) {
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden', background: '#f8fafc' }}>
-      {/* Overlay */}
-      {isMobile && sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 99, cursor: 'pointer' }}
-        />
-      )}
-
-      {/* Sidebar */}
       <Sidebar
         report={report}
         selId={selId}
@@ -316,15 +265,15 @@ export default function Dashboard({ data, reportId }: Props) {
         isMobile={isMobile}
         sidebarOpen={sidebarOpen}
         search={search}
+        onClose={() => setSidebarOpen(false)}
         onSearch={setSearch}
         onOverview={() => { setSelId(null); if (isMobile) setSidebarOpen(false) }}
         onSelectPr={handleSelectPr}
         onLoadMore={() => setLoaded(l => l + 10)}
       />
 
-      {/* Main content */}
       <main style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
-        {isMobile && <MobileHeader onToggle={() => setSidebarOpen(s => !s)} />}
+        {isMobile && <MobileTopBar title="PR Review Agent" onToggle={() => setSidebarOpen(s => !s)} />}
 
         {selectedPr ? (
           <DetailView pr={selectedPr} onBack={handleBack} />

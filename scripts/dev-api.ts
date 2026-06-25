@@ -9,27 +9,56 @@ config()
 
 const PORT = 3001
 
-function resolveBaseUrl(reportType: string): string | undefined {
-  if (reportType) {
-    const envKey = `AZURE_BLOB_${reportType.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_URL`
-    const perTypeUrl = process.env[envKey]
-    if (perTypeUrl) return perTypeUrl
-  }
-  return process.env['AZURE_BLOB_BASE_URL']
+// ── Shared helpers ─────────────────────────────────────────────────────────────
+
+interface ReportEntry {
+  type:        string
+  storagePath: string
+  defaultId:   string | null
 }
 
-function resolveSasToken(reportType: string): string | undefined {
+function parseReportNames(): ReportEntry[] {
+  const raw = process.env['REPORT_NAMES'] ?? ''
+  return raw.split(',').map(s => s.trim()).filter(Boolean).map(entry => {
+    const firstColon = entry.indexOf(':')
+    if (firstColon === -1) return { type: entry, storagePath: entry, defaultId: null }
+    const type = entry.slice(0, firstColon)
+    const rest  = entry.slice(firstColon + 1)
+    const lastColon = rest.lastIndexOf(':')
+    if (lastColon === -1) return { type, storagePath: rest, defaultId: null }
+    return { type, storagePath: rest.slice(0, lastColon), defaultId: rest.slice(lastColon + 1) || null }
+  })
+}
+
+function resolveEntry(reportType: string): ReportEntry {
+  const entries = parseReportNames()
+  const found = entries.find(e => e.type === reportType)
+  return found ?? { type: reportType, storagePath: reportType, defaultId: null }
+}
+
+// Check AZURE_SAS_TOKENS ("type:token,type:token") first, fall back to AZURE_SAS_TOKEN.
+// Split on first ':' only — SAS tokens contain ':' inside timestamps.
+// Commas are safe delimiters because SAS tokens encode commas as %2C.
+function resolveToken(reportType: string): string | undefined {
+  const perType = process.env['AZURE_SAS_TOKENS'] ?? ''
+  for (const entry of perType.split(',').map(s => s.trim()).filter(Boolean)) {
+    const colon = entry.indexOf(':')
+    if (colon === -1) continue
+    if (entry.slice(0, colon) === reportType) return entry.slice(colon + 1) || undefined
+  }
+  // Also check per-type env var: AZURE_SAS_PR_REVIEW_TOKEN etc.
   if (reportType) {
     const envKey = `AZURE_SAS_${reportType.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_TOKEN`
-    const perTypeToken = process.env[envKey]
-    if (perTypeToken) return perTypeToken
+    const perTypeEnv = process.env[envKey]
+    if (perTypeEnv) return perTypeEnv
   }
   return process.env['AZURE_SAS_TOKEN']
 }
 
-function buildBlobUrl(baseUrl: string, id: string, sasToken: string | undefined): string {
+function buildBlobUrl(baseUrl: string, storagePath: string, id: string, sasToken: string | undefined): string {
   const url = new URL(baseUrl)
-  url.pathname = `${url.pathname.replace(/\/$/, '')}/${encodeURIComponent(id)}.json`
+  const segs = storagePath.split('/').filter(Boolean).map(s => encodeURIComponent(s))
+  url.pathname = [url.pathname.replace(/\/$/, ''), ...segs, `${encodeURIComponent(id)}.json`].join('/')
   if (sasToken) {
     const token = sasToken.startsWith('?') ? sasToken.slice(1) : sasToken
     new URLSearchParams(token).forEach((v, k) => url.searchParams.set(k, v))
@@ -37,9 +66,10 @@ function buildBlobUrl(baseUrl: string, id: string, sasToken: string | undefined)
   return url.toString()
 }
 
-function buildTraceUrl(baseUrl: string, id: string, sasToken: string | undefined): string {
+function buildTraceUrl(baseUrl: string, storagePath: string, id: string, sasToken: string | undefined): string {
   const url = new URL(baseUrl)
-  url.pathname = `${url.pathname.replace(/\/$/, '')}/${id}`
+  const segs = storagePath.split('/').filter(Boolean).map(s => encodeURIComponent(s))
+  url.pathname = [url.pathname.replace(/\/$/, ''), ...segs, id].join('/')
   if (sasToken) {
     const token = sasToken.startsWith('?') ? sasToken.slice(1) : sasToken
     new URLSearchParams(token).forEach((v, k) => url.searchParams.set(k, v))
@@ -47,11 +77,7 @@ function buildTraceUrl(baseUrl: string, id: string, sasToken: string | undefined
   return url.toString()
 }
 
-function tryServeFixture(
-  reportType: string,
-  id: string,
-  res: http.ServerResponse,
-): boolean {
+function tryServeFixture(reportType: string, id: string, res: http.ServerResponse): boolean {
   const candidates = [
     path.resolve('fixtures', reportType, `${id}.json`),
     path.resolve('fixtures', `${id}.json`),
@@ -60,15 +86,99 @@ function tryServeFixture(
     if (fs.existsSync(p)) {
       console.log(`[api] fixture  → ${p}`)
       const data = fs.readFileSync(p, 'utf-8')
-      res.writeHead(200)
+      res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(data)
       return true
     }
   }
-  res.writeHead(404)
+  res.writeHead(404, { 'Content-Type': 'application/json' })
   res.end(JSON.stringify({ error: `Fixture '${id}' not found in fixtures/${reportType}/ or fixtures/` }))
   return true
 }
+
+// ── Auth ───────────────────────────────────────────────────────────────────────
+
+function parseCookie(cookieHeader: string | undefined, name: string): string | null {
+  if (!cookieHeader) return null
+  for (const part of cookieHeader.split(';')) {
+    const eq = part.indexOf('=')
+    if (eq !== -1 && part.slice(0, eq).trim() === name) return part.slice(eq + 1).trim() || null
+  }
+  return null
+}
+
+function validateToken(token: string): { valid: boolean; user?: string } {
+  const authHash = process.env['AUTH_HASH']
+  if (!authHash) return { valid: true, user: 'dev' }
+  try {
+    const decoded  = Buffer.from(token, 'base64').toString('utf-8')
+    const colonIdx = decoded.indexOf(':')
+    if (colonIdx < 1) return { valid: false }
+    const user     = decoded.slice(0, colonIdx)
+    const hashPart = decoded.slice(colonIdx + 1)
+    const allowed  = (process.env['AUTHORIZED_USERS'] ?? '').split(',').map(s => s.trim()).filter(Boolean)
+    if (!allowed.includes(user) || hashPart !== authHash) return { valid: false }
+    return { valid: true, user }
+  } catch {
+    return { valid: false }
+  }
+}
+
+function readBody(req: http.IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let data = ''
+    req.on('data', chunk => { data += chunk })
+    req.on('end',  ()    => resolve(data))
+    req.on('error', reject)
+  })
+}
+
+async function handleAuth(req: http.IncomingMessage, res: http.ServerResponse) {
+  res.setHeader('Content-Type', 'application/json')
+  const authEnabled = Boolean(process.env['AUTH_HASH'])
+
+  if (req.method === 'GET') {
+    if (!authEnabled) {
+      res.writeHead(200)
+      return res.end(JSON.stringify({ ok: true, authEnabled: false }))
+    }
+    const token = parseCookie(req.headers['cookie'], 'dashboar_session')
+    if (!token) {
+      res.writeHead(200)
+      return res.end(JSON.stringify({ ok: false, authEnabled: true }))
+    }
+    const result = validateToken(token)
+    res.writeHead(200)
+    return res.end(JSON.stringify({ ok: result.valid, authEnabled: true, user: result.user ?? null }))
+  }
+
+  if (req.method === 'POST') {
+    let body: { token?: string } = {}
+    try {
+      const raw = await readBody(req)
+      body = JSON.parse(raw) as { token?: string }
+    } catch { /* ignore parse errors */ }
+    const token = (body.token ?? '').trim()
+    if (!token) {
+      res.writeHead(400)
+      return res.end(JSON.stringify({ ok: false, error: 'Missing token' }))
+    }
+    const result = validateToken(token)
+    if (!result.valid) {
+      res.writeHead(401)
+      return res.end(JSON.stringify({ ok: false, error: 'Invalid credentials' }))
+    }
+    const maxAge = 60 * 60 * 24 * 30
+    res.setHeader('Set-Cookie', `dashboar_session=${token}; Path=/; Max-Age=${maxAge}; SameSite=Strict`)
+    res.writeHead(200)
+    return res.end(JSON.stringify({ ok: true, user: result.user }))
+  }
+
+  res.writeHead(405)
+  return res.end(JSON.stringify({ error: 'Method not allowed' }))
+}
+
+// ── Get blob ───────────────────────────────────────────────────────────────────
 
 async function handleGetBlob(
   query: NodeJS.Dict<string | string[]>,
@@ -76,40 +186,49 @@ async function handleGetBlob(
 ) {
   res.setHeader('Content-Type', 'application/json')
 
-  const rawId = query['id'] ?? query['reportId']
-  const id = Array.isArray(rawId) ? rawId[0] : rawId
-
-  if (!id) {
-    res.writeHead(400)
-    return res.end(JSON.stringify({ error: 'Missing required query parameter: id or reportId' }))
-  }
-
-  const rawReport = query['report']
+  const rawReport  = query['report']
   const reportType = (Array.isArray(rawReport) ? rawReport[0] : rawReport) ?? ''
 
-  const rawFixture = query['_fixture']
+  const rawId    = query['id'] ?? query['reportId']
+  const rawIdStr = (Array.isArray(rawId) ? rawId[0] : rawId) ?? null
+
+  // Fixture shortcut — any ?_fixture= triggers local fixture serving
+  const rawFixture   = query['_fixture']
   const fixtureParam = Array.isArray(rawFixture) ? rawFixture[0] : rawFixture
   if (fixtureParam) {
-    return tryServeFixture(reportType, id, res)
+    return tryServeFixture(reportType, rawIdStr ?? 'report', res)
   }
 
-  const baseUrl = resolveBaseUrl(reportType)
+  const baseUrl = process.env['AZURE_BLOB_BASE_URL']
   if (!baseUrl) {
     res.writeHead(500)
     return res.end(JSON.stringify({ error: 'Server misconfiguration: no AZURE_BLOB_BASE_URL configured' }))
   }
 
-  try {
-    const blobUrl = buildBlobUrl(baseUrl, id, resolveSasToken(reportType))
+  // Explicit ?path= override
+  const rawPath = query['path']
+  const { storagePath: resolvedPath, defaultId } = resolveEntry(reportType)
+  const storagePath = (Array.isArray(rawPath) ? rawPath[0] : rawPath) || resolvedPath
 
-    console.log(`[api] fetching → ${blobUrl}`)
-    const upstream = await fetch(blobUrl)
-    console.log(`[api] azure response: HTTP ${upstream.status}`)
+  const sasToken   = resolveToken(reportType)
+  const candidates = rawIdStr ? [rawIdStr] : defaultId ? [defaultId] : ['report', reportType]
 
-    if (upstream.status === 404) {
-      res.writeHead(404)
-      return res.end(JSON.stringify({ error: `Report '${id}' not found` }))
+  for (const id of candidates) {
+    const blobUrl = buildBlobUrl(baseUrl, storagePath, id, sasToken)
+    console.log(`[api] fetching → ${blobUrl.replace(/sig=[^&]+/, 'sig=***')}`)
+
+    let upstream: Response
+    try {
+      upstream = await fetch(blobUrl)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      res.writeHead(500)
+      return res.end(JSON.stringify({ error: `Failed to fetch report: ${message}` }))
     }
+
+    console.log(`[api] azure response: HTTP ${upstream.status} (candidate: ${id})`)
+
+    if (upstream.status === 404) continue
     if (!upstream.ok) {
       res.writeHead(502)
       return res.end(JSON.stringify({ error: `Upstream storage error: HTTP ${upstream.status}` }))
@@ -118,95 +237,57 @@ async function handleGetBlob(
     const data: unknown = await upstream.json()
     res.writeHead(200)
     return res.end(JSON.stringify(data))
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    res.writeHead(500)
-    return res.end(JSON.stringify({ error: `Failed to fetch report: ${message}` }))
   }
+
+  const triedNames = candidates.map(c => `${c}.json`).join(', ')
+  res.writeHead(404)
+  return res.end(JSON.stringify({ error: `Report not found at path '${storagePath}' (tried: ${triedNames})` }))
 }
 
+// ── List blobs ─────────────────────────────────────────────────────────────────
+// Uses REPORT_NAMES + probe (HEAD request per candidate), matching the Vercel function.
+
 async function handleListBlobs(
-  query: NodeJS.Dict<string | string[]>,
+  _query: NodeJS.Dict<string | string[]>,
   res: http.ServerResponse,
 ) {
   res.setHeader('Content-Type', 'application/json')
 
-  const rawReport = query['report']
-  const reportType = (Array.isArray(rawReport) ? rawReport[0] : rawReport) ?? ''
+  const baseUrl = process.env['AZURE_BLOB_BASE_URL']
+  const entries = parseReportNames()
 
-  const baseUrl = resolveBaseUrl(reportType)
-  if (!baseUrl) {
+  if (!baseUrl || entries.length === 0) {
     res.writeHead(200)
     return res.end(JSON.stringify({ blobs: [] }))
   }
 
-  const sasToken = resolveSasToken(reportType)
+  const settled = await Promise.allSettled(
+    entries.map(async ({ type, storagePath, defaultId }) => {
+      const sasToken   = resolveToken(type)
+      const candidates = defaultId ? [defaultId] : ['report', type]
 
-  try {
-    const origin = new URL(baseUrl)
-    const pathParts = origin.pathname.replace(/\/$/, '').split('/').filter(Boolean)
-    const container = pathParts[0] ?? ''
-    const prefix    = pathParts.length > 1 ? pathParts.slice(1).join('/') + '/' : ''
+      for (const id of candidates) {
+        const blobUrl = buildBlobUrl(baseUrl, storagePath, id, sasToken)
+        console.log(`[api/list-blobs] probing → ${blobUrl.replace(/sig=[^&]+/, 'sig=***')}`)
+        try {
+          const r = await fetch(blobUrl, { method: 'HEAD' })
+          if (r.ok) {
+            const lastModified = r.headers.get('last-modified') ?? undefined
+            const cl           = r.headers.get('content-length')
+            return { id, reportType: type, storagePath, lastModified, sizeBytes: cl ? parseInt(cl, 10) : undefined }
+          }
+        } catch { /* try next candidate */ }
+      }
+      return null
+    }),
+  )
 
-    const listUrl = new URL(`https://${origin.host}/${container}`)
-    listUrl.searchParams.set('restype', 'container')
-    listUrl.searchParams.set('comp',    'list')
-    if (prefix) listUrl.searchParams.set('prefix', prefix)
-
-    if (sasToken) {
-      const token = sasToken.startsWith('?') ? sasToken.slice(1) : sasToken
-      new URLSearchParams(token).forEach((v, k) => listUrl.searchParams.set(k, v))
-    }
-
-    console.log(`[api/list-blobs] listing → ${listUrl.toString().replace(/sig=[^&]+/, 'sig=***')}`)
-
-    const upstream = await fetch(listUrl.toString())
-    const body = await upstream.text()
-
-    if (!upstream.ok) {
-      const azureMsg = body.match(/<Message>([^<]+)<\/Message>/)?.[1]?.trim()
-      const hint = upstream.status === 403
-        ? 'SAS token may be missing the List (l) permission on the container.'
-        : upstream.status === 404
-        ? 'Container not found — check AZURE_BLOB_BASE_URL.'
-        : undefined
-      console.error(`[api/list-blobs] azure HTTP ${upstream.status}: ${azureMsg ?? body.slice(0, 200)}`)
-      res.writeHead(200)
-      return res.end(JSON.stringify({
-        blobs: [],
-        error: `Azure returned HTTP ${upstream.status}${azureMsg ? `: ${azureMsg}` : ''}`,
-        hint,
-      }))
-    }
-
-    const blobs: Array<{ id: string; lastModified?: string; sizeBytes?: number }> = []
-    for (const block of body.match(/<Blob>([\s\S]*?)<\/Blob>/g) ?? []) {
-      const name = block.match(/<Name>([^<]+)<\/Name>/)?.[1]
-      if (!name || !name.endsWith('.json') || name.endsWith('.schema.json')) continue
-
-      const withoutPrefix = prefix && name.startsWith(prefix) ? name.slice(prefix.length) : name
-      const id = withoutPrefix.replace(/\.json$/, '')
-      if (!id) continue
-
-      const lastModified = block.match(/<Last-Modified>([^<]+)<\/Last-Modified>/)?.[1]
-      const sizeStr      = block.match(/<Content-Length>([^<]+)<\/Content-Length>/)?.[1]
-      blobs.push({ id, lastModified, sizeBytes: sizeStr ? parseInt(sizeStr, 10) : undefined })
-    }
-
-    blobs.sort((a, b) => {
-      if (!a.lastModified || !b.lastModified) return 0
-      return new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
-    })
-
-    res.writeHead(200)
-    return res.end(JSON.stringify({ blobs }))
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('[api/list-blobs]', err)
-    res.writeHead(200)
-    return res.end(JSON.stringify({ blobs: [], error: message }))
-  }
+  const blobs = settled.flatMap(r => r.status === 'fulfilled' && r.value ? [r.value] : [])
+  res.writeHead(200)
+  return res.end(JSON.stringify({ blobs }))
 }
+
+// ── Get trace ──────────────────────────────────────────────────────────────────
 
 async function handleGetTrace(
   query: NodeJS.Dict<string | string[]>,
@@ -219,26 +300,27 @@ async function handleGetTrace(
   res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type, Accept-Ranges')
 
   const rawId = query['id']
-  const id = (Array.isArray(rawId) ? rawId[0] : rawId) ?? ''
-
+  const id    = (Array.isArray(rawId) ? rawId[0] : rawId) ?? ''
   if (!id) {
     res.writeHead(400, { 'Content-Type': 'application/json' })
     return res.end(JSON.stringify({ error: 'Missing id parameter' }))
   }
 
-  const rawReport = query['report']
+  const rawReport  = query['report']
   const reportType = (Array.isArray(rawReport) ? rawReport[0] : rawReport) ?? ''
 
-  const baseUrl = resolveBaseUrl(reportType)
+  const baseUrl = process.env['AZURE_BLOB_BASE_URL']
   if (!baseUrl) {
     res.writeHead(500, { 'Content-Type': 'application/json' })
     return res.end(JSON.stringify({ error: 'Server misconfiguration: no AZURE_BLOB_BASE_URL configured' }))
   }
 
-  try {
-    const traceUrl = buildTraceUrl(baseUrl, id, resolveSasToken(reportType))
-    console.log(`[api/get-trace] fetching → ${traceUrl.replace(/sig=[^&]+/, 'sig=***')}`)
+  const { storagePath } = resolveEntry(reportType)
+  const sasToken = resolveToken(reportType)
+  const traceUrl = buildTraceUrl(baseUrl, storagePath, id, sasToken)
+  console.log(`[api/get-trace] fetching → ${traceUrl.replace(/sig=[^&]+/, 'sig=***')}`)
 
+  try {
     const upstream = await fetch(traceUrl)
     console.log(`[api/get-trace] azure response: HTTP ${upstream.status}`)
 
@@ -270,6 +352,8 @@ async function handleGetTrace(
   }
 }
 
+// ── Server ─────────────────────────────────────────────────────────────────────
+
 const server = http.createServer(async (req, res) => {
   const parsed = nodeUrl.parse(req.url ?? '', true)
 
@@ -281,7 +365,9 @@ const server = http.createServer(async (req, res) => {
     return res.end()
   }
 
-  if (parsed.pathname === '/api/get-blob') {
+  if (parsed.pathname === '/api/auth') {
+    await handleAuth(req, res)
+  } else if (parsed.pathname === '/api/get-blob') {
     await handleGetBlob(parsed.query, res)
   } else if (parsed.pathname === '/api/list-blobs') {
     await handleListBlobs(parsed.query, res)
@@ -295,5 +381,5 @@ const server = http.createServer(async (req, res) => {
 })
 
 server.listen(PORT, () => {
-  console.log(`  API server  →  http://localhost:${PORT}/api/get-blob`)
+  console.log(`  API server  →  http://localhost:${PORT}/api/`)
 })
