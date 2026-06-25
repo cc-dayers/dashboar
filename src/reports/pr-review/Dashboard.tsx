@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { PrReview, PrReviewReport } from './types'
 import OverviewView from './OverviewView'
 import DetailView from './DetailView'
+import BoarMark from '../../components/BoarMark'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -84,31 +85,13 @@ function Sidebar({ report, selId, loaded, isMobile, sidebarOpen, search, onSearc
       transition:   'transform 0.22s ease',
     }}>
       {/* Header */}
-      <div style={{ padding: '18px 16px 14px', borderBottom: '1px solid #1e293b', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            width: '32px', height: '32px', flexShrink: 0, borderRadius: '8px',
-            background: 'linear-gradient(135deg,#1d4ed8,#60a5fa)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-              {/* antenna */}
-              <line x1="8" y1="0.8" x2="8" y2="2.8" stroke="rgba(255,255,255,.85)" strokeWidth="1.2" strokeLinecap="round"/>
-              <circle cx="8" cy="0.8" r="0.9" fill="rgba(255,255,255,.95)"/>
-              {/* head */}
-              <rect x="2" y="3" width="12" height="9" rx="1.8" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.85)" strokeWidth="1.1"/>
-              {/* eyes */}
-              <circle cx="5.5" cy="7" r="1.3" fill="rgba(255,255,255,.95)"/>
-              <circle cx="10.5" cy="7" r="1.3" fill="rgba(255,255,255,.95)"/>
-              {/* mouth */}
-              <rect x="4.8" y="9.5" width="6.4" height="1.1" rx="0.55" fill="rgba(255,255,255,.7)"/>
-            </svg>
-          </div>
-          <div>
-            <div style={{ color: '#f1f5f9', fontWeight: 600, fontSize: '13px', lineHeight: 1.2 }}>PR Review Agent</div>
-            <div style={{ color: '#475569', fontSize: '11px', marginTop: '2px' }}>{report.period ?? ''}</div>
-          </div>
-        </div>
+      <div style={{ padding: '16px 16px 14px', borderBottom: '1px solid #1e293b', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+        <a href="/" style={{ display: 'flex', opacity: 0.85, transition: 'opacity 0.15s', textDecoration: 'none' }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+          onMouseLeave={e => (e.currentTarget.style.opacity = '0.85')}
+        >
+          <BoarMark size={38} />
+        </a>
       </div>
 
       {/* Nav */}

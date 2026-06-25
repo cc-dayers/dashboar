@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
-import BoarMark from './BoarMark'
 
 interface Props {
-  left?:  ReactNode
-  right?: ReactNode
+  left?:   ReactNode
+  center?: ReactNode
+  right?:  ReactNode
 }
 
-export default function PanelTopBar({ left, right }: Props) {
+export default function PanelTopBar({ left, center, right }: Props) {
   return (
     <div style={{
       position:     'relative',
@@ -21,23 +21,16 @@ export default function PanelTopBar({ left, right }: Props) {
     }}>
       <div style={{ flex: 1, minWidth: 0 }}>{left}</div>
 
-      <a
-        href="/"
-        style={{
+      {center && (
+        <div style={{
           position:  'absolute',
           left:      '50%',
           top:       '50%',
           transform: 'translate(-50%, -50%)',
-          display:   'flex',
-          opacity:   0.75,
-          transition:'opacity 0.15s',
-          textDecoration: 'none',
-        }}
-        onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-        onMouseLeave={e => (e.currentTarget.style.opacity = '0.75')}
-      >
-        <BoarMark size={28} />
-      </a>
+        }}>
+          {center}
+        </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{right}</div>
     </div>

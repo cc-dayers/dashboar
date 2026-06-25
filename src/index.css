@@ -43,8 +43,9 @@
   --color-sidebar-muted:        #475569;
 }
 
+/* ── Dark token values (shared between media query and manual override) ─────── */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --color-background:           #020617;
     --color-surface:              #0f172a;
     --color-surface-raised:       #1e293b;
@@ -60,6 +61,25 @@
     --color-accent-surface:       #1e1b4b;
     --color-accent-foreground:    #818cf8;
     --color-accent-muted:         #6366f1;
-    /* sidebar tokens unchanged */
   }
+}
+
+/* Manual dark override — wins regardless of system preference */
+:root[data-theme="dark"] {
+  --color-background:           #020617;
+  --color-surface:              #0f172a;
+  --color-surface-raised:       #1e293b;
+  --color-surface-sunken:       #020617;
+  --color-border:               #1e293b;
+  --color-border-subtle:        #0f172a;
+  --color-foreground:           #f1f5f9;
+  --color-foreground-secondary: #cbd5e1;
+  --color-foreground-muted:     #94a3b8;
+  --color-foreground-subtle:    #475569;
+  --color-accent:               #818cf8;
+  --color-accent-hover:         #a5b4fc;
+  --color-accent-surface:       #1e1b4b;
+  --color-accent-foreground:    #818cf8;
+  --color-accent-muted:         #6366f1;
+  /* sidebar tokens unchanged */
 }

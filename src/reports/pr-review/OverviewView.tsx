@@ -5,6 +5,7 @@ import {
 } from 'recharts'
 import type { PrReview, PrReviewReport, LlmProvider } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
+import ThemeToggle from '../../components/ThemeToggle'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -300,36 +301,32 @@ export default function OverviewView({ report, reportId }: Props) {
             )}
           </div>
         }
+        center={<ThemeToggle />}
         right={
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginRight: '6px', gap: '2px' }}>
-              {report.period && (
-                <span style={{ fontSize: '11px', color: '#94a3b8' }}>{report.period}</span>
-              )}
-              {report.generatedAt && (
-                <span style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                  Generated {new Date(report.generatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                </span>
-              )}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {RANGE_OPTIONS.map(opt => {
+                const active = filterDays === opt.days
+                return (
+                  <button
+                    key={opt.label}
+                    onClick={() => setFilterDays(opt.days)}
+                    style={{
+                      fontSize: '12px', fontWeight: 500, padding: '4px 12px',
+                      borderRadius: '6px', cursor: 'pointer', border: 'none',
+                      background: active ? '#0f172a' : '#f1f5f9',
+                      color: active ? '#f1f5f9' : '#475569',
+                      transition: 'background 0.12s, color 0.12s',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
             </div>
-            {RANGE_OPTIONS.map(opt => {
-              const active = filterDays === opt.days
-              return (
-                <button
-                  key={opt.label}
-                  onClick={() => setFilterDays(opt.days)}
-                  style={{
-                    fontSize: '12px', fontWeight: 500, padding: '4px 12px',
-                    borderRadius: '6px', cursor: 'pointer', border: 'none',
-                    background: active ? '#0f172a' : '#f1f5f9',
-                    color: active ? '#f1f5f9' : '#475569',
-                    transition: 'background 0.12s, color 0.12s',
-                  }}
-                >
-                  {opt.label}
-                </button>
-              )
-            })}
+            {report.period && (
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>{report.period}</span>
+            )}
           </div>
         }
       />
