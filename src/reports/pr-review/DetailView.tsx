@@ -176,15 +176,13 @@ export default function DetailView({ pr, onBack }: Props) {
         {/* Metrics row */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: pr.aicCreditsUsed != null ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
+          gridTemplateColumns: 'repeat(4, 1fr)',
           gap: '12px', marginBottom: '14px',
         }}>
-          <MetricCard label="Review Time"   value={fmtMs(pr.timeToReviewMs)} />
+          <MetricCard label="Review Time"    value={fmtMs(pr.timeToReviewMs)} />
           <MetricCard label="Accuracy Rating" value={`${pr.accuracyRating}%`} />
-          <MetricCard label="Tokens Used"   value={fmtTokens(pr.tokensUsed)} sub={`$${pr.estimatedCostUsd.toFixed(2)}`} />
-          {pr.aicCreditsUsed != null && (
-            <MetricCard label="AIC Credits" value={String(pr.aicCreditsUsed)} />
-          )}
+          <MetricCard label="Tokens Used"    value={fmtTokens(pr.tokensUsed)} sub={`$${pr.estimatedCostUsd.toFixed(2)}`} />
+          <MetricCard label="AIC Credits"    value={pr.aicCreditsUsed != null ? String(pr.aicCreditsUsed) : '—'} accent={pr.aicCreditsUsed != null ? '#7c3aed' : undefined} />
         </div>
 
         {/* Jira ticket */}
@@ -403,11 +401,11 @@ function DownstreamImpactBanner({ impact }: { impact: DownstreamImpactSummary })
   )
 }
 
-function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function MetricCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
   return (
     <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 16px' }}>
       <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '5px', fontWeight: 500 }}>{label}</div>
-      <div style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      <div style={{ fontSize: '22px', fontWeight: 700, color: accent ?? '#0f172a', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
       {sub && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>{sub}</div>}
     </div>
   )

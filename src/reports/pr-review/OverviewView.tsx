@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  Bar, BarChart, CartesianGrid, Line, LineChart,
+  Area, AreaChart, Bar, BarChart, CartesianGrid,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import type { PrReview, PrReviewReport, LlmProvider } from './types'
@@ -218,15 +218,27 @@ export default function OverviewView({ report, reportId }: Props) {
     periodData = Array.from(weekMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([, d]) => d)
   }
 
-  // ── Token usage per review — all reviews, line chart with hover drilldown
+  // ── Token + AIC usage per review — line charts with hover drilldown
   const tokenData = reviews.map(r => ({
     date:       shortDate(r.reviewedAt.slice(0, 10)),
     tokens:     r.tokensUsed,
+    cost:       r.estimatedCostUsd,
     pr:         `#${r.prNumber}`,
     title:      r.prTitle,
     result:     r.result,
     aicCredits: r.aicCreditsUsed,
   }))
+
+  const aicData = reviews
+    .filter(r => r.aicCreditsUsed != null)
+    .map(r => ({
+      date:       shortDate(r.reviewedAt.slice(0, 10)),
+      aic:        r.aicCreditsUsed as number,
+      pr:         `#${r.prNumber}`,
+      title:      r.prTitle,
+      result:     r.result,
+    }))
+  const hasAicData = aicData.length > 0
 
   // ── Findings by hat
   const findingsByHat = new Map<string, number>()
@@ -333,7 +345,7 @@ export default function OverviewView({ report, reportId }: Props) {
           <KpiCard label="AIC Credits Used"       value={totalAicCredits > 0 ? String(totalAicCredits) : '—'} sub={aicReviews.length > 0 ? `${aicReviews.length} of ${reviews.length} reviews` : 'no AIC data'} accent="#7c3aed" />
         </div>
 
-        {/* Reviews by period + token usage line */}
+        {/* Reviews by period + token usage + AIC */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
           <Card title={periodChartTitle} sub="stacked by outcome">
             {periodData.length === 0 ? (
@@ -365,52 +377,106 @@ export default function OverviewView({ report, reportId }: Props) {
             )}
           </Card>
 
-          <Card title="Tokens per Review" sub="hover a point for PR details">
+          <Card title="Tokens per Review" sub="each point is one PR — hover for details">
             {tokenData.length === 0 ? (
               <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '12px' }}>
                 No reviews in this range
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={tokenData} margin={{ top: 4, right: 8, bottom: 0, left: -4 }}>
+                <AreaChart data={tokenData} margin={{ top: 6, right: 8, bottom: 0, left: -4 }}>
+                  <defs>
+                    <linearGradient id="tokenGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.18} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid {...GRID} />
                   <XAxis dataKey="date" tick={AXIS} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                  <YAxis tick={AXIS} axisLine={false} tickLine={false} tickFormatter={v => fmtTokensK(v)} />
+                  <YAxis tick={AXIS} axisLine={false} tickLine={false} tickFormatter={v => fmtTokensK(v)} width={40} />
                   <Tooltip content={({ active, payload }) => {
                     if (!active || !payload?.length) return null
                     const d = payload[0]?.payload as typeof tokenData[0]
                     const dotColor = d.result === 'approved' ? '#16a34a' : d.result === 'changes-requested' ? '#dc2626' : '#d97706'
                     return (
-                      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '9px 12px', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,.08)', maxWidth: '220px' }}>
+                      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '9px 12px', fontSize: '12px', boxShadow: '0 4px 16px rgba(0,0,0,.1)', maxWidth: '230px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
                           <span style={{ fontFamily: 'ui-monospace,monospace', color: '#475569', fontSize: '11px' }}>{d.pr}</span>
                           <span style={{ fontSize: '10px', fontWeight: 600, color: dotColor, background: dotColor + '18', borderRadius: '4px', padding: '1px 5px' }}>
                             {d.result === 'changes-requested' ? 'changes' : d.result}
                           </span>
                         </div>
-                        <div style={{ color: '#1e293b', fontWeight: 500, lineHeight: 1.35, marginBottom: '5px' }}>
+                        <div style={{ color: '#1e293b', fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
                           {d.title.length > 52 ? d.title.slice(0, 50) + '…' : d.title}
                         </div>
                         <div style={{ color: '#6366f1', fontWeight: 700 }}>{fmtTokensK(d.tokens)} tokens</div>
-                        {d.aicCredits != null && (
-                          <div style={{ color: '#7c3aed', fontWeight: 600, marginTop: '3px' }}>{d.aicCredits} AIC credits</div>
-                        )}
+                        <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '2px' }}>${d.cost.toFixed(3)}</div>
                       </div>
                     )
                   }} />
-                  <Line
+                  <Area
                     type="monotone"
                     dataKey="tokens"
                     stroke="#6366f1"
                     strokeWidth={2}
-                    dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }}
+                    fill="url(#tokenGrad)"
+                    dot={tokenData.length <= 30 ? { r: 3, fill: '#6366f1', strokeWidth: 0 } : false}
                     activeDot={{ r: 5, fill: '#6366f1', stroke: '#fff', strokeWidth: 2 }}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             )}
           </Card>
         </div>
+
+        {/* AIC Credits line chart — full width, shown only when data exists */}
+        {hasAicData && (
+          <div style={{ marginBottom: '12px' }}>
+            <Card title="AIC Credits per Review" sub="GitHub Copilot AIC consumption — each point is one PR">
+              <ResponsiveContainer width="100%" height={160}>
+                <AreaChart data={aicData} margin={{ top: 6, right: 8, bottom: 0, left: -4 }}>
+                  <defs>
+                    <linearGradient id="aicGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#7c3aed" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid {...GRID} />
+                  <XAxis dataKey="date" tick={AXIS} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                  <YAxis tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
+                  <Tooltip content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null
+                    const d = payload[0]?.payload as typeof aicData[0]
+                    const dotColor = d.result === 'approved' ? '#16a34a' : d.result === 'changes-requested' ? '#dc2626' : '#d97706'
+                    return (
+                      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '9px 12px', fontSize: '12px', boxShadow: '0 4px 16px rgba(0,0,0,.1)', maxWidth: '230px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
+                          <span style={{ fontFamily: 'ui-monospace,monospace', color: '#475569', fontSize: '11px' }}>{d.pr}</span>
+                          <span style={{ fontSize: '10px', fontWeight: 600, color: dotColor, background: dotColor + '18', borderRadius: '4px', padding: '1px 5px' }}>
+                            {d.result === 'changes-requested' ? 'changes' : d.result}
+                          </span>
+                        </div>
+                        <div style={{ color: '#1e293b', fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
+                          {d.title.length > 52 ? d.title.slice(0, 50) + '…' : d.title}
+                        </div>
+                        <div style={{ color: '#7c3aed', fontWeight: 700 }}>{d.aic} AIC credits</div>
+                      </div>
+                    )
+                  }} />
+                  <Area
+                    type="monotone"
+                    dataKey="aic"
+                    stroke="#7c3aed"
+                    strokeWidth={2}
+                    fill="url(#aicGrad)"
+                    dot={aicData.length <= 30 ? { r: 3, fill: '#7c3aed', strokeWidth: 0 } : false}
+                    activeDot={{ r: 5, fill: '#7c3aed', stroke: '#fff', strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </Card>
+          </div>
+        )}
 
         {/* Findings by hat + author activity */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
