@@ -25,10 +25,11 @@ function OverviewLink({ active, onClick }: { active: boolean; onClick: () => voi
       onMouseLeave={() => setHovered(false)}
       style={{
         display: 'flex', alignItems: 'center', gap: '8px',
-        padding: '8px 10px', borderRadius: '6px', cursor: 'pointer',
+        padding: '8px 10px 8px 7px', borderRadius: '6px', cursor: 'pointer',
         marginBottom: '2px', userSelect: 'none',
-        background: active ? 'var(--color-accent-surface)' : hovered ? 'var(--color-sidebar-raised)' : 'transparent',
-        transition: 'background 0.1s',
+        background: active || hovered ? 'var(--color-sidebar-raised)' : 'transparent',
+        borderLeft: active ? '3px solid var(--color-accent)' : '3px solid transparent',
+        transition: 'background 0.1s, border-color 0.1s',
       }}
     >
       <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--color-sidebar-muted)' }}>
@@ -44,9 +45,16 @@ function OverviewLink({ active, onClick }: { active: boolean; onClick: () => voi
 
 function RunRow({ run, selected, onClick }: { run: E2eRunEntry; selected: boolean; onClick: () => void }) {
   const [hovered, setHovered] = useState(false)
-  const label      = runLabel(run)
-  const failCount  = run.summary?.failed ?? 0
-  const total      = run.summary?.total ?? run.testCount ?? 0
+  const label    = runLabel(run)
+  const eff      = run.result ?? run.status
+  const dotColor = runStatusColor(eff)
+  const isPass   = eff === 'passed' || eff === 'succeeded'
+  const s        = run.summary
+  const skipped  = Math.max(0, (s?.total ?? 0) - (s?.passed ?? 0) - (s?.failed ?? 0) - (s?.flaky ?? 0))
+  const browser  = run.matrixLabel
+    ? (run.matrixLabel.includes('·') ? run.matrixLabel.split('·')[0].trim() : run.matrixLabel.trim())
+    : null
+  const active = selected || hovered
 
   return (
     <div
@@ -54,34 +62,43 @@ function RunRow({ run, selected, onClick }: { run: E2eRunEntry; selected: boolea
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        padding: '8px 10px', borderRadius: '6px', cursor: 'pointer',
-        marginBottom: '1px', userSelect: 'none',
-        background: selected ? 'var(--color-accent-surface)' : hovered ? 'var(--color-sidebar-raised)' : 'transparent',
-        transition: 'background 0.1s',
+        padding: '8px 10px 8px 10px',
+        borderRadius: '7px', cursor: 'pointer',
+        marginBottom: '3px', userSelect: 'none',
+        borderTop:    `1px solid ${active ? `${dotColor}60` : `${dotColor}28`}`,
+        borderRight:  `1px solid ${active ? `${dotColor}60` : `${dotColor}28`}`,
+        borderBottom: `1px solid ${active ? `${dotColor}60` : `${dotColor}28`}`,
+        borderLeft:   `3px solid ${dotColor}`,
+        background:   active ? `${dotColor}18` : `${dotColor}09`,
+        transition: 'border-color 0.1s, background 0.1s',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
-        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: runStatusColor(run.result ?? run.status), flexShrink: 0 }} />
-        {run.matrixLabel && (
-          <span style={{ color: 'var(--color-sidebar-muted)', fontSize: '10px', fontFamily: 'ui-monospace,monospace' }}>
-            {run.matrixLabel}
-          </span>
-        )}
-        {failCount > 0 && (
-          <span style={{ fontSize: '10px', color: '#f87171', marginLeft: 'auto' }}>{failCount} failed</span>
-        )}
-        {failCount === 0 && total > 0 && (
-          <span style={{ fontSize: '10px', color: 'var(--color-sidebar-secondary)', marginLeft: 'auto' }}>{total} tests</span>
-        )}
-      </div>
-      <div style={{
-        color: 'var(--color-sidebar-secondary)', fontSize: '11px', lineHeight: 1.4,
-        overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-      }}>
+      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-sidebar-foreground)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', marginBottom: '2px' }}>
         {label}
       </div>
+      {browser && (
+        <div style={{ fontSize: '10px', color: 'var(--color-sidebar-muted)', fontFamily: 'ui-monospace,monospace', marginBottom: s && s.total > 0 ? '5px' : '0', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+          {browser}
+        </div>
+      )}
+      {s && s.total > 0 && (
+        <>
+          <div style={{ display: 'flex', height: 4, borderRadius: '3px', overflow: 'hidden', background: 'var(--color-sidebar-raised)', marginBottom: '4px' }}>
+            {s.passed  > 0 && <div style={{ flex: s.passed,  background: '#22c55e' }} />}
+            {s.failed  > 0 && <div style={{ flex: s.failed,  background: '#ef4444' }} />}
+            {s.flaky   > 0 && <div style={{ flex: s.flaky,   background: '#f59e0b' }} />}
+            {skipped   > 0 && <div style={{ flex: skipped,   background: '#94a3b8' }} />}
+          </div>
+          <div style={{ fontSize: '10px', color: 'var(--color-sidebar-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ color: isPass ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{s.passed}</span>
+            <span>/{s.total}</span>
+            {(s.failed ?? 0) > 0 && <span style={{ color: '#ef4444', marginLeft: '4px' }}> · {s.failed}✗</span>}
+            {(s.flaky  ?? 0) > 0 && <span style={{ color: '#f59e0b', marginLeft: '4px' }}> · {s.flaky}~</span>}
+          </div>
+        </>
+      )}
       {run.branch && (
-        <div style={{ color: 'var(--color-sidebar-muted)', fontSize: '10px', fontFamily: 'ui-monospace,monospace', marginTop: '2px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+        <div style={{ color: 'var(--color-sidebar-muted)', fontSize: '10px', fontFamily: 'ui-monospace,monospace', marginTop: '3px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
           {run.branch}
         </div>
       )}
@@ -145,9 +162,9 @@ function Sidebar({ report, selKey, isMobile, sidebarOpen, search, statusFilter, 
                 onClick={() => onStatusFilter(statusFilter === 'failed' ? null : 'failed')}
                 style={{
                   fontSize: '10px', fontWeight: 600, cursor: 'pointer', border: 'none',
-                  color: '#f87171', borderRadius: '4px', padding: '2px 7px',
-                  background: statusFilter === 'failed' ? '#f8717140' : '#f8717118',
-                  outline: statusFilter === 'failed' ? '1.5px solid #f87171' : 'none',
+                  color: 'var(--color-sidebar-danger)', borderRadius: '4px', padding: '2px 7px',
+                  background: statusFilter === 'failed' ? '#ef444430' : '#ef444415',
+                  outline: statusFilter === 'failed' ? '1.5px solid var(--color-sidebar-danger)' : 'none',
                   transition: 'background 0.1s',
                 }}
               >
@@ -159,9 +176,9 @@ function Sidebar({ report, selKey, isMobile, sidebarOpen, search, statusFilter, 
                 onClick={() => onStatusFilter(statusFilter === 'passed' ? null : 'passed')}
                 style={{
                   fontSize: '10px', fontWeight: 600, cursor: 'pointer', border: 'none',
-                  color: '#4ade80', borderRadius: '4px', padding: '2px 7px',
-                  background: statusFilter === 'passed' ? '#4ade8040' : '#4ade8018',
-                  outline: statusFilter === 'passed' ? '1.5px solid #4ade80' : 'none',
+                  color: 'var(--color-sidebar-success)', borderRadius: '4px', padding: '2px 7px',
+                  background: statusFilter === 'passed' ? '#22c55e30' : '#22c55e15',
+                  outline: statusFilter === 'passed' ? '1.5px solid var(--color-sidebar-success)' : 'none',
                   transition: 'background 0.1s',
                 }}
               >
@@ -323,11 +340,7 @@ export default function Dashboard({ data }: ReportProps) {
             visibility: selKey ? 'hidden' : 'visible',
             pointerEvents: selKey ? 'none' : 'auto',
           }}>
-            <OverviewView
-              report={report}
-              onSelect={handleSelect}
-              runKeys={runKey}
-            />
+            <OverviewView report={report} />
           </div>
         </div>
       </main>

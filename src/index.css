@@ -41,6 +41,9 @@
   --color-sidebar-foreground:   #1f2328;
   --color-sidebar-secondary:    #444c56;
   --color-sidebar-muted:        #636c76;
+  /* success/danger pill text — must be readable on both light + dark sidebar */
+  --color-sidebar-success:      #15803d;
+  --color-sidebar-danger:       #dc2626;
 }
 
 /* ── Dark token values (shared between media query and manual override) ─────── */
@@ -67,6 +70,8 @@
     --color-sidebar-foreground:   #f1f5f9;
     --color-sidebar-secondary:    #94a3b8;
     --color-sidebar-muted:        #475569;
+    --color-sidebar-success:      #4ade80;
+    --color-sidebar-danger:       #f87171;
   }
 }
 
@@ -93,4 +98,6 @@
   --color-sidebar-foreground:   #f1f5f9;
   --color-sidebar-secondary:    #94a3b8;
   --color-sidebar-muted:        #475569;
+  --color-sidebar-success:      #4ade80;
+  --color-sidebar-danger:       #f87171;
 }

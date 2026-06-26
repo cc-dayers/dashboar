@@ -23,15 +23,6 @@ export function runEffectiveStatus(run: { status: string; result?: string }): st
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtMs(ms: number) {
-  const h = Math.floor(ms / 3_600_000)
-  const m = Math.floor((ms % 3_600_000) / 60_000)
-  const s = Math.floor((ms % 60_000) / 1000)
-  if (h > 0) return `${h}h ${m}m`
-  if (m > 0) return `${m}m ${s}s`
-  return `${s}s`
-}
-
 function fmtDate(iso: string) {
   return new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
@@ -136,7 +127,6 @@ function KpiRow({ report, runs }: { report: E2eAggregateReport; runs: E2eRunEntr
   const failedTests   = s?.failedTests  ?? runs.reduce((n, r) => n + (r.summary?.failed ?? 0), 0)
   const flakyTests    = s?.flakyTests   ?? runs.reduce((n, r) => n + (r.summary?.flaky ?? 0), 0)
   const passedTests   = s?.passedTests  ?? runs.reduce((n, r) => n + (r.summary?.passed ?? 0), 0)
-  const totalMs       = s?.totalDurationMs ?? runs.reduce((n, r) => n + (r.executionTimeMs ?? r.durationMs ?? 0), 0)
   const passRate      = pct(passedTests, totalTests)
 
   return (
@@ -239,105 +229,13 @@ function DailyTrend({ dateMap }: { dateMap: Map<string, BucketData> }) {
   )
 }
 
-// ── Section: Run tiles ────────────────────────────────────────────────────────
-
-function RunTile({ run, onClick }: { run: E2eRunEntry; onClick: () => void }) {
-  const eff      = runEffectiveStatus(run)
-  const isPass   = eff === 'passed' || eff === 'succeeded'
-  const isFail   = eff === 'failed' || eff === 'succeeded_with_issues' || eff === 'timedout'
-  const dotColor = isPass ? C.pass : isFail ? C.fail : C.flaky
-  const s        = run.summary
-  const browser  = browserName(run.matrixLabel)
-  const suite    = (run.suiteName ?? run.suite ?? 'Run').replace('E2E ', '')
-  const skipped  = Math.max(0, (s?.total ?? 0) - (s?.passed ?? 0) - (s?.failed ?? 0) - (s?.flaky ?? 0))
-
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        width: '130px', padding: '9px 10px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left',
-        border: `1.5px solid ${dotColor}25`, background: `${dotColor}08`,
-        transition: 'border-color 0.1s, background 0.1s',
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.borderColor = `${dotColor}60`
-        e.currentTarget.style.background  = `${dotColor}14`
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.borderColor = `${dotColor}25`
-        e.currentTarget.style.background  = `${dotColor}08`
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
-        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
-        <span style={{ fontSize: '11.5px', fontWeight: 700, color: S.fg, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{suite}</span>
-      </div>
-      {browser && browser !== 'Unknown' && (
-        <div style={{ fontSize: '10px', color: S.fgMuted, fontFamily: 'ui-monospace,monospace', marginBottom: '6px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-          {browser}
-        </div>
-      )}
-      {s && s.total > 0 && (
-        <>
-          <StackedBar passed={s.passed} failed={s.failed} flaky={s.flaky} skipped={skipped} total={s.total} height={5} />
-          <div style={{ marginTop: '4px', fontSize: '10px', color: S.fgMuted, fontVariantNumeric: 'tabular-nums' }}>
-            <span style={{ color: isPass ? C.pass : C.fail, fontWeight: 600 }}>{s.passed}</span>
-            <span style={{ color: S.fgSubtle }}>/{s.total}</span>
-            {s.failed > 0 && <span style={{ color: C.fail, marginLeft: '4px' }}> · {s.failed}✗</span>}
-            {s.flaky  > 0 && <span style={{ color: C.flaky, marginLeft: '4px' }}> · {s.flaky}~</span>}
-          </div>
-        </>
-      )}
-    </button>
-  )
-}
-
-function RunGrid({ runs, onSelect, runKeys }: { runs: E2eRunEntry[]; onSelect: (key: string) => void; runKeys: (r: E2eRunEntry, i: number) => string }) {
-  // Preserve original indices for stable keys, then sort by generatedAt
-  const indexed = runs.map((r, i) => ({ run: r, key: runKeys(r, i) }))
-  const sorted  = [...indexed].sort((a, b) => (a.run.generatedAt ?? '') < (b.run.generatedAt ?? '') ? -1 : 1)
-  const byDate  = new Map<string, { run: E2eRunEntry; key: string }[]>()
-  sorted.forEach(({ run: r, key }) => {
-    const date = (r.generatedAt ?? '').slice(0, 10) || 'unknown'
-    const arr  = byDate.get(date) ?? []
-    arr.push({ run: r, key })
-    byDate.set(date, arr)
-  })
-
-  const dates = [...byDate.entries()].sort(([a], [b]) => a < b ? -1 : 1)
-
-  return (
-    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', overflow: 'hidden' }}>
-      <div style={{ padding: '10px 14px 8px', fontSize: '11px', fontWeight: 600, color: S.fgMuted, textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: `1px solid ${S.border}` }}>
-        Runs — click to open
-      </div>
-      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {dates.map(([date, entries]) => (
-          <div key={date}>
-            <div style={{ fontSize: '10.5px', fontWeight: 600, color: S.fgSubtle, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
-              {date !== 'unknown' ? fmtDate(date) : 'Unknown date'} · {entries.length} run{entries.length !== 1 ? 's' : ''}
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {entries.map(({ run, key }) => (
-                <RunTile key={key} run={run} onClick={() => onSelect(key)} />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 interface Props {
-  report:   E2eAggregateReport
-  onSelect: (key: string) => void
-  runKeys:  (r: E2eRunEntry, i: number) => string
+  report: E2eAggregateReport
 }
 
-export default function OverviewView({ report, onSelect, runKeys }: Props) {
+export default function OverviewView({ report }: Props) {
   const runs = report.reviews ?? report.runs ?? []
 
   const suiteMap   = groupBy(runs, r => r.suiteName ?? r.suite ?? 'Unknown')
@@ -388,8 +286,6 @@ export default function OverviewView({ report, onSelect, runKeys }: Props) {
             </div>
 
             <DailyTrend dateMap={dateMap} />
-
-            <RunGrid runs={runs} onSelect={onSelect} runKeys={runKeys} />
           </>
         )}
       </div>
