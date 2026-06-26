@@ -1,0 +1,44 @@
+{
+  "$schema": "reports/report.v99.schema.json",
+  "schemaVersion": "99",
+  "generatedAt": "2030-01-01T00:00:00Z",
+  "summary": {
+    "totalRuns": 1,
+    "passed": 1,
+    "failed": 0,
+    "flaky": 0,
+    "newFutureField": "some value from a future schema version"
+  },
+  "runs": [
+    {
+      "buildId": "99999",
+      "buildNumber": "1",
+      "suiteName": "Future E2E Suite",
+      "suiteSlug": "future-e2e",
+      "jobName": "e2e",
+      "matrixLabel": "chromium",
+      "branch": "main",
+      "commit": "deadbeef",
+      "status": "passed",
+      "result": "passed",
+      "generatedAt": "2030-01-01T00:00:00Z",
+      "executionTimeMs": 10000,
+      "testCount": 5,
+      "summary": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0
+      },
+      "links": {
+        "htmlReportUrl": null,
+        "playwrightWorkspaceReportUrl": null,
+        "adoArtifactsUrl": null
+      },
+      "reportBlobPath": "e2e-reports/runs/2030-01-01/future/report.json",
+      "reportUrl": null,
+      "newFutureRunField": true
+    }
+  ]
+}

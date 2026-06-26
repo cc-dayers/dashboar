@@ -77,14 +77,14 @@ test('"1" is supported', () => assert.ok(isSupportedVersion('1')))
 test('"legacy" is supported', () => assert.ok(isSupportedVersion('legacy')))
 test('"0" is not supported (use "legacy" for pre-versioned reports)', () => assert.ok(!isSupportedVersion('0')))
 test('"99" is not supported (future unknown version)', () => assert.ok(!isSupportedVersion('99')))
-test('"2" is not yet supported', () => assert.ok(!isSupportedVersion('2')))
+test('"2" is supported', () => assert.ok(isSupportedVersion('2')))
 
 // ── SUPPORTED_VERSIONS set ────────────────────────────────────────────────────
 
 console.log('\nSUPPORTED_VERSIONS')
 
-test('contains exactly "1" and "legacy"', () => {
-  assert.deepEqual([...SUPPORTED_VERSIONS].sort(), ['1', 'legacy'].sort())
+test('contains "1", "2", and "legacy"', () => {
+  assert.deepEqual([...SUPPORTED_VERSIONS].sort(), ['1', '2', 'legacy'].sort())
 })
 
 // ── Summary ───────────────────────────────────────────────────────────────────

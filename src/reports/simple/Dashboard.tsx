@@ -1,4 +1,6 @@
 import type { ReportProps } from '../index'
+import BoarMark from '../../components/BoarMark'
+import ThemeToggle from '../../components/ThemeToggle'
 
 type JsonPrimitive = string | number | boolean | null
 type JsonObject = { [key: string]: JsonValue }
@@ -32,38 +34,48 @@ export default function SimpleDashboard({ data, reportId }: ReportProps) {
   const complex = Object.entries(obj).filter(([, v]) => !isPrimitive(v))
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex-shrink-0 w-9 h-9 bg-slate-700 rounded-xl flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="bg-surface border-b border-border sticky top-0 z-10">
+        <div className="relative flex items-center px-5 py-3">
+          {/* Left: BoarMark home link */}
+          <a
+            href="/"
+            className="flex-shrink-0 opacity-75 hover:opacity-100 transition-opacity"
+            style={{ textDecoration: 'none' }}
+          >
+            <BoarMark size={30} />
+          </a>
+
+          {/* Center: Report title + meta */}
+          <div className="absolute left-1/2 -translate-x-1/2 text-center pointer-events-none">
+            <p className="text-xs text-foreground-muted">Simple</p>
+            <h1 className="text-sm font-semibold text-foreground leading-tight">{title}</h1>
+            {generatedAt && (
+              <p className="text-xs text-foreground-subtle mt-0.5 hidden sm:block">
+                {formatDate(generatedAt)}
+              </p>
+            )}
           </div>
-          <div className="min-w-0">
-            <p className="text-xs text-slate-400 mb-0.5">Show Me / Simple</p>
-            <h1 className="text-base font-semibold text-slate-900 truncate">{title}</h1>
+
+          {/* Right: Theme toggle */}
+          <div className="ml-auto">
+            <ThemeToggle />
           </div>
         </div>
-        {generatedAt && (
-          <span className="text-xs text-slate-400 flex-shrink-0 hidden sm:block">
-            {formatDate(generatedAt)}
-          </span>
-        )}
       </header>
 
       <main className="p-6 max-w-4xl mx-auto space-y-6">
         {scalars.length > 0 && (
           <section>
-            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            <h2 className="text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-3">
               Fields
             </h2>
-            <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+            <div className="bg-surface rounded-xl border border-border divide-y divide-border-subtle">
               {scalars.map(([k, v]) => (
                 <div key={k} className="flex items-center justify-between px-4 py-3 gap-4">
-                  <span className="text-sm text-slate-500 capitalize">{k.replace(/_/g, ' ')}</span>
-                  <span className="text-sm font-medium text-slate-900 text-right break-all">
+                  <span className="text-sm text-foreground-muted capitalize">{k.replace(/_/g, ' ')}</span>
+                  <span className="text-sm font-medium text-foreground text-right break-all">
                     {v === null ? '—' : String(v)}
                   </span>
                 </div>
@@ -74,11 +86,11 @@ export default function SimpleDashboard({ data, reportId }: ReportProps) {
 
         {complex.map(([k, v]) => (
           <section key={k}>
-            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 capitalize">
+            <h2 className="text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-3 capitalize">
               {k.replace(/_/g, ' ')}
             </h2>
-            <div className="bg-slate-950 rounded-xl p-4 overflow-x-auto">
-              <pre className="text-xs text-slate-300 font-mono leading-relaxed">
+            <div className="bg-surface-sunken rounded-xl p-4 overflow-x-auto border border-border">
+              <pre className="text-xs text-foreground-secondary font-mono leading-relaxed">
                 {JSON.stringify(v, null, 2)}
               </pre>
             </div>

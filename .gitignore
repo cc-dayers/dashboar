@@ -6,3 +6,6 @@ dist
 *.tsbuildinfo
 report.json
 *:Zone.Identifier
+
+playwright-report/
+test-results/

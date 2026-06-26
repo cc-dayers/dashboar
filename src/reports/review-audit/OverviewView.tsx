@@ -9,14 +9,24 @@ function fmtDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+const S = {
+  surface:   'var(--color-surface)',
+  border:    'var(--color-border)',
+  fg:        'var(--color-foreground)',
+  fgMuted:   'var(--color-foreground-muted)',
+  fgSubtle:  'var(--color-foreground-subtle)',
+  fgSec:     'var(--color-foreground-secondary)',
+  sunken:    'var(--color-surface-sunken)',
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 500, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
-      <div style={{ fontSize: '26px', fontWeight: 700, color: accent ?? '#0f172a', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      {sub && <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '5px' }}>{sub}</div>}
+    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', padding: '16px 18px' }}>
+      <div style={{ fontSize: '11px', color: S.fgMuted, fontWeight: 500, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+      <div style={{ fontSize: '26px', fontWeight: 700, color: accent ?? S.fg, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      {sub && <div style={{ fontSize: '12px', color: S.fgSubtle, marginTop: '5px' }}>{sub}</div>}
     </div>
   )
 }
@@ -26,8 +36,8 @@ function ResultBar({ counts }: { counts: ResultCounts }) {
   if (total === 0) return null
   const pct = (n: number) => `${((n / total) * 100).toFixed(0)}%`
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Results</div>
+    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', padding: '16px 18px' }}>
+      <div style={{ fontSize: '11px', color: S.fgMuted, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Results</div>
       <div style={{ display: 'flex', gap: '3px', borderRadius: '6px', overflow: 'hidden', height: '8px', marginBottom: '12px' }}>
         {counts.approved > 0 && (
           <div style={{ flex: counts.approved, background: '#16a34a' }} title={`Approved: ${counts.approved}`} />
@@ -40,9 +50,9 @@ function ResultBar({ counts }: { counts: ResultCounts }) {
         )}
       </div>
       <div style={{ display: 'flex', gap: '16px', fontSize: '12px' }}>
-        <span style={{ color: '#16a34a' }}><strong>{counts.approved}</strong> approved <span style={{ color: '#94a3b8' }}>({pct(counts.approved)})</span></span>
-        <span style={{ color: '#dc2626' }}><strong>{counts['changes-requested']}</strong> changes <span style={{ color: '#94a3b8' }}>({pct(counts['changes-requested'])})</span></span>
-        <span style={{ color: '#d97706' }}><strong>{counts.commented}</strong> commented <span style={{ color: '#94a3b8' }}>({pct(counts.commented)})</span></span>
+        <span style={{ color: '#16a34a' }}><strong>{counts.approved}</strong> approved <span style={{ color: S.fgSubtle }}>({pct(counts.approved)})</span></span>
+        <span style={{ color: '#dc2626' }}><strong>{counts['changes-requested']}</strong> changes <span style={{ color: S.fgSubtle }}>({pct(counts['changes-requested'])})</span></span>
+        <span style={{ color: '#d97706' }}><strong>{counts.commented}</strong> commented <span style={{ color: S.fgSubtle }}>({pct(counts.commented)})</span></span>
       </div>
     </div>
   )
@@ -53,12 +63,12 @@ function FeedbackCard({ summary }: { summary: AuditSummary }) {
   const statusStyle =
     status === 'complete' ? { bg: '#f0fdf4', color: '#16a34a', label: 'Complete' }
     : status === 'partial' ? { bg: '#fffbeb', color: '#d97706', label: 'Partial' }
-    : { bg: '#f8fafc', color: '#64748b', label: 'Not Collected' }
+    : { bg: S.sunken, color: S.fgMuted, label: 'Not Collected' }
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
+    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', padding: '16px 18px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Feedback</div>
+        <div style={{ fontSize: '11px', color: S.fgMuted, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Feedback</div>
         <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', background: statusStyle.bg, color: statusStyle.color }}>{statusStyle.label}</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
@@ -69,8 +79,8 @@ function FeedbackCard({ summary }: { summary: AuditSummary }) {
           { label: 'No reply observed', value: summary.noObservedReplyCount },
         ].map(({ label, value }) => (
           <div key={label}>
-            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>{label}</div>
-            <div style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ fontSize: '11px', color: S.fgSubtle, marginBottom: '2px' }}>{label}</div>
+            <div style={{ fontSize: '18px', fontWeight: 700, color: S.fg, fontVariantNumeric: 'tabular-nums' }}>
               {value ?? '—'}
             </div>
           </div>
@@ -95,21 +105,21 @@ export default function OverviewView({ report }: Props) {
       <PanelTopBar
         left={
           <div>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Overview</div>
-            {report.period && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{report.period}</div>}
+            <div style={{ fontSize: '15px', fontWeight: 700, color: S.fg }}>Overview</div>
+            {report.period && <div style={{ fontSize: '11px', color: S.fgMuted, marginTop: '2px' }}>{report.period}</div>}
           </div>
         }
         right={
-          <div style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'right' }}>
+          <div style={{ fontSize: '11px', color: S.fgSubtle, textAlign: 'right' }}>
             <div>Generated {fmtDate(report.generatedAt)}</div>
             {sourceReport.reportTitle && (
-              <div style={{ color: '#64748b', marginTop: '2px' }}>{sourceReport.reportTitle}</div>
+              <div style={{ color: S.fgMuted, marginTop: '2px' }}>{sourceReport.reportTitle}</div>
             )}
           </div>
         }
       />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', background: 'var(--color-background)', padding: '20px 24px' }}>
         {/* KPI grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '14px' }}>
           <KpiCard label="Reviews" value={String(summary.reviewCount)} />
@@ -142,8 +152,8 @@ export default function OverviewView({ report }: Props) {
 
         {/* Source report info */}
         {(sourceReport.reportGeneratedAt || sourceReport.reportJsonUri) && (
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 18px', fontSize: '12px', color: '#64748b' }}>
-            <div style={{ fontWeight: 600, color: '#475569', marginBottom: '8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Source Report</div>
+          <div style={{ background: S.sunken, border: `1px solid ${S.border}`, borderRadius: '10px', padding: '14px 18px', fontSize: '12px', color: S.fgMuted }}>
+            <div style={{ fontWeight: 600, color: S.fgSec, marginBottom: '8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Source Report</div>
             {sourceReport.reportGeneratedAt && (
               <div style={{ marginBottom: '4px' }}>Generated: {fmtDate(sourceReport.reportGeneratedAt)}</div>
             )}
@@ -151,7 +161,7 @@ export default function OverviewView({ report }: Props) {
               <div style={{ marginBottom: '4px' }}>Schema: v{sourceReport.reportSchemaVersion}</div>
             )}
             {sourceReport.reportJsonUri && (
-              <div style={{ fontFamily: 'ui-monospace,monospace', fontSize: '11px', color: '#94a3b8', wordBreak: 'break-all' }}>
+              <div style={{ fontFamily: 'ui-monospace,monospace', fontSize: '11px', color: S.fgSubtle, wordBreak: 'break-all' }}>
                 {sourceReport.reportJsonUri}
               </div>
             )}

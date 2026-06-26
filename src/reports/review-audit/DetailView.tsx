@@ -14,6 +14,17 @@ function fmtDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
+const S = {
+  surface:  'var(--color-surface)',
+  border:   'var(--color-border)',
+  divider:  'var(--color-border-subtle)',
+  fg:       'var(--color-foreground)',
+  fgSec:    'var(--color-foreground-secondary)',
+  fgMuted:  'var(--color-foreground-muted)',
+  fgSubtle: 'var(--color-foreground-subtle)',
+  sunken:   'var(--color-surface-sunken)',
+}
+
 function resultPill(r: string) {
   if (r === 'approved')          return { bg: '#f0fdf4', color: '#16a34a', label: 'Approved' }
   if (r === 'changes-requested') return { bg: '#fef2f2', color: '#dc2626', label: 'Changes Requested' }
@@ -43,18 +54,18 @@ function hatStyle(name: string) { return HAT_STYLE[name] ?? { bg: '#f1f5f9', col
 
 function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 16px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '5px', fontWeight: 500 }}>{label}</div>
-      <div style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      {sub && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>{sub}</div>}
+    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', padding: '14px 16px' }}>
+      <div style={{ fontSize: '11px', color: S.fgMuted, marginBottom: '5px', fontWeight: 500 }}>{label}</div>
+      <div style={{ fontSize: '20px', fontWeight: 700, color: S.fg, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      {sub && <div style={{ fontSize: '11px', color: S.fgSubtle, marginTop: '4px' }}>{sub}</div>}
     </div>
   )
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px', marginBottom: '14px' }}>
-      <div style={{ fontSize: '11px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>
+    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', padding: '16px 18px', marginBottom: '14px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 600, color: S.fgSec, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>
         {title}
       </div>
       {children}
@@ -64,18 +75,18 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function BooleanSignal({ label, value }: { label: string; value: boolean }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: `1px solid ${S.divider}` }}>
       <div style={{
         width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: value ? '#f0fdf4' : '#f8fafc',
+        background: value ? '#f0fdf4' : S.sunken,
       }}>
         {value
           ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-5" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          : <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          : <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="var(--color-foreground-subtle)" strokeWidth="1.5" strokeLinecap="round"/></svg>
         }
       </div>
-      <span style={{ fontSize: '12.5px', color: value ? '#1e293b' : '#94a3b8' }}>{label}</span>
+      <span style={{ fontSize: '12.5px', color: value ? S.fgSec : S.fgSubtle }}>{label}</span>
     </div>
   )
 }
@@ -84,14 +95,14 @@ function FeedbackSection({ fb }: { fb: FeedbackSummary }) {
   const statusStyle =
     fb.collectionStatus === 'complete' ? { bg: '#f0fdf4', color: '#16a34a', label: 'Complete' }
     : fb.collectionStatus === 'partial' ? { bg: '#fffbeb', color: '#d97706', label: 'Partial' }
-    : { bg: '#f8fafc', color: '#64748b', label: 'Not Collected' }
+    : { bg: S.sunken, color: S.fgMuted, label: 'Not Collected' }
 
   return (
     <Section title="Feedback">
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
         <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', background: statusStyle.bg, color: statusStyle.color }}>{statusStyle.label}</span>
         {fb.firstHumanReplyAt && (
-          <span style={{ fontSize: '11px', color: '#94a3b8' }}>First reply: {fmtDate(fb.firstHumanReplyAt)}</span>
+          <span style={{ fontSize: '11px', color: S.fgSubtle }}>First reply: {fmtDate(fb.firstHumanReplyAt)}</span>
         )}
       </div>
 
@@ -103,8 +114,8 @@ function FeedbackSection({ fb }: { fb: FeedbackSummary }) {
           { label: 'Commits after bot', value: fb.commitsAfterBotComment },
         ].map(({ label, value }) => (
           <div key={label}>
-            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>{label}</div>
-            <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>{value ?? '—'}</div>
+            <div style={{ fontSize: '11px', color: S.fgSubtle, marginBottom: '2px' }}>{label}</div>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: S.fg, fontVariantNumeric: 'tabular-nums' }}>{value ?? '—'}</div>
           </div>
         ))}
       </div>
@@ -112,7 +123,7 @@ function FeedbackSection({ fb }: { fb: FeedbackSummary }) {
       {fb.labels.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '8px' }}>
           {fb.labels.map(l => (
-            <span key={l} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', background: '#f1f5f9', color: '#475569' }}>{l}</span>
+            <span key={l} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', background: S.sunken, color: S.fgSec }}>{l}</span>
           ))}
         </div>
       )}
@@ -130,9 +141,9 @@ function ImprovementSignalsSection({ signals }: { signals: ImprovementSignals })
   return (
     <Section title="Improvement Signals">
       <BooleanSignal label="Finding details present" value={signals.hasFindingDetails} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
-        <div style={{ fontSize: '12.5px', color: '#475569', flex: 1 }}>Finding details source</div>
-        <span style={{ fontSize: '11px', fontFamily: 'ui-monospace,monospace', padding: '2px 7px', borderRadius: '4px', background: '#f1f5f9', color: '#475569' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: `1px solid ${S.divider}` }}>
+        <div style={{ fontSize: '12.5px', color: S.fgSec, flex: 1 }}>Finding details source</div>
+        <span style={{ fontSize: '11px', fontFamily: 'ui-monospace,monospace', padding: '2px 7px', borderRadius: '4px', background: S.sunken, color: S.fgMuted }}>
           {sourceLabel[signals.findingDetailsSource] ?? signals.findingDetailsSource}
         </span>
       </div>
@@ -152,7 +163,7 @@ function DownstreamImpactSection({ impact }: { impact: Record<string, unknown> }
 
   if (!triggered) {
     return (
-      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px 16px', marginBottom: '14px', fontSize: '13px', color: '#94a3b8' }}>
+      <div style={{ background: S.sunken, border: `1px solid ${S.border}`, borderRadius: '10px', padding: '12px 16px', marginBottom: '14px', fontSize: '13px', color: S.fgSubtle }}>
         Downstream impact check was not triggered.
       </div>
     )
@@ -192,7 +203,7 @@ function DownstreamImpactSection({ impact }: { impact: Record<string, unknown> }
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', alignItems: 'center' }}>
           <span style={{ fontSize: '10px', color: accent.sub }}>areas:</span>
           {affectedAreas.map(a => (
-            <span key={a} style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#f8fafc', color: '#475569', fontFamily: 'ui-monospace,monospace' }}>{a}</span>
+            <span key={a} style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: S.sunken, color: S.fgMuted, fontFamily: 'ui-monospace,monospace' }}>{a}</span>
           ))}
         </div>
       )}
@@ -210,7 +221,7 @@ interface Props {
 export default function DetailView({ review: r, onBack }: Props) {
   const pill = resultPill(r.result)
   const date = fmtDate(r.reviewedAt)
-  const providerColor = r.provider ? (PROVIDER_COLOR[r.provider] ?? '#475569') : '#475569'
+  const providerColor = r.provider ? (PROVIDER_COLOR[r.provider] ?? S.fgMuted) : S.fgMuted
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -220,7 +231,7 @@ export default function DetailView({ review: r, onBack }: Props) {
             onClick={onBack}
             style={{
               display: 'flex', alignItems: 'center', gap: '6px',
-              fontSize: '12px', color: '#64748b', cursor: 'pointer',
+              fontSize: '12px', color: S.fgMuted, cursor: 'pointer',
               background: 'none', border: 'none', padding: 0,
             }}
           >
@@ -232,11 +243,11 @@ export default function DetailView({ review: r, onBack }: Props) {
         }
       />
 
-      <div style={{ flex: 1, overflowY: 'auto', background: '#f8fafc' }}>
+      <div style={{ flex: 1, overflowY: 'auto', background: 'var(--color-background)' }}>
         {/* PR header card */}
-        <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '20px 24px' }}>
+        <div style={{ background: S.surface, borderBottom: `1px solid ${S.border}`, padding: '20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '11px', fontFamily: 'ui-monospace,monospace', background: '#f1f5f9', color: '#475569', borderRadius: '5px', padding: '2px 7px', flexShrink: 0 }}>
+            <span style={{ fontSize: '11px', fontFamily: 'ui-monospace,monospace', background: S.sunken, color: S.fgSec, borderRadius: '5px', padding: '2px 7px', flexShrink: 0 }}>
               #{r.prNumber}
             </span>
             <span style={{ fontSize: '11px', fontWeight: 600, borderRadius: '999px', padding: '3px 10px', flexShrink: 0, background: pill.bg, color: pill.color }}>
@@ -249,17 +260,17 @@ export default function DetailView({ review: r, onBack }: Props) {
             )}
           </div>
 
-          <h1 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '8px', lineHeight: 1.35 }}>
+          <h1 style={{ fontSize: '16px', fontWeight: 700, color: S.fg, marginBottom: '8px', lineHeight: 1.35 }}>
             {r.prTitle}
           </h1>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '12px', color: '#64748b', marginBottom: '10px' }}>
-            <span style={{ fontFamily: 'ui-monospace,monospace', background: '#f8fafc', borderRadius: '4px', padding: '1px 5px', color: '#475569' }}>{r.repository}</span>
-            {r.branch && <><span>·</span><span style={{ fontFamily: 'ui-monospace,monospace', color: '#475569' }}>{r.branch}</span></>}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '12px', color: S.fgMuted, marginBottom: '10px' }}>
+            <span style={{ fontFamily: 'ui-monospace,monospace', background: S.sunken, borderRadius: '4px', padding: '1px 5px', color: S.fgSec }}>{r.repository}</span>
+            {r.branch && <><span>·</span><span style={{ fontFamily: 'ui-monospace,monospace', color: S.fgSec }}>{r.branch}</span></>}
             {r.workspace && <><span>·</span><span>{r.workspace}</span></>}
             <span>·</span>
             <span>{date}</span>
-            {!r.authorPresent && <><span>·</span><span style={{ color: '#94a3b8', fontStyle: 'italic' }}>no author info</span></>}
+            {!r.authorPresent && <><span>·</span><span style={{ color: S.fgSubtle, fontStyle: 'italic' }}>no author info</span></>}
           </div>
 
           {/* Model tag */}
@@ -269,10 +280,10 @@ export default function DetailView({ review: r, onBack }: Props) {
                 <span style={{ fontWeight: 700, color: providerColor, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '9px' }}>{r.provider}</span>
               )}
               {r.model && (
-                <span style={{ fontFamily: 'ui-monospace,monospace', color: '#1e293b' }}>{r.model}</span>
+                <span style={{ fontFamily: 'ui-monospace,monospace', color: S.fgSec }}>{r.model}</span>
               )}
               {r.modelsUsedCount > 1 && (
-                <span style={{ color: '#94a3b8', fontSize: '10px' }}>+{r.modelsUsedCount - 1} more</span>
+                <span style={{ color: S.fgSubtle, fontSize: '10px' }}>+{r.modelsUsedCount - 1} more</span>
               )}
             </div>
           )}

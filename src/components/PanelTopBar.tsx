@@ -10,8 +10,8 @@ export default function PanelTopBar({ left, center, right }: Props) {
   return (
     <div style={{
       position:     'relative',
-      background:   '#fff',
-      borderBottom: '1px solid #e2e8f0',
+      background:   'var(--color-surface)',
+      borderBottom: '1px solid var(--color-border)',
       padding:      '14px 24px',
       display:      'flex',
       alignItems:   'center',

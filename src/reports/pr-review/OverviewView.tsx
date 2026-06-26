@@ -40,6 +40,18 @@ function timeBucket(ms: number) {
 
 const TIME_BUCKETS = ['0–30s','30–60s','1–2m','2–5m','5–10m','10m+']
 
+// ── Design token shortcuts ─────────────────────────────────────────────────────
+
+const S = {
+  surface:  'var(--color-surface)',
+  border:   'var(--color-border)',
+  fg:       'var(--color-foreground)',
+  fgSec:    'var(--color-foreground-secondary)',
+  fgMuted:  'var(--color-foreground-muted)',
+  fgSubtle: 'var(--color-foreground-subtle)',
+  sunken:   'var(--color-surface-sunken)',
+}
+
 // ── Provider colors ───────────────────────────────────────────────────────────
 
 const PROVIDER_COLOR: Record<LlmProvider, string> = {
@@ -66,7 +78,7 @@ function hatStyle(name: string) {
   return HAT_STYLE[name] ?? { bg: '#f1f5f9', color: '#475569' }
 }
 
-// ── Chart tooltip ─────────────────────────────────────────────────────────────
+// ── Chart helpers ─────────────────────────────────────────────────────────────
 
 function ChartTip({ active, payload, label, fmt }: {
   active?: boolean
@@ -76,8 +88,8 @@ function ChartTip({ active, payload, label, fmt }: {
 }) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,.08)' }}>
-      {label && <div style={{ color: '#64748b', marginBottom: '4px' }}>{label}</div>}
+    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '8px', padding: '8px 12px', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,.12)' }}>
+      {label && <div style={{ color: S.fgMuted, marginBottom: '4px' }}>{label}</div>}
       {payload.map((p, i) => (
         <div key={i} style={{ color: p.color, fontWeight: 600 }}>
           {p.name ? `${p.name}: ` : ''}{fmt ? fmt(Number(p.value) ?? 0) : p.value}
@@ -91,10 +103,10 @@ function ChartTip({ active, payload, label, fmt }: {
 
 function Card({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
+    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '12px', padding: '20px' }}>
       <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>{title}</div>
-        {sub && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{sub}</div>}
+        <div style={{ fontSize: '13px', fontWeight: 600, color: S.fgSec }}>{title}</div>
+        {sub && <div style={{ fontSize: '11px', color: S.fgSubtle, marginTop: '2px' }}>{sub}</div>}
       </div>
       {children}
     </div>
@@ -105,12 +117,12 @@ function Card({ title, sub, children }: { title: string; sub?: string; children:
 
 function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px 20px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px', fontWeight: 500 }}>{label}</div>
-      <div style={{ fontSize: '26px', fontWeight: 700, color: accent ?? '#0f172a', lineHeight: 1, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '12px', padding: '16px 20px' }}>
+      <div style={{ fontSize: '11px', color: S.fgMuted, marginBottom: '6px', fontWeight: 500 }}>{label}</div>
+      <div style={{ fontSize: '26px', fontWeight: 700, color: accent ?? S.fg, lineHeight: 1, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
         {value}
       </div>
-      {sub && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '5px' }}>{sub}</div>}
+      {sub && <div style={{ fontSize: '11px', color: S.fgSubtle, marginTop: '5px' }}>{sub}</div>}
     </div>
   )
 }
@@ -122,13 +134,13 @@ function HBar({ label, value, max, color, badge }: {
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-      <div style={{ fontSize: '11.5px', color: '#475569', width: '130px', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={label}>
+      <div style={{ fontSize: '11.5px', color: S.fgMuted, width: '130px', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={label}>
         {label}
       </div>
-      <div style={{ flex: 1, background: '#f1f5f9', borderRadius: '4px', height: '7px', overflow: 'hidden', minWidth: 0 }}>
+      <div style={{ flex: 1, background: S.sunken, borderRadius: '4px', height: '7px', overflow: 'hidden', minWidth: 0 }}>
         <div style={{ width: `${max > 0 ? (value / max) * 100 : 0}%`, height: '100%', background: color, borderRadius: '4px', transition: 'width 0.3s' }} />
       </div>
-      <div style={{ fontSize: '12px', fontWeight: 600, color: '#1e293b', width: '28px', textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+      <div style={{ fontSize: '12px', fontWeight: 600, color: S.fgSec, width: '28px', textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
         {badge ?? value}
       </div>
     </div>
@@ -145,9 +157,6 @@ interface Props {
   onSelectPr?: (pr: PrReview) => void
 }
 
-const AXIS = { fontSize: 11, fill: '#94a3b8' }
-const GRID = { strokeDasharray: '3 3' as const, stroke: '#f1f5f9' }
-
 const RANGE_OPTIONS = [
   { label: 'All',   days: null },
   { label: '30d',   days: 30   },
@@ -159,6 +168,12 @@ const RANGE_OPTIONS = [
 
 export default function OverviewView({ report, reportId }: Props) {
   const [filterDays, setFilterDays] = useState<number | null>(null)
+
+  const activePeriodLabel = filterDays == null
+    ? report.period
+    : filterDays === 1
+    ? 'Today'
+    : `Last ${filterDays} days`
 
   const allReviews = [...report.reviews].sort(
     (a, b) => new Date(a.reviewedAt).getTime() - new Date(b.reviewedAt).getTime(),
@@ -218,7 +233,7 @@ export default function OverviewView({ report, reportId }: Props) {
     periodData = Array.from(weekMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([, d]) => d)
   }
 
-  // ── Token + AIC usage per review — line charts with hover drilldown
+  // ── Token + AIC usage per review
   const tokenData = reviews.map(r => ({
     date:       shortDate(r.reviewedAt.slice(0, 10)),
     tokens:     r.tokensUsed,
@@ -232,11 +247,11 @@ export default function OverviewView({ report, reportId }: Props) {
   const aicData = reviews
     .filter(r => r.aicCreditsUsed != null)
     .map(r => ({
-      date:       shortDate(r.reviewedAt.slice(0, 10)),
-      aic:        r.aicCreditsUsed as number,
-      pr:         `#${r.prNumber}`,
-      title:      r.prTitle,
-      result:     r.result,
+      date:   shortDate(r.reviewedAt.slice(0, 10)),
+      aic:    r.aicCreditsUsed as number,
+      pr:     `#${r.prNumber}`,
+      title:  r.prTitle,
+      result: r.result,
     }))
   const hasAicData = aicData.length > 0
 
@@ -288,15 +303,18 @@ export default function OverviewView({ report, reportId }: Props) {
   const maxModel    = modelArr[0]?.count ?? 1
   const hasModelData = providerArr.length > 0 || modelArr.length > 0
 
+  const AXIS = { fontSize: 11, fill: 'var(--color-foreground-subtle)' }
+  const GRID = { strokeDasharray: '3 3' as const, stroke: 'var(--color-border)' }
+
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--color-background)' }}>
       <PanelTopBar
         left={
           <div>
-            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>{reportId}</div>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{report.title ?? 'PR Review Report'}</div>
+            <div style={{ fontSize: '11px', color: S.fgSubtle, marginBottom: '2px' }}>{reportId}</div>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: S.fg }}>{report.title ?? 'PR Review Report'}</div>
             {report.subtitle && (
-              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '1px' }}>{report.subtitle}</div>
+              <div style={{ fontSize: '11px', color: S.fgMuted, marginTop: '1px' }}>{report.subtitle}</div>
             )}
           </div>
         }
@@ -312,8 +330,8 @@ export default function OverviewView({ report, reportId }: Props) {
                     style={{
                       fontSize: '12px', fontWeight: 500, padding: '4px 12px',
                       borderRadius: '6px', cursor: 'pointer', border: 'none',
-                      background: active ? '#0f172a' : '#f1f5f9',
-                      color: active ? '#f1f5f9' : '#475569',
+                      background: active ? S.fg : S.sunken,
+                      color: active ? 'var(--color-background)' : S.fgMuted,
                       transition: 'background 0.12s, color 0.12s',
                     }}
                   >
@@ -322,8 +340,8 @@ export default function OverviewView({ report, reportId }: Props) {
                 )
               })}
             </div>
-            {report.period && (
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>{report.period}</span>
+            {activePeriodLabel && (
+              <span style={{ fontSize: '11px', color: S.fgSubtle }}>{activePeriodLabel}</span>
             )}
           </div>
         }
@@ -333,18 +351,18 @@ export default function OverviewView({ report, reportId }: Props) {
 
         {/* KPI row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '16px' }}>
-          <KpiCard label="Total Reviews"         value={String(reviews.length)} sub={report.period} />
+          <KpiCard label="Total Reviews"         value={String(reviews.length)} sub={activePeriodLabel} />
           <KpiCard label="Avg Review Time"        value={fmtMs(avgTimeMs)} />
           <KpiCard label="Changes Requested"      value={`${changesPct}%`} sub={`${changesCount} of ${reviews.length}`} accent="#dc2626" />
           <KpiCard label="Avg Accuracy Rating"    value={`${avgAccuracy.toFixed(1)}%`} accent="#16a34a" />
           <KpiCard label="AIC Credits Used"       value={totalAicCredits > 0 ? String(totalAicCredits) : '—'} sub={aicReviews.length > 0 ? `${aicReviews.length} of ${reviews.length} reviews` : 'no AIC data'} accent="#7c3aed" />
         </div>
 
-        {/* Reviews by period + token usage + AIC */}
+        {/* Reviews by period + token usage */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
           <Card title={periodChartTitle} sub="stacked by outcome">
             {periodData.length === 0 ? (
-              <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '12px' }}>
+              <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: S.fgSubtle, fontSize: '12px' }}>
                 No reviews in this range
               </div>
             ) : (
@@ -362,7 +380,7 @@ export default function OverviewView({ report, reportId }: Props) {
                 </ResponsiveContainer>
                 <div style={{ display: 'flex', gap: '14px', marginTop: '10px' }}>
                   {[['#4ade80','Approved'],['#f87171','Changes'],['#fbbf24','Commented']].map(([c,l]) => (
-                    <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#64748b' }}>
+                    <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: S.fgMuted }}>
                       <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: c, flexShrink: 0 }} />
                       {l}
                     </div>
@@ -374,7 +392,7 @@ export default function OverviewView({ report, reportId }: Props) {
 
           <Card title="Tokens per Review" sub="each point is one PR — hover for details">
             {tokenData.length === 0 ? (
-              <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '12px' }}>
+              <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: S.fgSubtle, fontSize: '12px' }}>
                 No reviews in this range
               </div>
             ) : (
@@ -394,18 +412,18 @@ export default function OverviewView({ report, reportId }: Props) {
                     const d = payload[0]?.payload as typeof tokenData[0]
                     const dotColor = d.result === 'approved' ? '#16a34a' : d.result === 'changes-requested' ? '#dc2626' : '#d97706'
                     return (
-                      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '9px 12px', fontSize: '12px', boxShadow: '0 4px 16px rgba(0,0,0,.1)', maxWidth: '230px' }}>
+                      <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '8px', padding: '9px 12px', fontSize: '12px', boxShadow: '0 4px 16px rgba(0,0,0,.12)', maxWidth: '230px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
-                          <span style={{ fontFamily: 'ui-monospace,monospace', color: '#475569', fontSize: '11px' }}>{d.pr}</span>
+                          <span style={{ fontFamily: 'ui-monospace,monospace', color: S.fgMuted, fontSize: '11px' }}>{d.pr}</span>
                           <span style={{ fontSize: '10px', fontWeight: 600, color: dotColor, background: dotColor + '18', borderRadius: '4px', padding: '1px 5px' }}>
                             {d.result === 'changes-requested' ? 'changes' : d.result}
                           </span>
                         </div>
-                        <div style={{ color: '#1e293b', fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
+                        <div style={{ color: S.fgSec, fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
                           {d.title.length > 52 ? d.title.slice(0, 50) + '…' : d.title}
                         </div>
                         <div style={{ color: '#6366f1', fontWeight: 700 }}>{fmtTokensK(d.tokens)} tokens</div>
-                        <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '2px' }}>${d.cost.toFixed(3)}</div>
+                        <div style={{ color: S.fgSubtle, fontSize: '11px', marginTop: '2px' }}>${d.cost.toFixed(3)}</div>
                       </div>
                     )
                   }} />
@@ -416,7 +434,7 @@ export default function OverviewView({ report, reportId }: Props) {
                     strokeWidth={2}
                     fill="url(#tokenGrad)"
                     dot={tokenData.length <= 30 ? { r: 3, fill: '#6366f1', strokeWidth: 0 } : false}
-                    activeDot={{ r: 5, fill: '#6366f1', stroke: '#fff', strokeWidth: 2 }}
+                    activeDot={{ r: 5, fill: '#6366f1', stroke: S.surface, strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -424,7 +442,7 @@ export default function OverviewView({ report, reportId }: Props) {
           </Card>
         </div>
 
-        {/* AIC Credits line chart — full width, shown only when data exists */}
+        {/* AIC Credits line chart */}
         {hasAicData && (
           <div style={{ marginBottom: '12px' }}>
             <Card title="AIC Credits per Review" sub="GitHub Copilot AIC consumption — each point is one PR">
@@ -444,14 +462,14 @@ export default function OverviewView({ report, reportId }: Props) {
                     const d = payload[0]?.payload as typeof aicData[0]
                     const dotColor = d.result === 'approved' ? '#16a34a' : d.result === 'changes-requested' ? '#dc2626' : '#d97706'
                     return (
-                      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '9px 12px', fontSize: '12px', boxShadow: '0 4px 16px rgba(0,0,0,.1)', maxWidth: '230px' }}>
+                      <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '8px', padding: '9px 12px', fontSize: '12px', boxShadow: '0 4px 16px rgba(0,0,0,.12)', maxWidth: '230px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
-                          <span style={{ fontFamily: 'ui-monospace,monospace', color: '#475569', fontSize: '11px' }}>{d.pr}</span>
+                          <span style={{ fontFamily: 'ui-monospace,monospace', color: S.fgMuted, fontSize: '11px' }}>{d.pr}</span>
                           <span style={{ fontSize: '10px', fontWeight: 600, color: dotColor, background: dotColor + '18', borderRadius: '4px', padding: '1px 5px' }}>
                             {d.result === 'changes-requested' ? 'changes' : d.result}
                           </span>
                         </div>
-                        <div style={{ color: '#1e293b', fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
+                        <div style={{ color: S.fgSec, fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
                           {d.title.length > 52 ? d.title.slice(0, 50) + '…' : d.title}
                         </div>
                         <div style={{ color: '#7c3aed', fontWeight: 700 }}>{d.aic} AIC credits</div>
@@ -465,7 +483,7 @@ export default function OverviewView({ report, reportId }: Props) {
                     strokeWidth={2}
                     fill="url(#aicGrad)"
                     dot={aicData.length <= 30 ? { r: 3, fill: '#7c3aed', strokeWidth: 0 } : false}
-                    activeDot={{ r: 5, fill: '#7c3aed', stroke: '#fff', strokeWidth: 2 }}
+                    activeDot={{ r: 5, fill: '#7c3aed', stroke: S.surface, strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -477,7 +495,7 @@ export default function OverviewView({ report, reportId }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
           <Card title="Findings by Hat" sub="total findings across all reviews">
             {findingsArr.length === 0 ? (
-              <div style={{ color: '#94a3b8', fontSize: '12px', paddingTop: '4px' }}>No finding data available.</div>
+              <div style={{ color: S.fgSubtle, fontSize: '12px', paddingTop: '4px' }}>No finding data available.</div>
             ) : (
               <div style={{ paddingTop: '4px' }}>
                 {findingsArr.map(d => {
@@ -518,15 +536,15 @@ export default function OverviewView({ report, reportId }: Props) {
               <div style={{ paddingTop: '4px' }}>
                 {providerArr.length > 0 && (
                   <>
-                    <div style={{ fontSize: '10px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Provider</div>
+                    <div style={{ fontSize: '10px', fontWeight: 600, color: S.fgSubtle, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Provider</div>
                     {providerArr.map(d => (
-                      <HBar key={d.name} label={d.name} value={d.count} max={maxProvider} color={PROVIDER_COLOR[d.name as LlmProvider] ?? '#475569'} />
+                      <HBar key={d.name} label={d.name} value={d.count} max={maxProvider} color={PROVIDER_COLOR[d.name as LlmProvider] ?? S.fgMuted} />
                     ))}
                   </>
                 )}
                 {modelArr.length > 0 && (
                   <>
-                    <div style={{ fontSize: '10px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: providerArr.length ? '12px' : '0', marginBottom: '6px' }}>Models</div>
+                    <div style={{ fontSize: '10px', fontWeight: 600, color: S.fgSubtle, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: providerArr.length ? '12px' : '0', marginBottom: '6px' }}>Models</div>
                     {modelArr.map(d => (
                       <HBar key={d.name} label={d.name} value={d.count} max={maxModel} color="#6366f1" />
                     ))}
@@ -541,4 +559,3 @@ export default function OverviewView({ report, reportId }: Props) {
     </div>
   )
 }
-

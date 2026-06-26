@@ -287,6 +287,89 @@ async function handleListBlobs(
   return res.end(JSON.stringify({ blobs }))
 }
 
+// ── Get artifact ──────────────────────────────────────────────────────────────
+// Fetches an arbitrary blob by blobPath (a storage-relative path).
+// Mirrors api/get-artifact.ts for local dev.
+
+function buildArtifactUrl(baseUrl: string, blobPath: string, sasToken: string | undefined): string {
+  const url = new URL(baseUrl)
+  const segments = blobPath.split('/').filter(Boolean).map(s => encodeURIComponent(s))
+  url.pathname = [url.pathname.replace(/\/$/, ''), ...segments].join('/')
+  if (sasToken) {
+    const token = sasToken.startsWith('?') ? sasToken.slice(1) : sasToken
+    new URLSearchParams(token).forEach((v, k) => url.searchParams.set(k, v))
+  }
+  return url.toString()
+}
+
+async function handleGetArtifact(
+  query: NodeJS.Dict<string | string[]>,
+  res: http.ServerResponse,
+) {
+  const CORS_ORIGIN = 'https://trace.playwright.dev'
+  res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN)
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Accept')
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type, Accept-Ranges')
+
+  const rawBlobPath = query['blobPath']
+  const blobPath    = (Array.isArray(rawBlobPath) ? rawBlobPath[0] : rawBlobPath) ?? ''
+
+  if (!blobPath) {
+    res.writeHead(400, { 'Content-Type': 'application/json' })
+    return res.end(JSON.stringify({ error: 'Missing required query parameter: blobPath' }))
+  }
+
+  if (/^https?:\/\//i.test(blobPath) || blobPath.startsWith('//') || blobPath.includes('..')) {
+    res.writeHead(400, { 'Content-Type': 'application/json' })
+    return res.end(JSON.stringify({ error: 'Invalid blobPath: must be a relative storage path' }))
+  }
+
+  const rawReport  = query['report']
+  const reportType = (Array.isArray(rawReport) ? rawReport[0] : rawReport) ?? ''
+
+  const baseUrl = process.env['AZURE_BLOB_BASE_URL']
+  if (!baseUrl) {
+    res.writeHead(500, { 'Content-Type': 'application/json' })
+    return res.end(JSON.stringify({ error: 'Server misconfiguration: no AZURE_BLOB_BASE_URL configured' }))
+  }
+
+  const sasToken   = resolveToken(reportType)
+  const artifactUrl = buildArtifactUrl(baseUrl, blobPath, sasToken)
+  console.log(`[api/get-artifact] fetching → ${artifactUrl.replace(/sig=[^&]+/, 'sig=***')}`)
+
+  try {
+    const upstream = await fetch(artifactUrl)
+    console.log(`[api/get-artifact] azure response: HTTP ${upstream.status}`)
+
+    if (upstream.status === 404) {
+      res.writeHead(404, { 'Content-Type': 'application/json' })
+      return res.end(JSON.stringify({ error: `Artifact not found: ${blobPath}` }))
+    }
+    if (!upstream.ok) {
+      res.writeHead(502, { 'Content-Type': 'application/json' })
+      return res.end(JSON.stringify({ error: `Upstream storage error: HTTP ${upstream.status}` }))
+    }
+
+    const contentType   = upstream.headers.get('content-type')   ?? 'application/octet-stream'
+    const contentLength = upstream.headers.get('content-length')
+    const acceptRanges  = upstream.headers.get('accept-ranges')
+
+    const headers: Record<string, string> = { 'Content-Type': contentType, 'Cache-Control': 's-maxage=300, stale-while-revalidate=60' }
+    if (contentLength) headers['Content-Length'] = contentLength
+    if (acceptRanges)  headers['Accept-Ranges']  = acceptRanges
+
+    res.writeHead(200, headers)
+    const buffer = await upstream.arrayBuffer()
+    return res.end(Buffer.from(buffer))
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[api/get-artifact]', err)
+    res.writeHead(500, { 'Content-Type': 'application/json' })
+    return res.end(JSON.stringify({ error: `Failed to fetch artifact: ${message}` }))
+  }
+}
+
 // ── Get trace ──────────────────────────────────────────────────────────────────
 
 async function handleGetTrace(
@@ -373,6 +456,8 @@ const server = http.createServer(async (req, res) => {
     await handleListBlobs(parsed.query, res)
   } else if (parsed.pathname === '/api/get-trace') {
     await handleGetTrace(parsed.query, res)
+  } else if (parsed.pathname === '/api/get-artifact') {
+    await handleGetArtifact(parsed.query, res)
   } else {
     res.setHeader('Content-Type', 'application/json')
     res.writeHead(404)

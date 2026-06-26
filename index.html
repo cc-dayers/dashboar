@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
     <script>
-      (function(){var t=localStorage.getItem('dashboar_theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)})()
+      (function(){var s=localStorage.getItem('dashboar_theme');var t=(s==='dark'||s==='light')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t)})()
     </script>
   </head>
   <body>

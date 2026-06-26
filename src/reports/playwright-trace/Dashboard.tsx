@@ -205,17 +205,17 @@ function EmptyState({ runCount }: { runCount: number }) {
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      background: '#f8fafc', color: '#94a3b8', textAlign: 'center', padding: '40px',
+      background: 'var(--color-background)', textAlign: 'center', padding: '40px',
     }}>
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ marginBottom: '16px', opacity: 0.4 }}>
-        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round"/>
-        <rect x="9" y="3" width="6" height="4" rx="1" stroke="#64748b" strokeWidth="1.5"/>
-        <path d="M9 12h6M9 16h4" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="var(--color-foreground-muted)" strokeWidth="1.5" strokeLinecap="round"/>
+        <rect x="9" y="3" width="6" height="4" rx="1" stroke="var(--color-foreground-muted)" strokeWidth="1.5"/>
+        <path d="M9 12h6M9 16h4" stroke="var(--color-foreground-muted)" strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
-      <div style={{ fontSize: '15px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
+      <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-foreground-muted)', marginBottom: '6px' }}>
         Select a test run
       </div>
-      <div style={{ fontSize: '13px', color: '#94a3b8', maxWidth: '280px', lineHeight: 1.5 }}>
+      <div style={{ fontSize: '13px', color: 'var(--color-foreground-subtle)', maxWidth: '280px', lineHeight: 1.5 }}>
         Choose one of the {runCount} run{runCount !== 1 ? 's' : ''} in the sidebar to open its Playwright trace in the viewer.
       </div>
     </div>

@@ -1,0 +1,177 @@
+{
+  "$schema": "reports/report.v1.schema.json",
+  "schemaVersion": "1",
+  "buildId": "20260625.7",
+  "buildNumber": "1042",
+  "suite": "E2E · Portals React",
+  "suiteName": "E2E · Portals React",
+  "suiteSlug": "e2e-portals-react",
+  "jobName": "e2e-portals",
+  "matrixLabel": "chromium",
+  "branch": "main",
+  "commit": "a3f2c1d9e4b85f0",
+  "status": "failed",
+  "result": "failed",
+  "durationMs": 87400,
+  "execution": {
+    "playwrightCommand": "npx playwright test --project chromium --shard 1/2",
+    "workers": 4
+  },
+  "summary": {
+    "total": 48,
+    "passed": 43,
+    "failed": 4,
+    "skipped": 1,
+    "flaky": 0
+  },
+  "links": {
+    "htmlReportUrl": "https://example.com/reports/1042/portals-chromium",
+    "playwrightWorkspaceReportUrl": "https://playwright.microsoft.com/example-workspace",
+    "adoArtifactsUrl": "https://dev.azure.com/org/project/_build/results?buildId=20260625.7"
+  },
+  "tests": [
+    {
+      "title": "Patient portal › login › should authenticate with valid credentials",
+      "project": "chromium",
+      "file": "tests/portal/login.spec.ts",
+      "line": 14,
+      "status": "failed",
+      "durationMs": 8200,
+      "error": "Error: Timed out 5000ms waiting for expect(locator).toBeVisible()\n\nLocator: getByTestId('login-submit-btn')\nExpected: visible\nReceived: hidden\n\n  at tests/portal/login.spec.ts:28:7",
+      "artifacts": {
+        "screenshot": {
+          "name": "screenshot",
+          "contentType": "image/png",
+          "relativePath": "test-results/portal-login-failed/screenshot.png",
+          "blobPath": "e2e-reports/runs/2026-06-25/portals-chromium/artifacts/portal-login-failed/screenshot.png",
+          "url": null,
+          "proxyPath": null
+        },
+        "trace": {
+          "name": "trace",
+          "contentType": "application/zip",
+          "relativePath": "test-results/portal-login-failed/trace.zip",
+          "blobPath": "e2e-reports/runs/2026-06-25/portals-chromium/artifacts/portal-login-failed/trace.zip",
+          "url": null,
+          "proxyPath": null
+        }
+      }
+    },
+    {
+      "title": "Patient portal › appointments › should display upcoming appointments",
+      "project": "chromium",
+      "file": "tests/portal/appointments.spec.ts",
+      "line": 22,
+      "status": "failed",
+      "durationMs": 5100,
+      "error": "AssertionError: expected 3 to equal 5\n\n  at tests/portal/appointments.spec.ts:35:5\n\nContext: appointment count returned by API was 3, expected 5 from test data seed",
+      "artifacts": {
+        "screenshot": {
+          "name": "screenshot",
+          "contentType": "image/png",
+          "relativePath": "test-results/portal-appointments-failed/screenshot.png",
+          "blobPath": "e2e-reports/runs/2026-06-25/portals-chromium/artifacts/portal-appointments-failed/screenshot.png",
+          "url": null,
+          "proxyPath": null
+        },
+        "trace": {
+          "name": "trace",
+          "contentType": "application/zip",
+          "relativePath": "test-results/portal-appointments-failed/trace.zip",
+          "blobPath": "e2e-reports/runs/2026-06-25/portals-chromium/artifacts/portal-appointments-failed/trace.zip",
+          "url": null,
+          "proxyPath": null
+        }
+      }
+    },
+    {
+      "title": "Care team › messaging › should send a message to care team",
+      "project": "chromium",
+      "file": "tests/care-team/messaging.spec.ts",
+      "line": 41,
+      "status": "failed",
+      "durationMs": 12300,
+      "error": "Error: net::ERR_CONNECTION_REFUSED at https://api-staging.carecontinuity.com/v1/messages\n\nThe staging API appears to be down. All tests depending on real API calls will fail.",
+      "artifacts": {
+        "trace": {
+          "name": "trace",
+          "contentType": "application/zip",
+          "relativePath": "test-results/care-team-messaging-failed/trace.zip",
+          "blobPath": "e2e-reports/runs/2026-06-25/portals-chromium/artifacts/care-team-messaging-failed/trace.zip",
+          "url": null,
+          "proxyPath": null
+        }
+      }
+    },
+    {
+      "title": "Admin › user management › should export user list as CSV",
+      "project": "chromium",
+      "file": "tests/admin/users.spec.ts",
+      "line": 88,
+      "status": "failed",
+      "durationMs": 3600,
+      "error": "Error: Download timed out after 10s\n\n  at tests/admin/users.spec.ts:96:7",
+      "artifacts": {}
+    },
+    {
+      "title": "Patient portal › profile › should update contact preferences",
+      "project": "chromium",
+      "file": "tests/portal/profile.spec.ts",
+      "line": 55,
+      "status": "passed",
+      "durationMs": 2100,
+      "error": null,
+      "artifacts": {}
+    },
+    {
+      "title": "Patient portal › profile › should update notification settings",
+      "project": "chromium",
+      "file": "tests/portal/profile.spec.ts",
+      "line": 78,
+      "status": "passed",
+      "durationMs": 1900,
+      "error": null,
+      "artifacts": {}
+    },
+    {
+      "title": "Patient portal › dashboard › should display care summary widget",
+      "project": "chromium",
+      "file": "tests/portal/dashboard.spec.ts",
+      "line": 10,
+      "status": "passed",
+      "durationMs": 1700,
+      "error": null,
+      "artifacts": {}
+    },
+    {
+      "title": "Patient portal › dashboard › should display recent activity feed",
+      "project": "chromium",
+      "file": "tests/portal/dashboard.spec.ts",
+      "line": 30,
+      "status": "passed",
+      "durationMs": 2300,
+      "error": null,
+      "artifacts": {}
+    },
+    {
+      "title": "Patient portal › dashboard › should navigate to appointments from widget",
+      "project": "chromium",
+      "file": "tests/portal/dashboard.spec.ts",
+      "line": 52,
+      "status": "passed",
+      "durationMs": 1500,
+      "error": null,
+      "artifacts": {}
+    },
+    {
+      "title": "Legacy migration › FHIR import › should skip archived records @slow",
+      "project": "chromium",
+      "file": "tests/migration/fhir.spec.ts",
+      "line": 120,
+      "status": "skipped",
+      "durationMs": 0,
+      "error": null,
+      "artifacts": {}
+    }
+  ]
+}

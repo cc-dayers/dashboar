@@ -53,6 +53,7 @@ export interface PrReview {
   timeToReviewMs: number
   accuracyRating: number
   result: ReviewResult
+  workspace?: string | null
   hats: string[]
   hatDetails?: ReviewHat[]
   tokensUsed: number

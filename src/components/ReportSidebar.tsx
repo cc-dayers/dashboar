@@ -21,11 +21,11 @@ export default function ReportSidebar({ isMobile, open, onClose, header, footer,
         />
       )}
       <aside style={{
-        background:    '#0f172a',
+        background:    'var(--color-sidebar)',
         display:       'flex',
         flexDirection: 'column',
         width:         '280px',
-        borderRight:   '1px solid #1e293b',
+        borderRight:   '1px solid var(--color-sidebar-border)',
         flexShrink:    0,
         height:        '100%',
         overflow:      'hidden',

@@ -12,20 +12,20 @@
 
 @theme {
   /* ── Adaptive surface ──────────────────────────────────────── */
-  --color-background:           #f8fafc;  /* page canvas            */
+  --color-background:           #f6f8fa;  /* page canvas            */
   --color-surface:              #ffffff;  /* card / panel           */
   --color-surface-raised:       #ffffff;  /* elevated card          */
-  --color-surface-sunken:       #f1f5f9;  /* inset / code bg        */
+  --color-surface-sunken:       #eaeef2;  /* inset / code bg        */
 
   /* ── Adaptive border ───────────────────────────────────────── */
-  --color-border:               #e2e8f0;
-  --color-border-subtle:        #f1f5f9;
+  --color-border:               #d0d7de;
+  --color-border-subtle:        #e9ecef;
 
   /* ── Adaptive text ─────────────────────────────────────────── */
-  --color-foreground:           #0f172a;
-  --color-foreground-secondary: #334155;
-  --color-foreground-muted:     #64748b;
-  --color-foreground-subtle:    #94a3b8;
+  --color-foreground:           #1f2328;
+  --color-foreground-secondary: #444c56;
+  --color-foreground-muted:     #636c76;
+  --color-foreground-subtle:    #8c959f;
 
   /* ── Adaptive accent (indigo) ──────────────────────────────── */
   --color-accent:               #4f46e5;
@@ -34,13 +34,13 @@
   --color-accent-foreground:    #4f46e5;
   --color-accent-muted:         #818cf8;
 
-  /* ── Sidebar — always dark, no color-scheme flip ───────────── */
-  --color-sidebar:              #0f172a;
-  --color-sidebar-border:       #1e293b;
-  --color-sidebar-raised:       #1e293b;
-  --color-sidebar-foreground:   #f1f5f9;
-  --color-sidebar-secondary:    #94a3b8;
-  --color-sidebar-muted:        #475569;
+  /* ── Sidebar — adaptive; darker than main pane in both modes ─ */
+  --color-sidebar:              #eaeef2;
+  --color-sidebar-border:       #d0d7de;
+  --color-sidebar-raised:       #dde1e6;
+  --color-sidebar-foreground:   #1f2328;
+  --color-sidebar-secondary:    #444c56;
+  --color-sidebar-muted:        #636c76;
 }
 
 /* ── Dark token values (shared between media query and manual override) ─────── */
@@ -49,18 +49,24 @@
     --color-background:           #020617;
     --color-surface:              #0f172a;
     --color-surface-raised:       #1e293b;
-    --color-surface-sunken:       #020617;
+    --color-surface-sunken:       #050d1a;
     --color-border:               #1e293b;
-    --color-border-subtle:        #0f172a;
+    --color-border-subtle:        #1e293b;
     --color-foreground:           #f1f5f9;
     --color-foreground-secondary: #cbd5e1;
     --color-foreground-muted:     #94a3b8;
-    --color-foreground-subtle:    #475569;
+    --color-foreground-subtle:    #64748b;
     --color-accent:               #818cf8;
     --color-accent-hover:         #a5b4fc;
     --color-accent-surface:       #1e1b4b;
-    --color-accent-foreground:    #818cf8;
+    --color-accent-foreground:    #a5b4fc;
     --color-accent-muted:         #6366f1;
+    --color-sidebar:              #0f172a;
+    --color-sidebar-border:       #1e293b;
+    --color-sidebar-raised:       #1e293b;
+    --color-sidebar-foreground:   #f1f5f9;
+    --color-sidebar-secondary:    #94a3b8;
+    --color-sidebar-muted:        #475569;
   }
 }
 
@@ -69,17 +75,22 @@
   --color-background:           #020617;
   --color-surface:              #0f172a;
   --color-surface-raised:       #1e293b;
-  --color-surface-sunken:       #020617;
+  --color-surface-sunken:       #050d1a;
   --color-border:               #1e293b;
-  --color-border-subtle:        #0f172a;
+  --color-border-subtle:        #1e293b;
   --color-foreground:           #f1f5f9;
   --color-foreground-secondary: #cbd5e1;
   --color-foreground-muted:     #94a3b8;
-  --color-foreground-subtle:    #475569;
+  --color-foreground-subtle:    #64748b;
   --color-accent:               #818cf8;
   --color-accent-hover:         #a5b4fc;
   --color-accent-surface:       #1e1b4b;
-  --color-accent-foreground:    #818cf8;
+  --color-accent-foreground:    #a5b4fc;
   --color-accent-muted:         #6366f1;
-  /* sidebar tokens unchanged */
+  --color-sidebar:              #0f172a;
+  --color-sidebar-border:       #1e293b;
+  --color-sidebar-raised:       #1e293b;
+  --color-sidebar-foreground:   #f1f5f9;
+  --color-sidebar-secondary:    #94a3b8;
+  --color-sidebar-muted:        #475569;
 }
