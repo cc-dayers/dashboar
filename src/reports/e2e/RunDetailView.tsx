@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import type { E2eRunEntry, E2eRunStatus } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
 
@@ -16,32 +17,25 @@ function runStatusColor(status: E2eRunStatus | string): string {
   return '#94a3b8'
 }
 
-// Build a URL pointing to our self-hosted trace viewer with the trace routed
-// through our /api/blob proxy (same-origin → no CORS required).
-// Falls back to passing the pre-signed Azure URL directly (still needs Azure CORS,
-// but works if the user has configured it).
-function traceViewerUrl(
-  traceUrl:  string | null | undefined,
+// Build the proxy URL for the trace. Prefers proxyPath from the JSON (set by
+// the generation pipeline), falls back to constructing from blobPath.
+// The proxy URL routes through /api/blob (our own origin), so the trace viewer's
+// service worker fetches same-origin — no CORS needed.
+function traceProxyUrl(
   proxyPath: string | null | undefined,
   blobPath:  string | null | undefined,
   reportType: string,
 ): string | null {
-  let src: string | null = null
-
   if (proxyPath) {
-    // proxyPath is e.g. "/api/blob?path=..." — append report type then use as-is
     const full = proxyPath.includes('report=')
       ? proxyPath
       : `${proxyPath}&report=${encodeURIComponent(reportType)}`
-    src = `${window.location.origin}${full}`
-  } else if (blobPath) {
-    src = `${window.location.origin}/api/blob?path=${encodeURIComponent(blobPath)}&report=${encodeURIComponent(reportType)}`
-  } else if (traceUrl) {
-    // Pre-signed Azure URL — viewer can still load it if Azure CORS allows our origin
-    src = traceUrl
+    return `${window.location.origin}${full}`
   }
-
-  return src ? `/trace-viewer/index.html?trace=${encodeURIComponent(src)}` : null
+  if (blobPath) {
+    return `${window.location.origin}/api/blob?path=${encodeURIComponent(blobPath)}&report=${encodeURIComponent(reportType)}`
+  }
+  return null
 }
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -53,6 +47,37 @@ const S = {
   fgMuted:  'var(--color-foreground-muted)',
   fgSubtle: 'var(--color-foreground-subtle)',
   sunken:   'var(--color-surface-sunken)',
+}
+
+// ── Tab bar ───────────────────────────────────────────────────────────────────
+
+function TabBar({ active, hasReport, hasTrace, onChange }: {
+  active:    'report' | 'trace'
+  hasReport: boolean
+  hasTrace:  boolean
+  onChange:  (t: 'report' | 'trace') => void
+}) {
+  if (!hasReport && !hasTrace) return null
+  const tab = (id: 'report' | 'trace', label: string) => (
+    <button
+      onClick={() => onChange(id)}
+      style={{
+        fontSize: '11.5px', fontWeight: 600, padding: '4px 12px', border: 'none',
+        borderRadius: '5px', cursor: 'pointer',
+        background: active === id ? 'var(--color-accent)' : 'transparent',
+        color: active === id ? '#fff' : S.fgMuted,
+        transition: 'background 0.15s, color 0.15s',
+      }}
+    >
+      {label}
+    </button>
+  )
+  return (
+    <div style={{ display: 'flex', gap: '2px', background: S.sunken, borderRadius: '7px', padding: '2px' }}>
+      {hasReport && tab('report', 'Report')}
+      {hasTrace  && tab('trace',  'Trace')}
+    </div>
+  )
 }
 
 // ── Summary strip ─────────────────────────────────────────────────────────────
@@ -107,9 +132,31 @@ interface Props {
 export default function RunDetailView({ run, reportType, onBack }: Props) {
   const htmlReportUrl = run.links?.htmlReportUrl ?? null
   const trace         = run.trace
-  const viewerUrl     = trace
-    ? traceViewerUrl(trace.url, trace.proxyPath, trace.blobPath, reportType)
+  const proxyUrl      = trace ? traceProxyUrl(trace.proxyPath, trace.blobPath, reportType) : null
+  // Self-hosted trace viewer — same origin, service worker registers fine, no CORS needed
+  const viewerUrl     = proxyUrl
+    ? `/trace-viewer/index.html?trace=${encodeURIComponent(proxyUrl)}`
     : null
+
+  const hasReport = !!htmlReportUrl
+  const hasTrace  = !!viewerUrl
+
+  // Track tab and whether the trace iframe has ever been activated.
+  // Trace iframe only gets its src on first activation — lazy load to save bandwidth.
+  const [activeTab,      setActiveTab]      = useState<'report' | 'trace'>(hasReport ? 'report' : 'trace')
+  const [traceActivated, setTraceActivated] = useState(false)
+
+  // Reset when switching to a different run
+  const runKey = run.reportBlobPath ?? run.id ?? run.buildNumber
+  useEffect(() => {
+    setActiveTab(hasReport ? 'report' : 'trace')
+    setTraceActivated(false)
+  }, [runKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleTabChange = (tab: 'report' | 'trace') => {
+    setActiveTab(tab)
+    if (tab === 'trace') setTraceActivated(true)
+  }
 
   const suiteName = run.suiteName ?? run.suite ?? run.jobName ?? 'Run'
 
@@ -137,45 +184,64 @@ export default function RunDetailView({ run, reportType, onBack }: Props) {
           </div>
         }
         right={
-          viewerUrl ? (
-            <a
-              href={viewerUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '5px 12px', borderRadius: '6px',
-                background: '#7c3aed', color: '#fff',
-                textDecoration: 'none', fontSize: '11.5px', fontWeight: 600,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M2 3a1 1 0 011-1h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3zm2 1v8h8V4H4zm3 2l3 2-3 2V6z"/>
-              </svg>
-              View Trace
-            </a>
-          ) : undefined
+          <TabBar
+            active={activeTab}
+            hasReport={hasReport}
+            hasTrace={hasTrace}
+            onChange={handleTabChange}
+          />
         }
       />
 
-      {htmlReportUrl ? (
-        <>
-          <SummaryStrip run={run} />
-          <iframe
-            src={htmlReportUrl}
-            style={{ flex: 1, width: '100%', border: 'none', display: 'block' }}
-            title="Playwright HTML Report"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-          />
-        </>
-      ) : (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: S.fgMuted, fontSize: '13px' }}>
-          {viewerUrl
-            ? 'No HTML report available — use the View Trace button above.'
-            : 'No report or trace available for this run.'}
+      {/* Content area — both tabs live in the DOM once activated; visibility swap avoids iframe reloads */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+
+        {/* Report tab */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column',
+          visibility: activeTab === 'report' ? 'visible' : 'hidden',
+          pointerEvents: activeTab === 'report' ? 'auto' : 'none',
+        }}>
+          {htmlReportUrl ? (
+            <>
+              <SummaryStrip run={run} />
+              <iframe
+                src={htmlReportUrl}
+                style={{ flex: 1, width: '100%', border: 'none' }}
+                title="Playwright HTML Report"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              />
+            </>
+          ) : (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: S.fgMuted, fontSize: '13px' }}>
+              No HTML report available for this run.
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Trace tab — iframe only gets its src on first activation (lazy bandwidth) */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          visibility: activeTab === 'trace' ? 'visible' : 'hidden',
+          pointerEvents: activeTab === 'trace' ? 'auto' : 'none',
+        }}>
+          {traceActivated && viewerUrl ? (
+            // No sandbox: same-origin iframe, service worker must be allowed to register
+            <iframe
+              src={viewerUrl}
+              style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+              title="Playwright Trace Viewer"
+              allow="clipboard-read; clipboard-write"
+            />
+          ) : !hasTrace ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: S.fgMuted, fontSize: '13px' }}>
+              No trace available for this run.
+            </div>
+          ) : null}
+        </div>
+
+      </div>
     </div>
   )
 }

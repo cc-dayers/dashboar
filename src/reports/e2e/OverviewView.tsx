@@ -145,7 +145,7 @@ function KpiRow({ report, runs }: { report: E2eAggregateReport; runs: E2eRunEntr
       <KpiCard label="Pass Rate"    value={`${passRate}%`}    accent={passRate >= 90 ? C.pass : passRate >= 70 ? C.flaky : C.fail} />
       <KpiCard label="Tests"        value={String(totalTests)} sub={failedTests > 0 ? `${failedTests} failed` : undefined} />
       <KpiCard label="Flaky"        value={String(flakyTests)} accent={flakyTests > 0 ? C.flaky : undefined} />
-      {totalMs > 0 && <KpiCard label="Duration" value={fmtMs(totalMs)} />}
+      {/* Duration intentionally omitted — averaging smoke + core runs produces a meaningless number */}
     </div>
   )
 }

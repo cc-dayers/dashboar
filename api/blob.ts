@@ -40,6 +40,23 @@ function resolveToken(reportType: string): string | undefined {
   return process.env['AZURE_SAS_TOKEN']
 }
 
+// blobPaths stored in report JSON are relative to the Azure container root (e.g. "reports/...").
+// REPORT_NAMES encodes the full storage path as "<container>/<prefix>" (e.g. "playwright/reports").
+// We extract just the container name and prepend it so the final URL is:
+//   AZURE_BLOB_BASE_URL / <container> / <blobPath>
+function resolveContainer(reportType: string): string {
+  const reportNames = process.env['REPORT_NAMES'] ?? ''
+  for (const entry of reportNames.split(',').map(s => s.trim()).filter(Boolean)) {
+    const colon = entry.indexOf(':')
+    if (colon === -1) continue
+    if (entry.slice(0, colon) !== reportType) continue
+    const storagePath = entry.slice(colon + 1)
+    const slash = storagePath.indexOf('/')
+    return slash !== -1 ? storagePath.slice(0, slash) : storagePath
+  }
+  return ''
+}
+
 function buildUrl(baseUrl: string, blobPath: string, sasToken: string | undefined): string {
   const url = new URL(baseUrl)
   const segments = blobPath.split('/').filter(Boolean).map(s => encodeURIComponent(s))
@@ -77,15 +94,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const baseUrl = process.env['AZURE_BLOB_BASE_URL']
   if (!baseUrl) return res.status(500).json({ error: 'Server misconfiguration: no AZURE_BLOB_BASE_URL' })
 
-  const sasToken = resolveToken(reportType)
+  const sasToken  = resolveToken(reportType)
+  const container = resolveContainer(reportType)
+  // Prepend container if not already present (blobPaths from JSON lack the container segment)
+  const fullPath  = container && !blobPath.startsWith(`${container}/`)
+    ? `${container}/${blobPath}`
+    : blobPath
+
   let artifactUrl: string
   try {
-    artifactUrl = buildUrl(baseUrl, blobPath, sasToken)
+    artifactUrl = buildUrl(baseUrl, fullPath, sasToken)
   } catch {
     return res.status(500).json({ error: 'Server misconfiguration: AZURE_BLOB_BASE_URL is not a valid URL' })
   }
 
-  console.log(`[api/blob] fetching → ${artifactUrl.replace(/sig=[^&]+/, 'sig=***')}`)
+  console.log(`[api/blob] fetching (container=${container || 'none'}) → ${artifactUrl.replace(/sig=[^&]+/, 'sig=***')}`)
 
   let upstream: Response
   try {

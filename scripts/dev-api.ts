@@ -370,6 +370,102 @@ async function handleGetArtifact(
   }
 }
 
+// ── Blob proxy (/api/blob) ────────────────────────────────────────────────────
+// Mirrors api/blob.ts for local dev. Serves arbitrary blob paths with the
+// container prefix resolved from REPORT_NAMES.
+
+function resolveContainer(reportType: string): string {
+  const reportNames = process.env['REPORT_NAMES'] ?? ''
+  for (const entry of reportNames.split(',').map(s => s.trim()).filter(Boolean)) {
+    const colon = entry.indexOf(':')
+    if (colon === -1) continue
+    if (entry.slice(0, colon) !== reportType) continue
+    const storagePath = entry.slice(colon + 1)
+    const slash = storagePath.indexOf('/')
+    return slash !== -1 ? storagePath.slice(0, slash) : storagePath
+  }
+  return ''
+}
+
+async function handleBlobProxy(
+  req: http.IncomingMessage,
+  query: NodeJS.Dict<string | string[]>,
+  res: http.ServerResponse,
+) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Accept')
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type, Accept-Ranges')
+
+  const rawPath    = query['path']
+  const blobPath   = (Array.isArray(rawPath) ? rawPath[0] : rawPath) ?? ''
+  const rawReport  = query['report']
+  const reportType = (Array.isArray(rawReport) ? rawReport[0] : rawReport) ?? 'playwright-trace'
+
+  if (!blobPath) {
+    res.writeHead(400, { 'Content-Type': 'application/json' })
+    return res.end(JSON.stringify({ error: 'Missing required query parameter: path' }))
+  }
+  if (/^https?:\/\//i.test(blobPath) || blobPath.startsWith('//') || blobPath.includes('..')) {
+    res.writeHead(400, { 'Content-Type': 'application/json' })
+    return res.end(JSON.stringify({ error: 'Invalid path: must be a relative storage path' }))
+  }
+
+  const baseUrl = process.env['AZURE_BLOB_BASE_URL']
+  if (!baseUrl) {
+    res.writeHead(500, { 'Content-Type': 'application/json' })
+    return res.end(JSON.stringify({ error: 'Server misconfiguration: no AZURE_BLOB_BASE_URL' }))
+  }
+
+  const container = resolveContainer(reportType)
+  const fullPath  = container && !blobPath.startsWith(`${container}/`)
+    ? `${container}/${blobPath}`
+    : blobPath
+
+  const sasToken   = resolveToken(reportType)
+  const artifactUrl = buildArtifactUrl(baseUrl, fullPath, sasToken)
+  console.log(`[api/blob] fetching (container=${container || 'none'}) → ${artifactUrl.replace(/sig=[^&]+/, 'sig=***')}`)
+
+  try {
+    const rangeHeader = req.headers['range']
+    const upstream = await fetch(artifactUrl, {
+      headers: rangeHeader ? { Range: rangeHeader } : {},
+    })
+    console.log(`[api/blob] azure response: HTTP ${upstream.status}`)
+
+    if (upstream.status === 404) {
+      res.writeHead(404, { 'Content-Type': 'application/json' })
+      return res.end(JSON.stringify({ error: `Not found: ${blobPath}` }))
+    }
+    if (!upstream.ok) {
+      res.writeHead(502, { 'Content-Type': 'application/json' })
+      return res.end(JSON.stringify({ error: `Upstream error: HTTP ${upstream.status}` }))
+    }
+
+    const contentType   = upstream.headers.get('content-type')   ?? 'application/octet-stream'
+    const contentLength = upstream.headers.get('content-length')
+    const acceptRanges  = upstream.headers.get('accept-ranges')
+    const contentRange  = upstream.headers.get('content-range')
+
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'Cache-Control': 's-maxage=3600, stale-while-revalidate=300',
+    }
+    if (contentLength) headers['Content-Length'] = contentLength
+    if (acceptRanges)  headers['Accept-Ranges']  = acceptRanges
+    if (contentRange)  headers['Content-Range']  = contentRange
+
+    res.writeHead(upstream.status === 206 ? 206 : 200, headers)
+    const buffer = await upstream.arrayBuffer()
+    return res.end(Buffer.from(buffer))
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[api/blob]', err)
+    res.writeHead(500, { 'Content-Type': 'application/json' })
+    return res.end(JSON.stringify({ error: `Failed to fetch: ${message}` }))
+  }
+}
+
 // ── Get trace ──────────────────────────────────────────────────────────────────
 
 async function handleGetTrace(
@@ -441,7 +537,7 @@ const server = http.createServer(async (req, res) => {
   const parsed = nodeUrl.parse(req.url ?? '', true)
 
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', 'https://trace.playwright.dev')
+    res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
     res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Accept')
     res.writeHead(204)
@@ -458,6 +554,8 @@ const server = http.createServer(async (req, res) => {
     await handleGetTrace(parsed.query, res)
   } else if (parsed.pathname === '/api/get-artifact') {
     await handleGetArtifact(parsed.query, res)
+  } else if (parsed.pathname === '/api/blob') {
+    await handleBlobProxy(req, parsed.query, res)
   } else {
     res.setHeader('Content-Type', 'application/json')
     res.writeHead(404)
