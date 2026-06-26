@@ -207,36 +207,22 @@ function RunRow({
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "2px",
+              gap: "3px",
               flexShrink: 0,
               fontVariantNumeric: "tabular-nums",
+              fontSize: "10.5px",
+              fontWeight: 600,
+              lineHeight: 1,
             }}
           >
-            <span
-              style={{
-                fontSize: "10.5px",
-                fontWeight: 600,
-                color: isPass ? "#22c55e" : "#ef4444",
-              }}
-            >
+            <span style={{ color: isPass ? "var(--color-sidebar-success)" : "var(--color-sidebar-danger)" }}>
               {s.passed}/{s.total}
             </span>
             {(s.failed ?? 0) > 0 && (
-              <span
-                style={{
-                  fontSize: "10px",
-                  color: "var(--color-sidebar-danger)",
-                }}
-              >
-                {" "}
-                ·{s.failed}✗
-              </span>
+              <span style={{ color: "var(--color-sidebar-danger)", fontWeight: 500 }}>·{s.failed}✗</span>
             )}
             {(s.flaky ?? 0) > 0 && (
-              <span style={{ fontSize: "10px", color: "#f59e0b" }}>
-                {" "}
-                ·{s.flaky}~
-              </span>
+              <span style={{ color: "#b45309", fontWeight: 500 }}>·{s.flaky}~</span>
             )}
           </div>
         ) : total > 0 ? (
