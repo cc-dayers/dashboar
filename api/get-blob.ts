@@ -162,7 +162,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const data: unknown = await upstream.json()
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300')
+    // public + max-age: browser caches for 5 min; s-maxage: CDN edge caches for 5 min.
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=300')
     return res.status(200).json(data)
   }
 

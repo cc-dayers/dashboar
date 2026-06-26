@@ -114,7 +114,7 @@ function KpiCard({ label, value, sub, accent }: { label: string; value: string; 
   )
 }
 
-function StackedBar({ passed, failed, flaky, skipped, total, height = 8 }: BucketData & { height?: number }) {
+function StackedBar({ passed, failed, flaky, skipped, total, height = 8 }: { passed: number; failed: number; flaky: number; skipped: number; total: number; height?: number }) {
   if (total === 0) return <div style={{ height, background: S.sunken, borderRadius: '4px' }} />
   return (
     <div style={{ display: 'flex', height, borderRadius: '4px', overflow: 'hidden', background: S.sunken }}>

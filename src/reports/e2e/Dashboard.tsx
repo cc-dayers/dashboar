@@ -240,11 +240,14 @@ export default function Dashboard({ data }: ReportProps) {
   const allRuns = report.reviews ?? report.runs ?? []
   const reportType = new URLSearchParams(window.location.search).get('report') ?? 'e2e-aggregate'
 
-  const [selKey,        setSelKey]        = useState<string | null>(null)
-  const [isMobile,      setIsMobile]      = useState(() => window.innerWidth < 768)
-  const [sidebarOpen,   setSidebarOpen]   = useState(() => window.innerWidth >= 768)
-  const [search,        setSearch]        = useState('')
-  const [statusFilter,  setStatusFilter]  = useState<'failed' | 'passed' | null>(null)
+  const [selKey,       setSelKey]       = useState<string | null>(null)
+  // lastSelKey persists the last viewed run so RunDetailView stays mounted
+  // (and its iframe stays loaded) when the user navigates back to the overview.
+  const [lastSelKey,   setLastSelKey]   = useState<string | null>(null)
+  const [isMobile,     setIsMobile]     = useState(() => window.innerWidth < 768)
+  const [sidebarOpen,  setSidebarOpen]  = useState(() => window.innerWidth >= 768)
+  const [search,       setSearch]       = useState('')
+  const [statusFilter, setStatusFilter] = useState<'failed' | 'passed' | null>(null)
 
   useEffect(() => {
     const onResize = () => {
@@ -259,13 +262,19 @@ export default function Dashboard({ data }: ReportProps) {
 
   const handleSelect = (key: string) => {
     setSelKey(key)
+    setLastSelKey(key)
     if (isMobile) setSidebarOpen(false)
   }
 
   const handleOverview = () => {
     setSelKey(null)
+    // lastSelKey intentionally not cleared — keeps RunDetailView mounted
     if (isMobile) setSidebarOpen(false)
   }
+
+  // The run we keep rendered (may differ from selKey when on overview)
+  const viewKey = selKey ?? lastSelKey
+  const viewRun = viewKey ? allRuns.find((r, i) => runKey(r, i) === viewKey) ?? null : null
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden', background: 'var(--color-background)' }}>
@@ -291,19 +300,36 @@ export default function Dashboard({ data }: ReportProps) {
           />
         )}
 
-        {selKey ? (
-          <RunDetailView
-            run={allRuns.find((r, i) => runKey(r, i) === selKey)!}
-            reportType={reportType}
-            onBack={handleOverview}
-          />
-        ) : (
-          <OverviewView
-            report={report}
-            onSelect={handleSelect}
-            runKeys={runKey}
-          />
-        )}
+        {/* Both panels stay mounted; CSS visibility swaps them without unmounting. */}
+        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+          {/* Detail view — hidden (but alive) when on overview */}
+          {viewRun && (
+            <div style={{
+              position: 'absolute', inset: 0,
+              visibility: selKey ? 'visible' : 'hidden',
+              pointerEvents: selKey ? 'auto' : 'none',
+            }}>
+              <RunDetailView
+                run={viewRun}
+                reportType={reportType}
+                onBack={handleOverview}
+              />
+            </div>
+          )}
+
+          {/* Overview — hidden when a run is selected */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            visibility: selKey ? 'hidden' : 'visible',
+            pointerEvents: selKey ? 'none' : 'auto',
+          }}>
+            <OverviewView
+              report={report}
+              onSelect={handleSelect}
+              runKeys={runKey}
+            />
+          </div>
+        </div>
       </main>
     </div>
   )

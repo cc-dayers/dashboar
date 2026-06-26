@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-const CORS_ORIGIN = 'https://trace.playwright.dev'
+const CORS_ORIGIN = '*'
 
 function resolveStoragePath(reportType: string): string {
   const reportNames = process.env['REPORT_NAMES'] ?? ''
