@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@keyframes dashboar-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
 /*
   Design tokens — defined with @theme so Tailwind generates utility classes
   (bg-surface, text-foreground, border-border, etc.) that resolve to CSS
@@ -30,7 +35,7 @@
   /* ── Adaptive accent (indigo) ──────────────────────────────── */
   --color-accent:               #4f46e5;
   --color-accent-hover:         #4338ca;
-  --color-accent-surface:       #cbdef0;
+  --color-accent-surface:       #dce0ee;
   --color-accent-foreground:    #4f46e5;
   --color-accent-muted:         #818cf8;
 
@@ -44,6 +49,8 @@
   /* success/danger pill text — must be readable on both light + dark sidebar */
   --color-sidebar-success:      #15803d;
   --color-sidebar-danger:       #dc2626;
+  /* selected item background — neutral, no accent tint */
+  --color-sidebar-selected:     #c4cdd6;
 }
 
 /* ── Dark token values (shared between media query and manual override) ─────── */
@@ -72,6 +79,7 @@
     --color-sidebar-muted:        #475569;
     --color-sidebar-success:      #4ade80;
     --color-sidebar-danger:       #f87171;
+    --color-sidebar-selected:     #2c3e54;
   }
 }
 
@@ -100,4 +108,5 @@
   --color-sidebar-muted:        #475569;
   --color-sidebar-success:      #4ade80;
   --color-sidebar-danger:       #f87171;
+  --color-sidebar-selected:     #2c3e54;
 }

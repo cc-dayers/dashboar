@@ -157,7 +157,7 @@ function SidebarLink({ active, onClick, children }: { active: boolean; onClick: 
         display: 'flex', alignItems: 'center', gap: '8px',
         padding: '8px 10px', borderRadius: '6px', cursor: 'pointer',
         marginBottom: '2px', userSelect: 'none',
-        background: active ? 'var(--color-accent-surface)' : hovered ? 'var(--color-sidebar-raised)' : 'transparent',
+        background: active ? 'var(--color-sidebar-selected)' : hovered ? 'var(--color-sidebar-raised)' : 'transparent',
         transition: 'background 0.1s',
       }}
     >
@@ -176,7 +176,7 @@ function SidebarPrItem({ r, active, onClick }: { r: PrReview; active: boolean; o
       style={{
         padding: '8px 10px', borderRadius: '6px', cursor: 'pointer',
         marginBottom: '1px', userSelect: 'none',
-        background: active ? 'var(--color-accent-surface)' : hovered ? 'var(--color-sidebar-raised)' : 'transparent',
+        background: active ? 'var(--color-sidebar-selected)' : hovered ? 'var(--color-sidebar-raised)' : 'transparent',
         transition: 'background 0.1s',
       }}
     >

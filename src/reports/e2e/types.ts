@@ -1,4 +1,4 @@
-export type E2eRunStatus = 'passed' | 'failed' | 'flaky' | 'skipped' | 'timedout' | 'interrupted' | 'succeeded' | 'succeeded_with_issues'
+export type E2eRunStatus = 'passed' | 'failed' | 'flaky' | 'skipped' | 'timedout' | 'interrupted' | 'succeeded' | 'succeeded_with_issues' | 'inProgress' | 'notStarted' | 'cancelling'
 export type E2eTestStatus = 'passed' | 'failed' | 'flaky' | 'skipped' | 'timedout'
 
 export interface E2eTestSummary {

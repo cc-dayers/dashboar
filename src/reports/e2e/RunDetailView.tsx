@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { E2eRunEntry, E2eRunStatus } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
 
@@ -11,10 +11,17 @@ function fmtMs(ms: number) {
 }
 
 function runStatusColor(status: E2eRunStatus | string): string {
-  if (status === 'passed' || status === 'succeeded') return '#22c55e'
-  if (status === 'failed')                           return '#ef4444'
-  if (status === 'succeeded_with_issues')            return '#f97316'
+  if (status === 'passed' || status === 'succeeded')       return '#22c55e'
+  if (status === 'failed')                                 return '#ef4444'
+  if (status === 'succeeded_with_issues')                  return '#f97316'
+  if (status === 'inProgress')                             return '#3b82f6'
+  if (status === 'cancelling')                             return '#f97316'
+  if (status === 'notStarted')                             return '#94a3b8'
   return '#94a3b8'
+}
+
+function isInProgressStatus(status: string): boolean {
+  return status === 'inProgress' || status === 'notStarted' || status === 'cancelling'
 }
 
 // Build the proxy URL for the trace. Prefers proxyPath from the JSON (set by
@@ -36,6 +43,28 @@ function traceProxyUrl(
     return `${window.location.origin}/api/blob?path=${encodeURIComponent(blobPath)}&report=${encodeURIComponent(reportType)}`
   }
   return null
+}
+
+// ── Theme sync ────────────────────────────────────────────────────────────────
+
+function useAppTheme(): 'light' | 'dark' {
+  const read = useCallback((): 'light' | 'dark' => {
+    const attr = document.documentElement.getAttribute('data-theme')
+    if (attr === 'dark' || attr === 'light') return attr
+    const stored = localStorage.getItem('dashboar_theme')
+    if (stored === 'dark' || stored === 'light') return stored
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }, [])
+
+  const [theme, setTheme] = useState<'light' | 'dark'>(read)
+
+  useEffect(() => {
+    const obs = new MutationObserver(() => setTheme(read()))
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => obs.disconnect()
+  }, [read])
+
+  return theme
 }
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -85,7 +114,9 @@ function TabBar({ active, hasReport, hasTrace, onChange }: {
 function SummaryStrip({ run }: { run: E2eRunEntry }) {
   const summary     = run.summary
   const durationMs  = run.durationMs ?? run.executionTimeMs
-  const statusColor = runStatusColor(run.result ?? run.status)
+  const eff         = run.result ?? run.status
+  const statusColor = runStatusColor(eff)
+  const inProgress  = isInProgressStatus(eff)
 
   return (
     <div style={{
@@ -94,8 +125,20 @@ function SummaryStrip({ run }: { run: E2eRunEntry }) {
       background: S.surface, fontSize: '11.5px', color: S.fgMuted, flexShrink: 0,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: statusColor }} />
-        <span style={{ color: S.fg, fontWeight: 600 }}>{run.result ?? run.status}</span>
+        <div style={{
+          width: '7px', height: '7px', borderRadius: '50%', background: statusColor,
+          animation: inProgress ? 'dashboar-pulse 1.5s ease-in-out infinite' : undefined,
+        }} />
+        <span style={{ color: S.fg, fontWeight: 600 }}>{eff}</span>
+        {inProgress && (
+          <span style={{
+            fontSize: '10px', fontWeight: 600, color: '#3b82f6',
+            background: '#3b82f620', border: '1px solid #3b82f640',
+            borderRadius: '4px', padding: '1px 6px', letterSpacing: '0.03em',
+          }}>
+            In Progress
+          </span>
+        )}
       </div>
       {run.branch      && <span style={{ fontFamily: 'ui-monospace,monospace', fontSize: '10.5px' }}>{run.branch}</span>}
       {run.commit      && <span style={{ fontFamily: 'ui-monospace,monospace', fontSize: '10.5px', color: S.fgSubtle }}>{run.commit.slice(0, 7)}</span>}
@@ -130,6 +173,7 @@ interface Props {
 }
 
 export default function RunDetailView({ run, reportType, onBack }: Props) {
+  const colorScheme   = useAppTheme()
   const htmlReportUrl = run.links?.htmlReportUrl ?? null
   const trace         = run.trace
   const proxyUrl      = trace ? traceProxyUrl(trace.proxyPath, trace.blobPath, reportType) : null
@@ -208,7 +252,7 @@ export default function RunDetailView({ run, reportType, onBack }: Props) {
               <SummaryStrip run={run} />
               <iframe
                 src={htmlReportUrl}
-                style={{ flex: 1, width: '100%', border: 'none' }}
+                style={{ flex: 1, width: '100%', border: 'none', colorScheme }}
                 title="Playwright HTML Report"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
               />
@@ -230,7 +274,7 @@ export default function RunDetailView({ run, reportType, onBack }: Props) {
             // No sandbox: same-origin iframe, service worker must be allowed to register
             <iframe
               src={viewerUrl}
-              style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+              style={{ width: '100%', height: '100%', border: 'none', display: 'block', colorScheme }}
               title="Playwright Trace Viewer"
               allow="clipboard-read; clipboard-write"
             />

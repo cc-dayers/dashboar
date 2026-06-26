@@ -41,7 +41,7 @@ function SidebarItem({ r, active, onClick }: { r: AuditReview; active: boolean; 
       style={{
         padding: '8px 10px', borderRadius: '6px', cursor: 'pointer',
         marginBottom: '1px', userSelect: 'none',
-        background: active ? 'var(--color-accent-surface)' : hovered ? 'var(--color-sidebar-raised)' : 'transparent',
+        background: active ? 'var(--color-sidebar-selected)' : hovered ? 'var(--color-sidebar-raised)' : 'transparent',
         transition: 'background 0.1s',
       }}
     >
@@ -71,7 +71,7 @@ function OverviewLink({ active, onClick }: { active: boolean; onClick: () => voi
         display: 'flex', alignItems: 'center', gap: '8px',
         padding: '8px 10px', borderRadius: '6px', cursor: 'pointer',
         marginBottom: '2px', userSelect: 'none',
-        background: active ? 'var(--color-accent-surface)' : hovered ? 'var(--color-sidebar-raised)' : 'transparent',
+        background: active ? 'var(--color-sidebar-selected)' : hovered ? 'var(--color-sidebar-raised)' : 'transparent',
         transition: 'background 0.1s',
       }}
     >

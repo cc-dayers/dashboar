@@ -1,3 +1,4 @@
+import { AreaChart, Area, ResponsiveContainer } from 'recharts'
 import type { E2eAggregateReport, E2eRunEntry, E2eRunStatus } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
 
@@ -14,7 +15,13 @@ export function runStatusColor(status: E2eRunStatus | string): string {
   if (status === 'flaky')                              return '#f59e0b'
   if (status === 'timedout')                           return '#f97316'
   if (status === 'interrupted')                        return '#8b5cf6'
+  if (status === 'inProgress')                         return '#3b82f6'
+  if (status === 'cancelling')                         return '#f97316'
   return '#94a3b8'
+}
+
+export function isInProgressStatus(status: string): boolean {
+  return status === 'inProgress' || status === 'notStarted' || status === 'cancelling'
 }
 
 export function runEffectiveStatus(run: { status: string; result?: string }): string {
@@ -22,6 +29,15 @@ export function runEffectiveStatus(run: { status: string; result?: string }): st
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmtMs(ms: number) {
+  const h = Math.floor(ms / 3_600_000)
+  const m = Math.floor((ms % 3_600_000) / 60_000)
+  const s = Math.floor((ms % 60_000) / 1000)
+  if (h > 0) return `${h}h ${m}m`
+  if (m > 0) return `${m}m ${s}s`
+  return `${s}s`
+}
 
 function fmtDate(iso: string) {
   return new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -41,10 +57,11 @@ function browserName(label: string | undefined): string {
 interface BucketData {
   passed: number; failed: number; flaky: number; skipped: number; total: number
   runs: number; failedRuns: number
+  totalDurationMs: number; durationCount: number
 }
 
 function emptyBucket(): BucketData {
-  return { passed: 0, failed: 0, flaky: 0, skipped: 0, total: 0, runs: 0, failedRuns: 0 }
+  return { passed: 0, failed: 0, flaky: 0, skipped: 0, total: 0, runs: 0, failedRuns: 0, totalDurationMs: 0, durationCount: 0 }
 }
 
 function addRun(b: BucketData, r: E2eRunEntry): BucketData {
@@ -52,14 +69,17 @@ function addRun(b: BucketData, r: E2eRunEntry): BucketData {
   const eff = runEffectiveStatus(r)
   const isBad = eff === 'failed' || eff === 'succeeded_with_issues' || eff === 'timedout'
   const skipped = Math.max(0, (s?.total ?? 0) - (s?.passed ?? 0) - (s?.failed ?? 0) - (s?.flaky ?? 0))
+  const durMs = r.executionTimeMs ?? r.durationMs ?? 0
   return {
-    passed:     b.passed     + (s?.passed ?? 0),
-    failed:     b.failed     + (s?.failed ?? 0),
-    flaky:      b.flaky      + (s?.flaky  ?? 0),
-    skipped:    b.skipped    + skipped,
-    total:      b.total      + (s?.total  ?? 0),
-    runs:       b.runs       + 1,
-    failedRuns: b.failedRuns + (isBad ? 1 : 0),
+    passed:          b.passed          + (s?.passed ?? 0),
+    failed:          b.failed          + (s?.failed ?? 0),
+    flaky:           b.flaky           + (s?.flaky  ?? 0),
+    skipped:         b.skipped         + skipped,
+    total:           b.total           + (s?.total  ?? 0),
+    runs:            b.runs            + 1,
+    failedRuns:      b.failedRuns      + (isBad ? 1 : 0),
+    totalDurationMs: b.totalDurationMs + durMs,
+    durationCount:   b.durationCount   + (durMs > 0 ? 1 : 0),
   }
 }
 
@@ -70,6 +90,25 @@ function groupBy<K extends string>(runs: E2eRunEntry[], key: (r: E2eRunEntry) =>
     map.set(k, addRun(map.get(k) ?? emptyBucket(), r))
   }
   return map
+}
+
+// Returns per-key time series: sorted array of { date, rate } points for sparklines
+function timeSeries(runs: E2eRunEntry[], getKey: (r: E2eRunEntry) => string) {
+  const outer = new Map<string, Map<string, BucketData>>()
+  for (const r of runs) {
+    const k    = getKey(r)
+    const date = (r.generatedAt ?? '').slice(0, 10) || 'unknown'
+    if (!outer.has(k)) outer.set(k, new Map())
+    const inner = outer.get(k)!
+    inner.set(date, addRun(inner.get(date) ?? emptyBucket(), r))
+  }
+  const result = new Map<string, { date: string; rate: number }[]>()
+  for (const [k, dm] of outer) {
+    result.set(k, [...dm.entries()]
+      .sort(([a], [b]) => a < b ? -1 : 1)
+      .map(([date, b]) => ({ date, rate: pct(b.passed, b.total) })))
+  }
+  return result
 }
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -142,9 +181,35 @@ function KpiRow({ report, runs }: { report: E2eAggregateReport; runs: E2eRunEntr
 
 // ── Section: Health breakdown row ─────────────────────────────────────────────
 
+function TrendChart({ points, color }: { points: { date: string; rate: number }[]; color: string }) {
+  const gradId = `tc${color.replace('#', '')}`
+  return (
+    <ResponsiveContainer width="100%" height={48}>
+      <AreaChart data={points} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%"  stopColor={color} stopOpacity={0.3} />
+            <stop offset="95%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area
+          type="monotone"
+          dataKey="rate"
+          stroke={color}
+          strokeWidth={2}
+          fill={`url(#${gradId})`}
+          dot={{ r: 3, fill: color, strokeWidth: 0 }}
+          activeDot={{ r: 4, fill: color }}
+          isAnimationActive={false}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  )
+}
+
 function HealthRow({ label, data, showBrowser = false }: {
   label: string
-  data: { key: string; bucket: BucketData }[]
+  data: { key: string; bucket: BucketData; trend: { date: string; rate: number }[] }[]
   showBrowser?: boolean
 }) {
   if (data.length === 0) return null
@@ -153,27 +218,41 @@ function HealthRow({ label, data, showBrowser = false }: {
       <div style={{ padding: '10px 14px 8px', fontSize: '11px', fontWeight: 600, color: S.fgMuted, textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: `1px solid ${S.border}` }}>
         {label}
       </div>
-      <div style={{ padding: '8px 14px 10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {data.map(({ key, bucket: b }) => {
-          const rate = pct(b.passed, b.total)
+      <div style={{ padding: '8px 14px 14px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {data.map(({ key, bucket: b, trend }) => {
+          const rate      = pct(b.passed, b.total)
           const rateColor = rate >= 90 ? C.pass : rate >= 70 ? C.flaky : C.fail
+          const avgMs     = b.durationCount > 0 ? Math.round(b.totalDurationMs / b.durationCount) : null
           return (
             <div key={key}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {showBrowser && (
-                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: rateColor, flexShrink: 0 }} />
-                  )}
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: S.fg }}>{key}</span>
-                  <span style={{ fontSize: '10.5px', color: S.fgSubtle }}>{b.runs} run{b.runs !== 1 ? 's' : ''}</span>
+              {/* Header: name + meta left, large rate right */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {showBrowser && (
+                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: rateColor, flexShrink: 0 }} />
+                    )}
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: S.fg }}>{key}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '3px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '10.5px', color: S.fgSubtle }}>{b.runs} run{b.runs !== 1 ? 's' : ''}</span>
+                    {avgMs !== null && <span style={{ fontSize: '10.5px', color: S.fgSubtle }}>avg {fmtMs(avgMs)}</span>}
+                    {b.failed > 0 && <span style={{ fontSize: '10.5px', color: C.fail,  fontWeight: 600 }}>{b.failed} failed</span>}
+                    {b.flaky  > 0 && <span style={{ fontSize: '10.5px', color: C.flaky              }}>{b.flaky} flaky</span>}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  {b.failed > 0  && <span style={{ fontSize: '10.5px', color: C.fail,  fontWeight: 600 }}>{b.failed} failed</span>}
-                  {b.flaky  > 0  && <span style={{ fontSize: '10.5px', color: C.flaky, fontWeight: 600 }}>{b.flaky} flaky</span>}
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: rateColor, fontVariantNumeric: 'tabular-nums', minWidth: '36px', textAlign: 'right' }}>{rate}%</span>
+                <div style={{ fontSize: '22px', fontWeight: 700, color: rateColor, lineHeight: 1, fontVariantNumeric: 'tabular-nums', flexShrink: 0, paddingTop: '2px' }}>
+                  {rate}%
                 </div>
               </div>
+              {/* Stacked bar */}
               <StackedBar {...b} height={6} />
+              {/* Trend line — only when there are ≥2 data points */}
+              {trend.length >= 2 && (
+                <div style={{ marginTop: '8px' }}>
+                  <TrendChart points={trend} color={rateColor} />
+                </div>
+              )}
             </div>
           )
         })}
@@ -242,13 +321,16 @@ export default function OverviewView({ report }: Props) {
   const browserMap = groupBy(runs, r => browserName(r.matrixLabel))
   const dateMap    = groupBy(runs, r => (r.generatedAt ?? '').slice(0, 10) || 'unknown')
 
+  const suiteTrends   = timeSeries(runs, r => r.suiteName ?? r.suite ?? 'Unknown')
+  const browserTrends = timeSeries(runs, r => browserName(r.matrixLabel))
+
   const suiteData   = [...suiteMap.entries()]
-    .map(([k, b]) => ({ key: k, bucket: b }))
+    .map(([k, b]) => ({ key: k, bucket: b, trend: suiteTrends.get(k) ?? [] }))
     .sort((a, b) => b.bucket.total - a.bucket.total)
 
   const browserData = [...browserMap.entries()]
     .filter(([k]) => k !== 'Unknown')
-    .map(([k, b]) => ({ key: k, bucket: b }))
+    .map(([k, b]) => ({ key: k, bucket: b, trend: browserTrends.get(k) ?? [] }))
     .sort((a, b) => b.bucket.total - a.bucket.total)
 
   const updatedAt = report.updatedAt ?? report.generatedAt
