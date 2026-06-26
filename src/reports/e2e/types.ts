@@ -1,4 +1,4 @@
-export type E2eRunStatus = 'passed' | 'failed' | 'flaky' | 'skipped' | 'timedout' | 'interrupted'
+export type E2eRunStatus = 'passed' | 'failed' | 'flaky' | 'skipped' | 'timedout' | 'interrupted' | 'succeeded' | 'succeeded_with_issues'
 export type E2eTestStatus = 'passed' | 'failed' | 'flaky' | 'skipped' | 'timedout'
 
 export interface E2eTestSummary {
@@ -16,30 +16,54 @@ export interface E2eLinks {
   adoArtifactsUrl?:              string | null
 }
 
+export interface E2eTraceRef {
+  testTitle?: string
+  file?:      string
+  line?:      number
+  blobPath?:  string
+  url?:       string | null
+  proxyPath?: string | null
+}
+
 export interface E2eRunEntry {
-  buildId?:        string
-  buildNumber?:    string
-  suiteName?:      string
-  suite?:          string
-  suiteSlug?:      string
-  jobName?:        string
-  matrixLabel?:    string
-  branch?:         string
-  commit?:         string
-  status:          E2eRunStatus
-  result?:         string
-  generatedAt?:    string
+  id?:              string
+  buildId?:         string
+  buildNumber?:     string
+  suiteName?:       string
+  suite?:           string
+  suiteSlug?:       string
+  jobName?:         string
+  matrixLabel?:     string
+  branch?:          string
+  commit?:          string
+  status:           E2eRunStatus
+  result?:          string
+  generatedAt?:     string
   executionTimeMs?: number
-  testCount?:      number
-  summary?:        E2eTestSummary
-  links?:          E2eLinks
-  reportBlobPath?: string
-  reportUrl?:      string | null
-  trace?:          unknown
+  durationMs?:      number
+  testCount?:       number
+  playwrightCommand?: string
+  workers?:         number
+  summary?:         E2eTestSummary
+  links?:           E2eLinks
+  reportBlobPath?:  string
+  reportUrl?:       string | null
+  trace?:           E2eTraceRef | null
 }
 
 export interface E2eAggregateSummary {
-  totalRuns?: number
+  totalRuns?:      number
+  passedRuns?:     number
+  failedRuns?:     number
+  skippedRuns?:    number
+  otherRuns?:      number
+  totalTests?:     number
+  passedTests?:    number
+  failedTests?:    number
+  skippedTests?:   number
+  flakyTests?:     number
+  totalDurationMs?: number
+  // legacy fields
   passed?:    number
   failed?:    number
   flaky?:     number
@@ -51,8 +75,10 @@ export interface E2eAggregateReport {
   $schema?:       string
   schemaVersion?: string
   generatedAt?:   string
+  updatedAt?:     string
   summary?:       E2eAggregateSummary
-  runs:           E2eRunEntry[]
+  reviews?:       E2eRunEntry[]
+  runs?:          E2eRunEntry[]
 }
 
 export interface E2eArtifact {

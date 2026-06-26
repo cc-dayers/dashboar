@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
-import type { E2eAggregateReport, E2eRunEntry, E2eRunReport } from './types'
+import type { E2eAggregateReport, E2eRunEntry } from './types'
 import type { ReportProps } from '../index'
 import OverviewView, { runLabel, runStatusColor } from './OverviewView'
 import RunDetailView from './RunDetailView'
 import ReportSidebar from '../../components/ReportSidebar'
 import SidebarBoarHeader from '../../components/SidebarBoarHeader'
 import MobileTopBar from '../../components/MobileTopBar'
-import { fetchArtifactJson, type BlobFetchError } from '../../lib/blobFetch'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -62,7 +61,7 @@ function RunRow({ run, selected, onClick }: { run: E2eRunEntry; selected: boolea
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
-        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: runStatusColor(run.status), flexShrink: 0 }} />
+        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: runStatusColor(run.result ?? run.status), flexShrink: 0 }} />
         {run.matrixLabel && (
           <span style={{ color: 'var(--color-sidebar-muted)', fontSize: '10px', fontFamily: 'ui-monospace,monospace' }}>
             {run.matrixLabel}
@@ -91,32 +90,42 @@ function RunRow({ run, selected, onClick }: { run: E2eRunEntry; selected: boolea
 }
 
 interface SidebarProps {
-  report:      E2eAggregateReport
-  selKey:      string | null
-  isMobile:    boolean
-  sidebarOpen: boolean
-  search:      string
-  onClose:     () => void
-  onSearch:    (q: string) => void
-  onOverview:  () => void
-  onSelect:    (key: string) => void
+  report:        E2eAggregateReport
+  selKey:        string | null
+  isMobile:      boolean
+  sidebarOpen:   boolean
+  search:        string
+  statusFilter:  'failed' | 'passed' | null
+  onClose:       () => void
+  onSearch:      (q: string) => void
+  onStatusFilter: (f: 'failed' | 'passed' | null) => void
+  onOverview:    () => void
+  onSelect:      (key: string) => void
 }
 
-function Sidebar({ report, selKey, isMobile, sidebarOpen, search, onClose, onSearch, onOverview, onSelect }: SidebarProps) {
-  const runs = report.runs ?? []
+function Sidebar({ report, selKey, isMobile, sidebarOpen, search, statusFilter, onClose, onSearch, onStatusFilter, onOverview, onSelect }: SidebarProps) {
+  const runs = report.reviews ?? report.runs ?? []
   const trimQ = search.trim().toLowerCase()
 
-  const filtered = trimQ
-    ? runs.filter(r =>
-        runLabel(r).toLowerCase().includes(trimQ) ||
-        r.branch?.toLowerCase().includes(trimQ) ||
-        r.commit?.toLowerCase().includes(trimQ) ||
-        r.matrixLabel?.toLowerCase().includes(trimQ) ||
-        r.buildNumber?.toLowerCase().includes(trimQ))
-    : runs
+  const eff = (r: typeof runs[0]) => r.result ?? r.status
+  const isUnhealthy = (r: typeof runs[0]) => { const e = eff(r); return e === 'failed' || e === 'succeeded_with_issues' || e === 'timedout' }
+  const isHealthy   = (r: typeof runs[0]) => { const e = eff(r); return e === 'passed' || e === 'succeeded' }
 
-  const failed  = runs.filter(r => r.status === 'failed' || r.status === 'timedout').length
-  const passed  = runs.filter(r => r.status === 'passed').length
+  const failed = runs.filter(isUnhealthy).length
+  const passed = runs.filter(isHealthy).length
+
+  const filtered = runs.filter(r => {
+    if (statusFilter === 'failed' && !isUnhealthy(r)) return false
+    if (statusFilter === 'passed' && !isHealthy(r))   return false
+    if (!trimQ) return true
+    return (
+      runLabel(r).toLowerCase().includes(trimQ) ||
+      r.branch?.toLowerCase().includes(trimQ) ||
+      r.commit?.toLowerCase().includes(trimQ) ||
+      r.matrixLabel?.toLowerCase().includes(trimQ) ||
+      r.buildNumber?.toLowerCase().includes(trimQ)
+    )
+  })
 
   return (
     <ReportSidebar
@@ -128,18 +137,36 @@ function Sidebar({ report, selKey, isMobile, sidebarOpen, search, onClose, onSea
       <div style={{ padding: '8px 8px 0', flexShrink: 0 }}>
         <OverviewLink active={!selKey} onClick={onOverview} />
 
-        {/* Status pills */}
+        {/* Status pills — clickable to filter */}
         {(failed > 0 || passed > 0) && (
           <div style={{ padding: '4px 10px 2px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             {failed > 0 && (
-              <span style={{ fontSize: '10px', fontWeight: 600, color: '#f87171', background: '#f8717118', borderRadius: '4px', padding: '2px 7px' }}>
+              <button
+                onClick={() => onStatusFilter(statusFilter === 'failed' ? null : 'failed')}
+                style={{
+                  fontSize: '10px', fontWeight: 600, cursor: 'pointer', border: 'none',
+                  color: '#f87171', borderRadius: '4px', padding: '2px 7px',
+                  background: statusFilter === 'failed' ? '#f8717140' : '#f8717118',
+                  outline: statusFilter === 'failed' ? '1.5px solid #f87171' : 'none',
+                  transition: 'background 0.1s',
+                }}
+              >
                 ✗ {failed} failed
-              </span>
+              </button>
             )}
             {passed > 0 && (
-              <span style={{ fontSize: '10px', fontWeight: 600, color: '#4ade80', background: '#4ade8018', borderRadius: '4px', padding: '2px 7px' }}>
+              <button
+                onClick={() => onStatusFilter(statusFilter === 'passed' ? null : 'passed')}
+                style={{
+                  fontSize: '10px', fontWeight: 600, cursor: 'pointer', border: 'none',
+                  color: '#4ade80', borderRadius: '4px', padding: '2px 7px',
+                  background: statusFilter === 'passed' ? '#4ade8040' : '#4ade8018',
+                  outline: statusFilter === 'passed' ? '1.5px solid #4ade80' : 'none',
+                  transition: 'background 0.1s',
+                }}
+              >
                 ✓ {passed} passed
-              </span>
+              </button>
             )}
           </div>
         )}
@@ -179,7 +206,7 @@ function Sidebar({ report, selKey, isMobile, sidebarOpen, search, onClose, onSea
         </div>
 
         <div style={{ padding: '10px 10px 5px', color: 'var(--color-sidebar-secondary)', fontSize: '10px', fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase' }}>
-          {trimQ ? `${filtered.length} result${filtered.length !== 1 ? 's' : ''}` : `${runs.length} Run${runs.length !== 1 ? 's' : ''}`}
+          {(trimQ || statusFilter) ? `${filtered.length} of ${runs.length}` : `${runs.length} Run${runs.length !== 1 ? 's' : ''}`}
         </div>
       </div>
 
@@ -210,14 +237,14 @@ function Sidebar({ report, selKey, isMobile, sidebarOpen, search, onClose, onSea
 
 export default function Dashboard({ data }: ReportProps) {
   const report = data as E2eAggregateReport
+  const allRuns = report.reviews ?? report.runs ?? []
+  const reportType = new URLSearchParams(window.location.search).get('report') ?? 'e2e-aggregate'
 
-  const [selKey,       setSelKey]       = useState<string | null>(null)
-  const [isMobile,     setIsMobile]     = useState(() => window.innerWidth < 768)
-  const [sidebarOpen,  setSidebarOpen]  = useState(() => window.innerWidth >= 768)
-  const [search,       setSearch]       = useState('')
-  const [runDetail,    setRunDetail]    = useState<E2eRunReport | null>(null)
-  const [runLoading,   setRunLoading]   = useState(false)
-  const [runError,     setRunError]     = useState<string | null>(null)
+  const [selKey,        setSelKey]        = useState<string | null>(null)
+  const [isMobile,      setIsMobile]      = useState(() => window.innerWidth < 768)
+  const [sidebarOpen,   setSidebarOpen]   = useState(() => window.innerWidth >= 768)
+  const [search,        setSearch]        = useState('')
+  const [statusFilter,  setStatusFilter]  = useState<'failed' | 'passed' | null>(null)
 
   useEffect(() => {
     const onResize = () => {
@@ -229,46 +256,6 @@ export default function Dashboard({ data }: ReportProps) {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-
-  // Fetch per-run detail when a run is selected
-  useEffect(() => {
-    if (!selKey) {
-      setRunDetail(null)
-      setRunError(null)
-      return
-    }
-
-    // Find the run entry by its key
-    const runs = report.runs ?? []
-    const entry = runs.find((r, i) => runKey(r, i) === selKey)
-
-    if (!entry?.reportBlobPath) {
-      setRunDetail(null)
-      setRunError(entry ? 'No per-run report available (missing reportBlobPath).' : null)
-      return
-    }
-
-    let cancelled = false
-    setRunLoading(true)
-    setRunDetail(null)
-    setRunError(null)
-
-    fetchArtifactJson(entry.reportBlobPath, 'e2e-aggregate')
-      .then(json => {
-        if (!cancelled) setRunDetail(json as E2eRunReport)
-      })
-      .catch(err => {
-        if (!cancelled) {
-          const msg = (err as BlobFetchError).message ?? (err instanceof Error ? err.message : 'Failed to load run detail')
-          setRunError(msg)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setRunLoading(false)
-      })
-
-    return () => { cancelled = true }
-  }, [selKey, report.runs])
 
   const handleSelect = (key: string) => {
     setSelKey(key)
@@ -288,8 +275,10 @@ export default function Dashboard({ data }: ReportProps) {
         isMobile={isMobile}
         sidebarOpen={sidebarOpen}
         search={search}
+        statusFilter={statusFilter}
         onClose={() => setSidebarOpen(false)}
         onSearch={setSearch}
+        onStatusFilter={setStatusFilter}
         onOverview={handleOverview}
         onSelect={handleSelect}
       />
@@ -297,17 +286,15 @@ export default function Dashboard({ data }: ReportProps) {
       <main style={{ flex: 1, overflow: 'hidden', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         {isMobile && (
           <MobileTopBar
-            title={report.runs?.length ? `E2E · ${report.runs.length} runs` : 'E2E Tests'}
+            title={allRuns.length ? `E2E · ${allRuns.length} runs` : 'E2E Tests'}
             onToggle={() => setSidebarOpen(s => !s)}
           />
         )}
 
         {selKey ? (
           <RunDetailView
-            run={runDetail}
-            loading={runLoading}
-            error={runError}
-            reportType="e2e-aggregate"
+            run={allRuns.find((r, i) => runKey(r, i) === selKey)!}
+            reportType={reportType}
             onBack={handleOverview}
           />
         ) : (

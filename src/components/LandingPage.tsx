@@ -198,7 +198,7 @@ export default function LandingPage() {
           }}>
             Dashboar
           </h1>
-          <p className="text-foreground-muted text-sm">Report viewer · Azure Blob Storage</p>
+          <p className="text-foreground-muted text-sm">JSON Report viewer</p>
         </div>
 
         {/* Unified reports panel */}

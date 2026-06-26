@@ -11,7 +11,9 @@
     "test": "tsx src/lib/schemaVersion.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "validate:reports": "tsx --tsconfig tsconfig.node.json scripts/validate-reports.ts",
+    "postinstall": "node -e \"require('fs').cpSync('node_modules/playwright-core/lib/vite/traceViewer', 'public/trace-viewer', {recursive: true, force: true})\""
   },
   "dependencies": {
     "react": "^19.0.0",

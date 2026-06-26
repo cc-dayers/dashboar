@@ -38,9 +38,9 @@ export const registry: Record<string, RegistryEntry> = {
     fixtures: ['example', 'report', 'legacy', 'v1', 'future'],
   },
   'playwright-trace': {
-    component: lazy(() => import('./playwright-trace/Dashboard')),
+    component: lazy(() => import('./e2e/Dashboard')),
     label: 'Playwright Traces',
-    description: 'Automated test run trace viewer — opens Playwright traces directly in the browser.',
+    description: 'Playwright/E2E test runs — run status, per-run test detail, and Playwright report links.',
     fixtures: ['example'],
   },
   'review-audit': {
