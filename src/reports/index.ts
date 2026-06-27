@@ -41,19 +41,13 @@ export const registry: Record<string, RegistryEntry> = {
     component: lazy(() => import('./e2e/Dashboard')),
     label: 'Playwright Traces',
     description: 'Playwright/E2E test runs — run status, per-run test detail, and Playwright report links.',
-    fixtures: ['example'],
+    fixtures: ['example', 'report', 'future'],
   },
   'review-audit': {
     component: lazy(() => import('./review-audit/Dashboard')),
     label: 'Review Audit',
     description: 'PR review audit: per-review feedback, improvement signals, downstream impact, and summary stats.',
     fixtures: ['example'],
-  },
-  'e2e-aggregate': {
-    component: lazy(() => import('./e2e/Dashboard')),
-    label: 'E2E Tests',
-    description: 'Playwright/E2E test aggregate: run status, pass/fail/flaky counts, per-run detail with test results and trace links.',
-    fixtures: ['report', 'future'],
   },
 }
 
