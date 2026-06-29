@@ -78,11 +78,13 @@ function buildTraceUrl(baseUrl: string, storagePath: string, id: string, sasToke
 }
 
 function tryServeFixture(reportType: string, id: string, res: http.ServerResponse): boolean {
+  const fixturesRoot = path.resolve('fixtures')
   const candidates = [
-    path.resolve('fixtures', reportType, `${id}.json`),
-    path.resolve('fixtures', `${id}.json`),
+    path.resolve(fixturesRoot, reportType, `${id}.json`),
+    path.resolve(fixturesRoot, `${id}.json`),
   ]
   for (const p of candidates) {
+    if (!p.startsWith(fixturesRoot + path.sep)) continue
     if (fs.existsSync(p)) {
       console.log(`[api] fixture  → ${p}`)
       const data = fs.readFileSync(p, 'utf-8')
@@ -97,6 +99,14 @@ function tryServeFixture(reportType: string, id: string, res: http.ServerRespons
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
+
+function isAuthenticated(cookieHeader: string | undefined): boolean {
+  const authHash = process.env['AUTH_HASH']
+  if (!authHash) return true
+  const token = parseCookie(cookieHeader, 'dashboar_session')
+  if (!token) return false
+  return validateToken(token).valid
+}
 
 function parseCookie(cookieHeader: string | undefined, name: string): string | null {
   if (!cookieHeader) return null
@@ -169,7 +179,7 @@ async function handleAuth(req: http.IncomingMessage, res: http.ServerResponse) {
       return res.end(JSON.stringify({ ok: false, error: 'Invalid credentials' }))
     }
     const maxAge = 60 * 60 * 24 * 30
-    res.setHeader('Set-Cookie', `dashboar_session=${token}; Path=/; Max-Age=${maxAge}; SameSite=Strict`)
+    res.setHeader('Set-Cookie', `dashboar_session=${token}; Path=/; Max-Age=${maxAge}; SameSite=Strict; HttpOnly`)
     res.writeHead(200)
     return res.end(JSON.stringify({ ok: true, user: result.user }))
   }
@@ -392,7 +402,7 @@ async function handleBlobProxy(
   query: NodeJS.Dict<string | string[]>,
   res: http.ServerResponse,
 ) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Origin', 'https://trace.playwright.dev')
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Accept')
   res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type, Accept-Ranges')
@@ -546,6 +556,10 @@ const server = http.createServer(async (req, res) => {
 
   if (parsed.pathname === '/api/auth') {
     await handleAuth(req, res)
+  } else if (!isAuthenticated(req.headers['cookie'])) {
+    res.setHeader('Content-Type', 'application/json')
+    res.writeHead(401)
+    res.end(JSON.stringify({ error: 'Unauthorized' }))
   } else if (parsed.pathname === '/api/get-blob') {
     await handleGetBlob(parsed.query, res)
   } else if (parsed.pathname === '/api/list-blobs') {

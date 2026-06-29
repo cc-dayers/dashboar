@@ -50,7 +50,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     const result = validateToken(token)
     if (!result.valid) return res.status(401).json({ ok: false, error: 'Invalid credentials' })
     const secure = process.env['VERCEL_ENV'] === 'production' ? '; Secure' : ''
-    res.setHeader('Set-Cookie', `${COOKIE_NAME}=${token}; Path=/; Max-Age=${MAX_AGE}; SameSite=Strict${secure}`)
+    res.setHeader('Set-Cookie', `${COOKIE_NAME}=${token}; Path=/; Max-Age=${MAX_AGE}; SameSite=Strict; HttpOnly${secure}`)
     return res.status(200).json({ ok: true, user: result.user })
   }
 

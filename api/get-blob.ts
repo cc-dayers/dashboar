@@ -72,11 +72,13 @@ function tryServeFixture(reportType: string, id: string, res: VercelResponse): b
   const fixtureSecret = process.env['FIXTURE_SECRET']
   if (!fixtureSecret) return false
 
+  const fixturesRoot = path.resolve('fixtures')
   const candidates = [
-    path.resolve('fixtures', reportType, `${id}.json`),
-    path.resolve('fixtures', `${id}.json`),
+    path.resolve(fixturesRoot, reportType, `${id}.json`),
+    path.resolve(fixturesRoot, `${id}.json`),
   ]
   for (const p of candidates) {
+    if (!p.startsWith(fixturesRoot + path.sep)) continue
     if (fs.existsSync(p)) {
       console.log(`[api] fixture  → ${p}`)
       const data = JSON.parse(fs.readFileSync(p, 'utf-8')) as unknown

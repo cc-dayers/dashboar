@@ -6,9 +6,9 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-// Allow any origin — the blob is gated by a SAS token, and the self-hosted trace
-// viewer's service worker must be able to fetch from here same-site without restriction.
-const CORS_ORIGIN = '*'
+// Self-hosted trace viewer is same-origin and needs no CORS header.
+// The external viewer at trace.playwright.dev is the only cross-origin consumer.
+const CORS_ORIGIN = 'https://trace.playwright.dev'
 
 function isAuthenticated(cookieHeader: string | string[] | undefined): boolean {
   const authHash = process.env['AUTH_HASH']

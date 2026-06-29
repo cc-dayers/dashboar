@@ -88,7 +88,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Content-Type', contentType.includes('html') ? contentType : 'text/html; charset=utf-8')
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60')
   // Allow the served HTML to load resources from blob storage directly
-  res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: *.blob.core.windows.net *.msecnd.net")
+  res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: *.blob.core.windows.net *.msecnd.net; frame-ancestors 'self'")
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN')
 
   const buffer = await upstream.arrayBuffer()
   return res.status(200).send(Buffer.from(buffer))
