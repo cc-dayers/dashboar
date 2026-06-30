@@ -50,7 +50,12 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     const result = validateToken(token)
     if (!result.valid) return res.status(401).json({ ok: false, error: 'Invalid credentials' })
     const secure = process.env['VERCEL_ENV'] === 'production' ? '; Secure' : ''
-    res.setHeader('Set-Cookie', `${COOKIE_NAME}=${token}; Path=/; Max-Age=${MAX_AGE}; SameSite=Strict; HttpOnly${secure}`)
+    res.setHeader('Set-Cookie', [
+      // HttpOnly session — carries the real credential, not JS-readable
+      `${COOKIE_NAME}=${token}; Path=/; Max-Age=${MAX_AGE}; SameSite=Strict; HttpOnly${secure}`,
+      // JS-readable presence hint — lets the client skip the login flash without exposing the token
+      `${COOKIE_NAME}_present=1; Path=/; Max-Age=${MAX_AGE}; SameSite=Strict${secure}`,
+    ])
     return res.status(200).json({ ok: true, user: result.user })
   }
 

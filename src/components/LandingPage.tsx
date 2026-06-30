@@ -103,7 +103,7 @@ function TypeEntry({
       {(hasStorage || isLoading) && (
         <div className="mt-2.5 ml-11">
           {isLoading ? (
-            <div className="flex items-center gap-2 text-xs text-foreground-muted">
+            <div className="h-5 flex items-center gap-2 text-xs text-foreground-muted">
               <div className="w-3 h-3 border border-accent border-t-transparent rounded-full animate-spin" />
               Checking storage…
             </div>

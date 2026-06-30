@@ -1,31 +1,11 @@
 import { useState, useEffect, type ReactNode, type FormEvent } from 'react'
 import BoarMark from './BoarMark'
 
-const COOKIE = 'dashboar_session'
-
-function readSessionCookie(): string | null {
-  for (const part of document.cookie.split(';')) {
-    const eq = part.indexOf('=')
-    if (eq === -1) continue
-    if (part.slice(0, eq).trim() === COOKIE) return part.slice(eq + 1).trim() || null
-  }
-  return null
-}
-
-// Structural check only — server validates the real credentials.
-// We just want to avoid flashing the login screen when a valid-looking cookie exists.
-function looksValid(token: string): boolean {
-  try {
-    const decoded = atob(token)
-    return decoded.indexOf(':') > 0
-  } catch {
-    return false
-  }
-}
-
+// The real session cookie is HttpOnly — not readable by JS.
+// A lightweight presence cookie (dashboar_session_present=1) is set alongside it
+// so we can skip the login flash without exposing the token.
 function checkLocalAuth(): boolean {
-  const token = readSessionCookie()
-  return token !== null && looksValid(token)
+  return document.cookie.split(';').some(p => p.trim().startsWith('dashboar_session_present='))
 }
 
 export default function AuthGate({ children }: { children: ReactNode }) {

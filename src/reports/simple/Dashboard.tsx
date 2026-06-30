@@ -34,9 +34,9 @@ export default function SimpleDashboard({ data, reportId }: ReportProps) {
   const complex = Object.entries(obj).filter(([, v]) => !isPrimitive(v))
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="bg-surface border-b border-border sticky top-0 z-10">
+      <header className="bg-surface border-b border-border flex-shrink-0 z-10">
         <div className="relative flex items-center px-5 py-3">
           {/* Left: BoarMark home link */}
           <a
@@ -65,7 +65,8 @@ export default function SimpleDashboard({ data, reportId }: ReportProps) {
         </div>
       </header>
 
-      <main className="p-6 max-w-4xl mx-auto space-y-6">
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-4xl mx-auto space-y-6">
         {scalars.length > 0 && (
           <section>
             <h2 className="text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-3">
@@ -96,6 +97,7 @@ export default function SimpleDashboard({ data, reportId }: ReportProps) {
             </div>
           </section>
         ))}
+        </div>
       </main>
     </div>
   )

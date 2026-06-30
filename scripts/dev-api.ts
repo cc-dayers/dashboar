@@ -179,7 +179,10 @@ async function handleAuth(req: http.IncomingMessage, res: http.ServerResponse) {
       return res.end(JSON.stringify({ ok: false, error: 'Invalid credentials' }))
     }
     const maxAge = 60 * 60 * 24 * 30
-    res.setHeader('Set-Cookie', `dashboar_session=${token}; Path=/; Max-Age=${maxAge}; SameSite=Strict; HttpOnly`)
+    res.setHeader('Set-Cookie', [
+      `dashboar_session=${token}; Path=/; Max-Age=${maxAge}; SameSite=Strict; HttpOnly`,
+      `dashboar_session_present=1; Path=/; Max-Age=${maxAge}; SameSite=Strict`,
+    ])
     res.writeHead(200)
     return res.end(JSON.stringify({ ok: true, user: result.user }))
   }
