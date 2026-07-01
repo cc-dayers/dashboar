@@ -7,7 +7,7 @@ import * as path from 'node:path'
 config({ path: '.env.local' })
 config()
 
-const PORT = 3001
+const PORT = 5001
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 

@@ -1,5 +1,6 @@
 import BoarMark from './BoarMark'
 import { useTheme } from '../hooks/useTheme'
+import { useAuth } from '../hooks/useAuth'
 
 // Icon-only toggle sized for the dark sidebar — uses hardcoded sidebar colors
 // so it always looks right regardless of the active theme.
@@ -59,6 +60,8 @@ function SidebarThemeButton() {
 }
 
 export default function SidebarBoarHeader() {
+  const user = useAuth()
+
   return (
     <div style={{
       padding:        '12px 12px',
@@ -78,6 +81,29 @@ export default function SidebarBoarHeader() {
       >
         <BoarMark size={38} variant="alt" />
       </a>
+      {user && (
+        <div style={{
+          position:      'absolute',
+          left:          '10px',
+          top:           '50%',
+          transform:     'translateY(-50%)',
+          fontSize:      '10px',
+          fontWeight:    600,
+          letterSpacing: '0.04em',
+          color:         'var(--color-sidebar-muted)',
+          background:    'var(--color-sidebar-raised)',
+          border:        '1px solid var(--color-sidebar-border)',
+          borderRadius:  '99px',
+          padding:       '2px 8px',
+          userSelect:    'none',
+          maxWidth:      '80px',
+          overflow:      'hidden',
+          textOverflow:  'ellipsis',
+          whiteSpace:    'nowrap',
+        }}>
+          {user}
+        </div>
+      )}
       <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)' }}>
         <SidebarThemeButton />
       </div>
