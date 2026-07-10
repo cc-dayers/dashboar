@@ -1,6 +1,9 @@
 import type { ReportProps } from '../index'
+import { useState } from 'react'
 import BoarMark from '../../components/BoarMark'
 import ThemeToggle from '../../components/ThemeToggle'
+import JsonToggleButton from '../../components/JsonToggleButton'
+import RawJsonModal from '../../components/RawJsonModal'
 
 type JsonPrimitive = string | number | boolean | null
 type JsonObject = { [key: string]: JsonValue }
@@ -20,6 +23,8 @@ function isPrimitive(v: JsonValue): v is JsonPrimitive {
 }
 
 export default function SimpleDashboard({ data, reportId }: ReportProps) {
+  const [showJson, setShowJson] = useState(false)
+
   const obj: JsonObject =
     data && typeof data === 'object' && !Array.isArray(data)
       ? (data as JsonObject)
@@ -99,6 +104,16 @@ export default function SimpleDashboard({ data, reportId }: ReportProps) {
         ))}
         </div>
       </main>
+
+      <JsonToggleButton active={showJson} onClick={() => setShowJson(true)} />
+      {showJson && (
+        <RawJsonModal
+          data={data}
+          title={title}
+          subtitle="Raw JSON — full report"
+          onClose={() => setShowJson(false)}
+        />
+      )}
     </div>
   )
 }

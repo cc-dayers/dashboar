@@ -47,7 +47,17 @@ export const registry: Record<string, RegistryEntry> = {
     component: lazy(() => import('./review-audit/Dashboard')),
     label: 'Review Audit',
     description: 'PR review audit: per-review feedback, improvement signals, downstream impact, and summary stats.',
+    schemaVersions: {
+      '1':      '/schemas/review-audit.v1.schema.json',
+      'legacy': '/schemas/review-audit.v1.schema.json',
+    },
     fixtures: ['example'],
+  },
+  'e2e-aggregate': {
+    component: lazy(() => import('./e2e/Dashboard')),
+    label: 'E2E Aggregate',
+    description: 'Playwright/E2E test runs — run status, per-run test detail, and Playwright report links.',
+    fixtures: ['report', 'future'],
   },
 }
 

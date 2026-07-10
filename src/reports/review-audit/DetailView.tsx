@@ -131,7 +131,7 @@ function FeedbackSection({ fb }: { fb: FeedbackSummary }) {
   )
 }
 
-function ImprovementSignalsSection({ signals }: { signals: ImprovementSignals }) {
+function ImprovementSignalsSection({ signals, hasCostData }: { signals: ImprovementSignals; hasCostData: boolean }) {
   const sourceLabel: Record<string, string> = {
     hatDetails: 'Hat details',
     state:      'Review state',
@@ -149,7 +149,9 @@ function ImprovementSignalsSection({ signals }: { signals: ImprovementSignals })
       </div>
       <BooleanSignal label="Downstream impact triggered" value={signals.downstreamImpactTriggered} />
       <BooleanSignal label="Model telemetry available" value={signals.hasModelTelemetry} />
-      <BooleanSignal label="Cost telemetry available" value={signals.hasCostTelemetry} />
+      {/* signals.hasCostTelemetry is always true upstream even when no cost was actually
+          incurred — derive the real answer from tokensUsed/estimatedCostUsd instead. */}
+      <BooleanSignal label="Cost telemetry available" value={hasCostData} />
     </Section>
   )
 }
@@ -328,7 +330,7 @@ export default function DetailView({ review: r, onBack }: Props) {
           <FeedbackSection fb={r.feedback} />
 
           {/* Improvement signals */}
-          <ImprovementSignalsSection signals={r.improvementSignals} />
+          <ImprovementSignalsSection signals={r.improvementSignals} hasCostData={r.tokensUsed > 0 || r.estimatedCostUsd > 0} />
         </div>
       </div>
     </div>

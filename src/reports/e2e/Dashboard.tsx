@@ -10,12 +10,23 @@ import RunDetailView from "./RunDetailView";
 import ReportSidebar from "../../components/ReportSidebar";
 import SidebarBoarHeader from "../../components/SidebarBoarHeader";
 import MobileTopBar from "../../components/MobileTopBar";
+import JsonToggleButton from "../../components/JsonToggleButton";
+import RawJsonModal from "../../components/RawJsonModal";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // Stable key for a run entry: prefer reportBlobPath (unique per run), else positional
 function runKey(r: E2eRunEntry, idx: number): string {
   return r.reportBlobPath ?? `run-${idx}`;
+}
+
+function fmtRunTime(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `${date}, ${time}`;
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -237,20 +248,44 @@ function RunRow({
           </span>
         ) : null}
       </div>
-      {/* Matrix label (browser / platform) — secondary row */}
-      {run.matrixLabel && (
+      {/* Matrix label (browser / platform) + run timestamp — secondary row */}
+      {(run.matrixLabel || run.generatedAt) && (
         <div
           style={{
-            color: "var(--color-sidebar-muted)",
-            fontSize: "10.5px",
-            fontFamily: "ui-monospace,monospace",
+            display: "flex",
+            alignItems: "baseline",
+            gap: "6px",
             paddingLeft: "13px",
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-            textOverflow: "ellipsis",
           }}
         >
-          {run.matrixLabel}
+          {run.matrixLabel && (
+            <span
+              style={{
+                color: "var(--color-sidebar-muted)",
+                fontSize: "10.5px",
+                fontFamily: "ui-monospace,monospace",
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+                textOverflow: "ellipsis",
+                minWidth: 0,
+              }}
+            >
+              {run.matrixLabel}
+            </span>
+          )}
+          {run.generatedAt && (
+            <span
+              style={{
+                color: "var(--color-sidebar-secondary)",
+                fontSize: "10px",
+                marginLeft: "auto",
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {fmtRunTime(run.generatedAt)}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -532,6 +567,7 @@ export default function Dashboard({ data }: ReportProps) {
   const [statusFilter, setStatusFilter] = useState<"failed" | "passed" | null>(
     null,
   );
+  const [showJson, setShowJson] = useState(false);
 
   useEffect(() => {
     const onResize = () => {
@@ -636,6 +672,16 @@ export default function Dashboard({ data }: ReportProps) {
           </div>
         </div>
       </main>
+
+      <JsonToggleButton active={showJson} onClick={() => setShowJson(true)} />
+      {showJson && (
+        <RawJsonModal
+          data={selKey ? (viewRun ?? report) : report}
+          title={selKey && viewRun ? (viewRun.suiteName ?? viewRun.jobName ?? `Run ${viewKey}`) : "E2E Aggregate Report"}
+          subtitle={selKey ? "Raw JSON — selected run" : "Raw JSON — full report"}
+          onClose={() => setShowJson(false)}
+        />
+      )}
     </div>
   );
 }

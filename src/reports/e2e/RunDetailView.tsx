@@ -154,12 +154,20 @@ function SummaryStrip({ run }: { run: E2eRunEntry }) {
           {summary.flaky  > 0 && <span style={{ color: '#f59e0b', marginLeft: '8px' }}>{summary.flaky} flaky</span>}
         </span>
       )}
-      {run.links?.adoArtifactsUrl && (
-        <a href={run.links.adoArtifactsUrl} target="_blank" rel="noopener noreferrer"
-          style={{ color: S.fgSubtle, textDecoration: 'none', marginLeft: 'auto' }}>
-          ADO ↗
-        </a>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginLeft: 'auto' }}>
+        {run.links?.playwrightWorkspaceReportUrl && (
+          <a href={run.links.playwrightWorkspaceReportUrl} target="_blank" rel="noopener noreferrer"
+            style={{ color: S.fgSubtle, textDecoration: 'none' }}>
+            Workspace ↗
+          </a>
+        )}
+        {run.links?.adoArtifactsUrl && (
+          <a href={run.links.adoArtifactsUrl} target="_blank" rel="noopener noreferrer"
+            style={{ color: S.fgSubtle, textDecoration: 'none' }}>
+            ADO ↗
+          </a>
+        )}
+      </div>
     </div>
   )
 }
@@ -267,17 +275,33 @@ export default function RunDetailView({ run, reportType, onBack }: Props) {
         {/* Trace tab — iframe only gets its src on first activation (lazy bandwidth) */}
         <div style={{
           position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column',
           visibility: activeTab === 'trace' ? 'visible' : 'hidden',
           pointerEvents: activeTab === 'trace' ? 'auto' : 'none',
         }}>
           {traceActivated && viewerUrl ? (
-            // No sandbox: same-origin iframe, service worker must be allowed to register
-            <iframe
-              src={viewerUrl}
-              style={{ width: '100%', height: '100%', border: 'none', display: 'block', colorScheme }}
-              title="Playwright Trace Viewer"
-              allow="clipboard-read; clipboard-write"
-            />
+            <>
+              {(trace?.testTitle || trace?.file) && (
+                <div style={{
+                  padding: '6px 16px', borderBottom: `1px solid ${S.border}`,
+                  background: S.surface, fontSize: '11.5px', color: S.fgMuted, flexShrink: 0,
+                }}>
+                  {trace.testTitle && <span style={{ color: S.fg, fontWeight: 600 }}>{trace.testTitle}</span>}
+                  {trace.file && (
+                    <span style={{ fontFamily: 'ui-monospace,monospace', marginLeft: trace.testTitle ? '8px' : 0, color: S.fgSubtle }}>
+                      {trace.file}{trace.line != null ? `:${trace.line}` : ''}
+                    </span>
+                  )}
+                </div>
+              )}
+              {/* No sandbox: same-origin iframe, service worker must be allowed to register */}
+              <iframe
+                src={viewerUrl}
+                style={{ flex: 1, width: '100%', border: 'none', display: 'block', colorScheme }}
+                title="Playwright Trace Viewer"
+                allow="clipboard-read; clipboard-write"
+              />
+            </>
           ) : !hasTrace ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: S.fgMuted, fontSize: '13px' }}>
               No trace available for this run.

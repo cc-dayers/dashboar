@@ -5,12 +5,17 @@ import DetailView from './DetailView'
 import ReportSidebar from '../../components/ReportSidebar'
 import SidebarBoarHeader from '../../components/SidebarBoarHeader'
 import MobileTopBar from '../../components/MobileTopBar'
+import JsonToggleButton from '../../components/JsonToggleButton'
+import RawJsonModal from '../../components/RawJsonModal'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtShort(iso: string | null) {
   if (!iso) return ''
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const d = new Date(iso)
+  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return `${date}, ${time}`
 }
 
 function sColor(r: string) {
@@ -200,6 +205,7 @@ export default function Dashboard({ data }: Props) {
   const [isMobile,    setIsMobile]    = useState(window.innerWidth < 768)
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768)
   const [search,      setSearch]      = useState('')
+  const [showJson,    setShowJson]    = useState(false)
 
   useEffect(() => {
     const onResize = () => {
@@ -244,6 +250,16 @@ export default function Dashboard({ data }: Props) {
           <OverviewView report={report} />
         )}
       </main>
+
+      <JsonToggleButton active={showJson} onClick={() => setShowJson(true)} />
+      {showJson && (
+        <RawJsonModal
+          data={selected ?? report}
+          title={selected ? `PR #${selected.prNumber}` : (report.sourceReport?.reportTitle ?? 'Review Audit Report')}
+          subtitle={selected ? 'Raw JSON — selected review' : 'Raw JSON — full report'}
+          onClose={() => setShowJson(false)}
+        />
+      )}
     </div>
   )
 }

@@ -73,11 +73,28 @@ function FindingCard({ f }: { f: ReviewFinding }) {
     ? { bg: S.sunken, color: S.fgSec, label: 'minor' }
     : null
 
+  // 'issue' is the default/expected case — only badge the type when it's not an issue,
+  // so a praise/suggestion finding never gets silently mistaken for a bug report.
+  const typeStyle = f.type === 'praise'
+    ? { bg: '#f0fdf4', color: '#16a34a', label: 'praise' }
+    : f.type === 'suggestion'
+    ? { bg: '#eff6ff', color: '#1d4ed8', label: 'suggestion' }
+    : null
+
   return (
     <div style={{ display: 'flex', gap: '12px', padding: '11px 0', borderBottom: `1px solid ${S.divider}` }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, fontSize: '13px', color: S.fgSec, lineHeight: 1.5 }}>{f.description}</div>
+          {typeStyle && (
+            <span style={{
+              fontSize: '10px', fontWeight: 600, padding: '2px 7px',
+              borderRadius: '4px', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em',
+              background: typeStyle.bg, color: typeStyle.color,
+            }}>
+              {typeStyle.label}
+            </span>
+          )}
           {sevStyle && (
             <span style={{
               fontSize: '10px', fontWeight: 600, padding: '2px 7px',
