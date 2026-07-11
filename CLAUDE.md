@@ -39,7 +39,7 @@ Every report type is registered here with:
 - `schemaVersions` — maps version strings to public schema URLs (optional)
 - `fixtures` — list of fixture filenames available under `fixtures/{type}/`
 
-Registered types: `simple`, `pr-review`, `playwright-trace`, `review-audit`, `e2e-aggregate`. Both `playwright-trace` and `e2e-aggregate` load the same `src/reports/e2e/Dashboard.tsx`.
+Registered types: `pr-review`, `playwright-trace`, `review-audit`, `e2e-aggregate`. Both `playwright-trace` and `e2e-aggregate` load the same `src/reports/e2e/Dashboard.tsx`.
 
 ### Report module structure
 

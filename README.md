@@ -87,7 +87,6 @@ The `path` parameter overrides the `REPORT_NAMES` storage path for that request.
 | `review-audit` | `review-audit.schema.json` | PR review audit — feedback signals, improvement data, downstream impact, summary stats |
 | `playwright-trace` | — | Playwright test trace viewer |
 | `infrastructure` | — | Generic system health dashboard |
-| `simple` | — | Raw JSON viewer, useful as a starting point |
 
 ### Schema versioning (pr-review)
 

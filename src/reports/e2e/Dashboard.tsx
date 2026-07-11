@@ -673,7 +673,7 @@ export default function Dashboard({ data }: ReportProps) {
         </div>
       </main>
 
-      <JsonToggleButton active={showJson} onClick={() => setShowJson(true)} />
+      <JsonToggleButton active={showJson} onClick={() => setShowJson(true)} top={selKey && viewRun ? 112 : 80} />
       {showJson && (
         <RawJsonModal
           data={selKey ? (viewRun ?? report) : report}

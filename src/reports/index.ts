@@ -20,12 +20,6 @@ export interface RegistryEntry {
 }
 
 export const registry: Record<string, RegistryEntry> = {
-  simple: {
-    component: lazy(() => import('./simple/Dashboard')),
-    label: 'Simple',
-    description: 'Generic JSON viewer. Use as a starting point for new report types.',
-    fixtures: ['example'],
-  },
   'pr-review': {
     component: lazy(() => import('./pr-review/Dashboard')),
     label: 'PR Review',

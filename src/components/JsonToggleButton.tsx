@@ -1,15 +1,21 @@
 /**
  * Floating action button shown in every report Dashboard to toggle the
- * raw JSON overlay (RawJsonModal). Fixed-position so it works regardless
- * of each report's internal scroll/layout structure.
+ * raw JSON overlay (RawJsonModal). Fixed-position (relative to viewport)
+ * so it stays visible regardless of each report's internal scroll
+ * position — anchored top-right, just under whatever top bar/header the
+ * current view renders (height varies slightly between the compact
+ * PanelTopBar/MobileTopBar used on overviews vs. taller custom detail
+ * headers like pr-review's, hence the configurable `top` offset).
  */
 
 interface Props {
   onClick: () => void
   active:  boolean
+  /** Vertical offset from the viewport top, in px. Defaults to clearing a standard PanelTopBar. */
+  top?: number
 }
 
-export default function JsonToggleButton({ onClick, active }: Props) {
+export default function JsonToggleButton({ onClick, active, top = 80 }: Props) {
   if (active) return null // RawJsonModal's own Close button takes over
 
   return (
@@ -17,7 +23,7 @@ export default function JsonToggleButton({ onClick, active }: Props) {
       onClick={onClick}
       title="View raw JSON"
       style={{
-        position: 'fixed', bottom: '20px', right: '20px', zIndex: 150,
+        position: 'fixed', top: `${top}px`, right: '20px', zIndex: 150,
         display: 'flex', alignItems: 'center', gap: '6px',
         padding: '8px 14px', borderRadius: '999px', cursor: 'pointer',
         background: 'var(--color-surface)', color: 'var(--color-foreground-secondary)',
