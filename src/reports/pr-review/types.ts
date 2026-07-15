@@ -2,6 +2,12 @@ export type ReviewResult = 'approved' | 'changes-requested' | 'commented'
 export type FindingType = 'issue' | 'suggestion' | 'praise'
 export type FindingSeverity = 'critical' | 'major' | 'minor'
 export type LlmProvider = 'azure' | 'copilot' | 'codex'
+export type CopilotBillingUnit = 'ai-credits' | 'premium-requests'
+
+export interface CopilotBillingUsage {
+  value: number
+  unit: CopilotBillingUnit
+}
 
 export interface ModelUsageEntry {
   provider: LlmProvider
@@ -61,12 +67,19 @@ export interface PrReview {
   tokensUsed: number
   estimatedCostUsd: number
   aicCreditsUsed?: number
+  copilotBillingUsage?: CopilotBillingUsage
   model?: string
   provider?: LlmProvider
   modelsUsed?: ModelUsageEntry[]
   notes?: string
   jiraTicket?: JiraTicketRef
   downstreamImpact?: DownstreamImpactSummary
+}
+
+export function getCopilotBillingUsage(review: PrReview): CopilotBillingUsage | null {
+  if (review.copilotBillingUsage?.value != null) return review.copilotBillingUsage
+  if (review.aicCreditsUsed != null) return { value: review.aicCreditsUsed, unit: 'ai-credits' }
+  return null
 }
 
 export interface PrReviewReport {

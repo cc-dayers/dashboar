@@ -1,0 +1,27 @@
+{
+  "$schema": "report.v4.schema.json",
+  "schemaVersion": "4",
+  "title": "Copilot billing telemetry",
+  "generatedAt": "2026-07-15T20:00:00.000Z",
+  "reviews": [
+    {
+      "id": "pr-18571",
+      "prNumber": 18571,
+      "prTitle": "Capture Copilot billing telemetry",
+      "repository": "carecontinuity/carecontinuity.app",
+      "reviewedAt": "2026-07-15T19:55:00.000Z",
+      "timeToReviewMs": 12500,
+      "accuracyRating": 92,
+      "result": "approved",
+      "hats": ["ci-automation"],
+      "tokensUsed": 0,
+      "estimatedCostUsd": 0,
+      "provider": "copilot",
+      "model": "gpt-5.4",
+      "copilotBillingUsage": {
+        "value": 1,
+        "unit": "premium-requests"
+      }
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import {
   Area, AreaChart, Bar, BarChart, CartesianGrid,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import type { PrReview, PrReviewReport, LlmProvider } from './types'
+import { getCopilotBillingUsage, type PrReview, type PrReviewReport, type LlmProvider } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -192,8 +192,25 @@ export default function OverviewView({ report, reportId }: Props) {
   const avgTimeMs      = mean(reviews.map(r => r.timeToReviewMs))
   const changesCount   = reviews.filter(r => r.result === 'changes-requested').length
   const changesPct     = reviews.length > 0 ? Math.round((changesCount / reviews.length) * 100) : 0
-  const aicReviews     = reviews.filter(r => r.aicCreditsUsed != null)
-  const totalAicCredits = aicReviews.reduce((s, r) => s + (r.aicCreditsUsed ?? 0), 0)
+  const billingReviews = reviews.flatMap(r => {
+    const usage = getCopilotBillingUsage(r)
+    return usage ? [{ review: r, usage }] : []
+  })
+  const billingUnits = new Set(billingReviews.map(({ usage }) => usage.unit))
+  const billingUnit = billingUnits.size === 1 ? billingReviews[0]?.usage.unit : null
+  const totalAiCredits = billingReviews
+    .filter(({ usage }) => usage.unit === 'ai-credits')
+    .reduce((sum, { usage }) => sum + usage.value, 0)
+  const totalPremiumRequests = billingReviews
+    .filter(({ usage }) => usage.unit === 'premium-requests')
+    .reduce((sum, { usage }) => sum + usage.value, 0)
+  const billingLabel = billingUnit === 'premium-requests' ? 'Premium Requests Used'
+    : billingUnit === 'ai-credits' ? 'AI Credits Used'
+    : 'Copilot Usage'
+  const billingValue = billingUnit === 'premium-requests' ? String(totalPremiumRequests)
+    : billingUnit === 'ai-credits' ? String(totalAiCredits)
+    : billingReviews.length > 0 ? `${totalAiCredits} AIC · ${totalPremiumRequests} req`
+    : '—'
 
   // ── Reviews by period — bucket granularity adapts to filter range
   type PeriodBucket = { label: string; approved: number; 'changes-requested': number; commented: number }
@@ -233,7 +250,7 @@ export default function OverviewView({ report, reportId }: Props) {
     periodData = Array.from(weekMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([, d]) => d)
   }
 
-  // ── Token + AIC usage per review
+  // ── Token + Copilot billing usage per review
   const tokenData = reviews.map(r => ({
     date:       shortDate(r.reviewedAt.slice(0, 10)),
     tokens:     r.tokensUsed,
@@ -241,19 +258,19 @@ export default function OverviewView({ report, reportId }: Props) {
     pr:         `#${r.prNumber}`,
     title:      r.prTitle,
     result:     r.result,
-    aicCredits: r.aicCreditsUsed,
   }))
 
-  const aicData = reviews
-    .filter(r => r.aicCreditsUsed != null)
-    .map(r => ({
-      date:   shortDate(r.reviewedAt.slice(0, 10)),
-      aic:    r.aicCreditsUsed as number,
-      pr:     `#${r.prNumber}`,
-      title:  r.prTitle,
-      result: r.result,
+  const billingData = billingUnit == null ? [] : billingReviews
+    .filter(({ usage }) => usage.unit === billingUnit)
+    .map(({ review, usage }) => ({
+      date:   shortDate(review.reviewedAt.slice(0, 10)),
+      usage:  usage.value,
+      pr:     `#${review.prNumber}`,
+      title:  review.prTitle,
+      result: review.result,
     }))
-  const hasAicData = aicData.length > 0
+  const hasBillingData = billingData.length > 0
+  const billingUnitLabel = billingUnit === 'premium-requests' ? 'premium requests' : 'AI credits'
 
   // ── Findings by hat
   const findingsByHat = new Map<string, number>()
@@ -355,7 +372,7 @@ export default function OverviewView({ report, reportId }: Props) {
           <KpiCard label="Avg Review Time"        value={fmtMs(avgTimeMs)} />
           <KpiCard label="Changes Requested"      value={`${changesPct}%`} sub={`${changesCount} of ${reviews.length}`} accent="#dc2626" />
           <KpiCard label="Avg Accuracy Rating"    value={`${avgAccuracy.toFixed(1)}%`} accent="#16a34a" />
-          <KpiCard label="AIC Credits Used"       value={totalAicCredits > 0 ? String(totalAicCredits) : '—'} sub={aicReviews.length > 0 ? `${aicReviews.length} of ${reviews.length} reviews` : 'no AIC data'} accent="#7c3aed" />
+          <KpiCard label={billingLabel} value={billingValue} sub={billingReviews.length > 0 ? `${billingReviews.length} of ${reviews.length} reviews` : 'no Copilot billing data'} accent="#7c3aed" />
         </div>
 
         {/* Reviews by period + token usage */}
@@ -442,12 +459,12 @@ export default function OverviewView({ report, reportId }: Props) {
           </Card>
         </div>
 
-        {/* AIC Credits line chart */}
-        {hasAicData && (
+        {/* Copilot billing usage line chart */}
+        {hasBillingData && (
           <div style={{ marginBottom: '12px' }}>
-            <Card title="AIC Credits per Review" sub="GitHub Copilot AIC consumption — each point is one PR">
+            <Card title={`${billingLabel.replace(' Used', '')} per Review`} sub={`GitHub Copilot ${billingUnitLabel} — each point is one PR`}>
               <ResponsiveContainer width="100%" height={160}>
-                <AreaChart data={aicData} margin={{ top: 6, right: 8, bottom: 0, left: -4 }}>
+                <AreaChart data={billingData} margin={{ top: 6, right: 8, bottom: 0, left: -4 }}>
                   <defs>
                     <linearGradient id="aicGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%"  stopColor="#7c3aed" stopOpacity={0.2} />
@@ -459,7 +476,7 @@ export default function OverviewView({ report, reportId }: Props) {
                   <YAxis tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
                   <Tooltip content={({ active, payload }) => {
                     if (!active || !payload?.length) return null
-                    const d = payload[0]?.payload as typeof aicData[0]
+                    const d = payload[0]?.payload as typeof billingData[0]
                     const dotColor = d.result === 'approved' ? '#16a34a' : d.result === 'changes-requested' ? '#dc2626' : '#d97706'
                     return (
                       <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '8px', padding: '9px 12px', fontSize: '12px', boxShadow: '0 4px 16px rgba(0,0,0,.12)', maxWidth: '230px' }}>
@@ -472,17 +489,17 @@ export default function OverviewView({ report, reportId }: Props) {
                         <div style={{ color: S.fgSec, fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
                           {d.title.length > 52 ? d.title.slice(0, 50) + '…' : d.title}
                         </div>
-                        <div style={{ color: '#7c3aed', fontWeight: 700 }}>{d.aic} AIC credits</div>
+                        <div style={{ color: '#7c3aed', fontWeight: 700 }}>{d.usage} {billingUnitLabel}</div>
                       </div>
                     )
                   }} />
                   <Area
                     type="monotone"
-                    dataKey="aic"
+                    dataKey="usage"
                     stroke="#7c3aed"
                     strokeWidth={2}
                     fill="url(#aicGrad)"
-                    dot={aicData.length <= 30 ? { r: 3, fill: '#7c3aed', strokeWidth: 0 } : false}
+                    dot={billingData.length <= 30 ? { r: 3, fill: '#7c3aed', strokeWidth: 0 } : false}
                     activeDot={{ r: 5, fill: '#7c3aed', stroke: S.surface, strokeWidth: 2 }}
                   />
                 </AreaChart>

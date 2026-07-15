@@ -4,6 +4,13 @@ import { test, expect } from './test'
 const FIXTURE_URL = '/?report=pr-review&id=example&_fixture=dev'
 
 test.describe('PR Review dashboard', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/get-blob?*', async route => {
+      const reportId = new URL(route.request().url()).searchParams.get('id') ?? 'example'
+      await route.fulfill({ path: `fixtures/pr-review/${reportId}.json` })
+    })
+  })
+
   test('loads the overview by default', async ({ page }) => {
     await page.goto(FIXTURE_URL)
     await expect(page.getByText('Overview')).toBeVisible()
@@ -42,12 +49,20 @@ test.describe('PR Review dashboard', () => {
   })
 
   test('schema v3 renders model attempt telemetry without an unsupported warning', async ({ page }) => {
-    await page.route('**/api/get-blob?*', async route => {
-      await route.fulfill({ path: 'fixtures/pr-review/v3.json' })
-    })
     await page.goto('/?report=pr-review&id=v3&_fixture=dev')
     await expect(page.getByText('Unsupported schema version')).not.toBeVisible()
     await page.getByText('Schema v3 model fallback telemetry').click()
     await expect(page.getByText('2 attempts')).toBeVisible()
+  })
+
+  test('schema v4 displays legacy Copilot billing usage as premium requests', async ({ page }) => {
+    await page.goto('/?report=pr-review&id=v4&_fixture=dev')
+    await expect(page.getByText('Unsupported schema version')).not.toBeVisible()
+    await expect(page.getByText('Premium Requests Used', { exact: true })).toBeVisible()
+    await expect(page.getByText('Premium Requests per Review', { exact: true })).toBeVisible()
+
+    await page.getByText('Capture Copilot billing telemetry').first().click()
+    await expect(page.getByRole('main').getByText('Premium Requests', { exact: true })).toBeVisible()
+    await expect(page.getByRole('main').getByText('1', { exact: true })).toBeVisible()
   })
 })

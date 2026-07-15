@@ -1,4 +1,4 @@
-import type { PrReview, ReviewFinding, DownstreamImpactSummary, ModelUsageEntry } from './types'
+import { getCopilotBillingUsage, type PrReview, type ReviewFinding, type DownstreamImpactSummary, type ModelUsageEntry } from './types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -243,6 +243,8 @@ interface Props {
 }
 
 export default function DetailView({ pr, onBack }: Props) {
+  const billingUsage = getCopilotBillingUsage(pr)
+  const billingLabel = billingUsage?.unit === 'premium-requests' ? 'Premium Requests' : 'AI Credits'
   const pill  = resultPill(pr.result)
   const author = pr.author ?? ''
   const date  = new Date(pr.reviewedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -336,7 +338,7 @@ export default function DetailView({ pr, onBack }: Props) {
           <MetricCard label="Review Time"    value={fmtMs(pr.timeToReviewMs)} />
           <MetricCard label="Accuracy Rating" value={`${pr.accuracyRating}%`} />
           <MetricCard label="Tokens Used"    value={fmtTokens(pr.tokensUsed)} sub={`$${pr.estimatedCostUsd.toFixed(2)}`} />
-          <MetricCard label="AIC Credits"    value={pr.aicCreditsUsed != null ? String(pr.aicCreditsUsed) : '—'} accent={pr.aicCreditsUsed != null ? '#7c3aed' : undefined} />
+          <MetricCard label={billingLabel} value={billingUsage ? String(billingUsage.value) : '—'} accent={billingUsage ? '#7c3aed' : undefined} />
         </div>
 
         {/* Jira ticket */}
