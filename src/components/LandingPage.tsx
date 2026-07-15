@@ -40,6 +40,17 @@ function fixtureHref(id: string, reportType: string): string {
   return `/?id=${encodeURIComponent(id)}&report=${encodeURIComponent(reportType)}&_fixture=dev`
 }
 
+function reportsEqual(current: DiscoveredReport[], next: DiscoveredReport[]) {
+  return current.length === next.length && current.every((report, index) => {
+    const candidate = next[index]
+    return report.id === candidate.id
+      && report.reportType === candidate.reportType
+      && report.storagePath === candidate.storagePath
+      && report.lastModified === candidate.lastModified
+      && report.sizeBytes === candidate.sizeBytes
+  })
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function FileIcon() {
@@ -136,30 +147,31 @@ function TypeEntry({
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-type BrowseState = 'idle' | 'loading' | 'done'
+type BrowseState = 'initial-loading' | 'refreshing' | 'done'
 
 export default function LandingPage() {
   const types = Object.entries(registry)
-  const [browseState, setBrowseState] = useState<BrowseState>('loading')
+  const [browseState, setBrowseState] = useState<BrowseState>('initial-loading')
   const [reports,     setReports]     = useState<DiscoveredReport[]>([])
   const [errors,      setErrors]      = useState<FetchError[]>([])
 
-  useEffect(() => { void loadFromStorage() }, [])
+  useEffect(() => { void loadFromStorage(false) }, [])
 
-  async function loadFromStorage() {
-    setBrowseState('loading')
+  async function loadFromStorage(isRefresh: boolean) {
+    setBrowseState(isRefresh ? 'refreshing' : 'initial-loading')
     try {
       const res  = await fetch('/api/list-blobs')
       const json = await res.json() as {
         blobs?: Array<{ id: string; reportType: string; storagePath: string; lastModified?: string; sizeBytes?: number }>
         error?: string
       }
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`)
       const all = (json.blobs ?? []).filter(b => b.reportType in registry)
       all.sort((a, b) => {
         if (!a.lastModified || !b.lastModified) return 0
         return new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
       })
-      setReports(all)
+      setReports(current => reportsEqual(current, all) ? current : all)
       setErrors(json.error ? [{ reportType: '', error: json.error }] : [])
     } catch (e) {
       setErrors([{ reportType: '', error: e instanceof Error ? e.message : 'Network error' }])
@@ -174,7 +186,9 @@ export default function LandingPage() {
   }, {})
 
   const totalInStorage = reports.length
-  const isLoading = browseState === 'loading'
+  const isInitialLoading = browseState === 'initial-loading'
+  const isRefreshing = browseState === 'refreshing'
+  const isLoading = isInitialLoading || isRefreshing
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6" style={{ position: 'relative' }}>
@@ -215,9 +229,10 @@ export default function LandingPage() {
                 </span>
               )}
               <button
-                onClick={() => { void loadFromStorage() }}
+                onClick={() => { void loadFromStorage(true) }}
                 className="text-sm text-foreground-muted hover:text-accent cursor-pointer transition-colors leading-none"
                 title="Refresh storage"
+                aria-label="Refresh storage"
                 disabled={isLoading}
               >
                 ↻
@@ -225,16 +240,40 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {types.map(([key, entry], i) => (
-            <TypeEntry
-              key={key}
-              reportType={key}
-              entry={entry}
-              storageReports={reportsByType[key] ?? []}
-              isLoading={isLoading}
-              isLast={i === types.length - 1}
-            />
-          ))}
+          <div style={{ position: 'relative' }} aria-busy={isLoading}>
+            {types.map(([key, entry], i) => (
+              <TypeEntry
+                key={key}
+                reportType={key}
+                entry={entry}
+                storageReports={reportsByType[key] ?? []}
+                isLoading={isInitialLoading}
+                isLast={i === types.length - 1}
+              />
+            ))}
+
+            {isRefreshing && (
+              <div
+                role="status"
+                aria-label="Refreshing reports"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  zIndex: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'color-mix(in srgb, var(--color-surface) 76%, transparent)',
+                  backdropFilter: 'blur(1px)',
+                }}
+              >
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 shadow-sm text-xs text-foreground-muted">
+                  <div className="w-3.5 h-3.5 border border-accent border-t-transparent rounded-full animate-spin" />
+                  Refreshing reports…
+                </div>
+              </div>
+            )}
+          </div>
 
           {errors.length > 0 && (
             <div className="px-5 py-3 border-t border-border-subtle space-y-1">
