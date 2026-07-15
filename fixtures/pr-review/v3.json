@@ -1,0 +1,41 @@
+{
+  "$schema": "report.v3.schema.json",
+  "schemaVersion": "3",
+  "title": "PR Review Report",
+  "subtitle": "Schema v3 model telemetry",
+  "generatedAt": "2026-07-15T22:00:00.000Z",
+  "period": "2026-07-15",
+  "reviews": [
+    {
+      "id": "pr-18571",
+      "prNumber": 18571,
+      "prTitle": "Schema v3 model fallback telemetry",
+      "repository": "carecontinuity/carecontinuity.app",
+      "branch": "feature/CCW-18571",
+      "author": "review.agent",
+      "reviewedAt": "2026-07-15T21:30:00.000Z",
+      "timeToReviewMs": 139397,
+      "accuracyRating": 92,
+      "result": "commented",
+      "hats": ["agentic-development"],
+      "tokensUsed": 48210,
+      "estimatedCostUsd": 0,
+      "model": "claude-sonnet-5",
+      "provider": "copilot",
+      "modelsUsed": [
+        {
+          "label": "agentic-development",
+          "source": "fan-out",
+          "provider": "copilot",
+          "model": "claude-sonnet-5",
+          "tier": "strong",
+          "reasoningEffort": "high",
+          "attemptedModels": ["claude-sonnet-5", "gpt-5.2"],
+          "attemptedReasoningEfforts": ["high", "medium"],
+          "attemptedConfigurations": ["claude-sonnet-5/high", "gpt-5.2/medium"]
+        }
+      ],
+      "notes": "Fixture exercises schema v3 model-attempt telemetry."
+    }
+  ]
+}

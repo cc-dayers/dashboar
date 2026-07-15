@@ -25,11 +25,12 @@ export const registry: Record<string, RegistryEntry> = {
     label: 'PR Review',
     description: 'AI PR review agent: accuracy trends, review time, cost, hats, and per-PR findings.',
     schemaVersions: {
+      '3':      '/schemas/pr-review.v3.schema.json',
       '2':      '/schemas/pr-review.v2.schema.json',
       '1':      '/schemas/pr-review.v1.schema.json',
       'legacy': '/schemas/pr-review.v1.schema.json',
     },
-    fixtures: ['example', 'report', 'legacy', 'v1', 'future'],
+    fixtures: ['example', 'report', 'legacy', 'v1', 'v3', 'future'],
   },
   'playwright-trace': {
     component: lazy(() => import('./e2e/Dashboard')),

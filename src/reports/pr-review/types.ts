@@ -11,6 +11,8 @@ export interface ModelUsageEntry {
   tier?: string
   reasoningEffort?: string
   attemptedModels?: string[]
+  attemptedReasoningEfforts?: string[]
+  attemptedConfigurations?: string[]
 }
 
 export interface ReviewFinding {

@@ -145,8 +145,18 @@ function ModelChips({ entries }: { entries: ModelUsageEntry[] }) {
       {entries.map((e, i) => {
         const color = PROVIDER_COLOR[e.provider ?? ''] ?? S.fgMuted
         const meta  = [e.tier, e.source, e.reasoningEffort].filter(Boolean).join(' · ')
+        const attempts = [
+          ...(e.attemptedModels ?? []).map(value => `Model: ${value}`),
+          ...(e.attemptedReasoningEfforts ?? []).map(value => `Reasoning: ${value}`),
+          ...(e.attemptedConfigurations ?? []).map(value => `Configuration: ${value}`),
+        ]
+        const attemptCount = Math.max(
+          e.attemptedModels?.length ?? 0,
+          e.attemptedReasoningEfforts?.length ?? 0,
+          e.attemptedConfigurations?.length ?? 0,
+        )
         return (
-          <span key={i} style={{
+          <span key={i} title={attempts.length > 0 ? attempts.join('\n') : undefined} style={{
             display: 'inline-flex', alignItems: 'center', gap: '5px',
             fontSize: '10px', borderRadius: '5px', padding: '2px 8px',
             background: color + '12', border: `1px solid ${color}28`,
@@ -159,6 +169,9 @@ function ModelChips({ entries }: { entries: ModelUsageEntry[] }) {
               </span>
             )}
             {meta && <span style={{ color: S.fgSubtle }}>{meta}</span>}
+            {attemptCount > 0 && (
+              <span style={{ color, fontWeight: 600 }}>{attemptCount} attempts</span>
+            )}
           </span>
         )
       })}

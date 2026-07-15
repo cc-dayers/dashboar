@@ -40,4 +40,14 @@ test.describe('PR Review dashboard', () => {
     await page.getByRole('button', { name: 'Dismiss' }).click()
     await expect(page.getByText('Unsupported schema version')).not.toBeVisible()
   })
+
+  test('schema v3 renders model attempt telemetry without an unsupported warning', async ({ page }) => {
+    await page.route('**/api/get-blob?*', async route => {
+      await route.fulfill({ path: 'fixtures/pr-review/v3.json' })
+    })
+    await page.goto('/?report=pr-review&id=v3&_fixture=dev')
+    await expect(page.getByText('Unsupported schema version')).not.toBeVisible()
+    await page.getByText('Schema v3 model fallback telemetry').click()
+    await expect(page.getByText('2 attempts')).toBeVisible()
+  })
 })
