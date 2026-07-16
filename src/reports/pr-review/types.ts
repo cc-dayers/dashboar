@@ -2,11 +2,19 @@ export type ReviewResult = 'approved' | 'changes-requested' | 'commented'
 export type FindingType = 'issue' | 'suggestion' | 'praise'
 export type FindingSeverity = 'critical' | 'major' | 'minor'
 export type LlmProvider = 'azure' | 'copilot' | 'codex'
-export type CopilotBillingUnit = 'ai-credits' | 'premium-requests'
-
 export interface CopilotBillingUsage {
   value: number
-  unit: CopilotBillingUnit
+  unit: 'ai-credits'
+}
+
+export interface CopilotUsageSummary {
+  source: 'github-copilot-usage-metrics'
+  scopeType: 'organization' | 'enterprise'
+  scope: string
+  reportStartDay: string
+  reportEndDay: string
+  totalAiCreditsUsed: number
+  userCount: number
 }
 
 export interface ModelUsageEntry {
@@ -77,7 +85,9 @@ export interface PrReview {
 }
 
 export function getCopilotBillingUsage(review: PrReview): CopilotBillingUsage | null {
-  if (review.copilotBillingUsage?.value != null) return review.copilotBillingUsage
+  if (review.copilotBillingUsage?.value != null && review.copilotBillingUsage.unit === 'ai-credits') {
+    return review.copilotBillingUsage
+  }
   if (review.aicCreditsUsed != null) return { value: review.aicCreditsUsed, unit: 'ai-credits' }
   return null
 }
@@ -89,6 +99,7 @@ export interface PrReviewReport {
   subtitle?: string
   generatedAt?: string
   period?: string
+  copilotUsage?: CopilotUsageSummary
   reviews: PrReview[]
 }
 

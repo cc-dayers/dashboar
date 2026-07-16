@@ -13,9 +13,24 @@
         "subtitle": { "type": "string" },
         "generatedAt": { "type": "string", "format": "date-time" },
         "period": { "type": "string" },
+        "copilotUsage": { "$ref": "#/$defs/CopilotUsageSummary" },
         "reviews": { "type": "array", "items": { "$ref": "#/$defs/ReviewEntry" } }
     },
     "$defs": {
+        "CopilotUsageSummary": {
+            "type": "object",
+            "required": ["source", "scopeType", "scope", "reportStartDay", "reportEndDay", "totalAiCreditsUsed", "userCount"],
+            "additionalProperties": false,
+            "properties": {
+                "source": { "const": "github-copilot-usage-metrics" },
+                "scopeType": { "type": "string", "enum": ["organization", "enterprise"] },
+                "scope": { "type": "string", "minLength": 1 },
+                "reportStartDay": { "type": "string", "format": "date" },
+                "reportEndDay": { "type": "string", "format": "date" },
+                "totalAiCreditsUsed": { "type": "number", "minimum": 0 },
+                "userCount": { "type": "integer", "minimum": 0 }
+            }
+        },
         "ReviewEntry": {
             "type": "object",
             "required": ["id", "prNumber", "prTitle", "repository", "reviewedAt", "timeToReviewMs", "accuracyRating", "result", "hats", "tokensUsed", "estimatedCostUsd"],
@@ -35,7 +50,7 @@
                 "hatDetails": { "type": "array", "items": { "$ref": "#/$defs/HatDetail" } },
                 "tokensUsed": { "type": "integer", "minimum": 0 },
                 "estimatedCostUsd": { "type": "number", "minimum": 0 },
-                "aicCreditsUsed": { "type": "integer", "minimum": 1 },
+                "aicCreditsUsed": { "type": "number", "exclusiveMinimum": 0 },
                 "copilotBillingUsage": { "$ref": "#/$defs/CopilotBillingUsage" },
                 "model": { "type": "string" },
                 "provider": { "type": "string", "enum": ["azure", "copilot", "codex"] },
@@ -50,8 +65,8 @@
             "required": ["value", "unit"],
             "additionalProperties": false,
             "properties": {
-                "value": { "type": "integer", "minimum": 1 },
-                "unit": { "type": "string", "enum": ["ai-credits", "premium-requests"] }
+                "value": { "type": "number", "exclusiveMinimum": 0 },
+                "unit": { "const": "ai-credits" }
             }
         },
         "JiraTicketRef": {

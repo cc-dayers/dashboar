@@ -3,6 +3,15 @@
   "schemaVersion": "4",
   "title": "Copilot billing telemetry",
   "generatedAt": "2026-07-15T20:00:00.000Z",
+  "copilotUsage": {
+    "source": "github-copilot-usage-metrics",
+    "scopeType": "organization",
+    "scope": "carecontinuity",
+    "reportStartDay": "2026-06-17",
+    "reportEndDay": "2026-07-14",
+    "totalAiCreditsUsed": 15.75,
+    "userCount": 2
+  },
   "reviews": [
     {
       "id": "pr-18571",
@@ -19,8 +28,8 @@
       "provider": "copilot",
       "model": "gpt-5.4",
       "copilotBillingUsage": {
-        "value": 1,
-        "unit": "premium-requests"
+        "value": 1.25,
+        "unit": "ai-credits"
       }
     }
   ]

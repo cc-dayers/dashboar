@@ -55,14 +55,16 @@ test.describe('PR Review dashboard', () => {
     await expect(page.getByText('2 attempts')).toBeVisible()
   })
 
-  test('schema v4 displays legacy Copilot billing usage as premium requests', async ({ page }) => {
+  test('schema v4 displays fractional AI-credit usage', async ({ page }) => {
     await page.goto('/?report=pr-review&id=v4&_fixture=dev')
     await expect(page.getByText('Unsupported schema version')).not.toBeVisible()
-    await expect(page.getByText('Premium Requests Used', { exact: true })).toBeVisible()
-    await expect(page.getByText('Premium Requests per Review', { exact: true })).toBeVisible()
+    await expect(page.getByText('AI Credits Used', { exact: true })).toBeVisible()
+    await expect(page.getByText('15.75', { exact: true })).toBeVisible()
+    await expect(page.getByText(/Jun 17 – Jul 14 · 2 users/)).toBeVisible()
+    await expect(page.getByText('AI Credits per Review', { exact: true })).toBeVisible()
 
     await page.getByText('Capture Copilot billing telemetry').first().click()
-    await expect(page.getByRole('main').getByText('Premium Requests', { exact: true })).toBeVisible()
-    await expect(page.getByRole('main').getByText('1', { exact: true })).toBeVisible()
+    await expect(page.getByRole('main').getByText('AI Credits', { exact: true })).toBeVisible()
+    await expect(page.getByRole('main').getByText('1.25', { exact: true })).toBeVisible()
   })
 })

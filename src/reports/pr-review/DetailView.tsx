@@ -244,7 +244,7 @@ interface Props {
 
 export default function DetailView({ pr, onBack }: Props) {
   const billingUsage = getCopilotBillingUsage(pr)
-  const billingLabel = billingUsage?.unit === 'premium-requests' ? 'Premium Requests' : 'AI Credits'
+  const billingLabel = 'AI Credits'
   const pill  = resultPill(pr.result)
   const author = pr.author ?? ''
   const date  = new Date(pr.reviewedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })

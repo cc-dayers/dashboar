@@ -196,21 +196,17 @@ export default function OverviewView({ report, reportId }: Props) {
     const usage = getCopilotBillingUsage(r)
     return usage ? [{ review: r, usage }] : []
   })
-  const billingUnits = new Set(billingReviews.map(({ usage }) => usage.unit))
-  const billingUnit = billingUnits.size === 1 ? billingReviews[0]?.usage.unit : null
   const totalAiCredits = billingReviews
-    .filter(({ usage }) => usage.unit === 'ai-credits')
     .reduce((sum, { usage }) => sum + usage.value, 0)
-  const totalPremiumRequests = billingReviews
-    .filter(({ usage }) => usage.unit === 'premium-requests')
-    .reduce((sum, { usage }) => sum + usage.value, 0)
-  const billingLabel = billingUnit === 'premium-requests' ? 'Premium Requests Used'
-    : billingUnit === 'ai-credits' ? 'AI Credits Used'
-    : 'Copilot Usage'
-  const billingValue = billingUnit === 'premium-requests' ? String(totalPremiumRequests)
-    : billingUnit === 'ai-credits' ? String(totalAiCredits)
-    : billingReviews.length > 0 ? `${totalAiCredits} AIC · ${totalPremiumRequests} req`
-    : '—'
+  const billingLabel = 'AI Credits Used'
+  const authoritativeUsage = report.copilotUsage
+  const billingValue = authoritativeUsage
+    ? String(authoritativeUsage.totalAiCreditsUsed)
+    : billingReviews.length > 0 ? String(totalAiCredits) : '—'
+  const billingSub = authoritativeUsage
+    ? `${shortDate(authoritativeUsage.reportStartDay)} – ${shortDate(authoritativeUsage.reportEndDay)} · ${authoritativeUsage.userCount} users`
+    : billingReviews.length > 0 ? `${billingReviews.length} of ${reviews.length} reviews`
+    : 'official GitHub usage data unavailable'
 
   // ── Reviews by period — bucket granularity adapts to filter range
   type PeriodBucket = { label: string; approved: number; 'changes-requested': number; commented: number }
@@ -260,9 +256,7 @@ export default function OverviewView({ report, reportId }: Props) {
     result:     r.result,
   }))
 
-  const billingData = billingUnit == null ? [] : billingReviews
-    .filter(({ usage }) => usage.unit === billingUnit)
-    .map(({ review, usage }) => ({
+  const billingData = billingReviews.map(({ review, usage }) => ({
       date:   shortDate(review.reviewedAt.slice(0, 10)),
       usage:  usage.value,
       pr:     `#${review.prNumber}`,
@@ -270,7 +264,7 @@ export default function OverviewView({ report, reportId }: Props) {
       result: review.result,
     }))
   const hasBillingData = billingData.length > 0
-  const billingUnitLabel = billingUnit === 'premium-requests' ? 'premium requests' : 'AI credits'
+  const billingUnitLabel = 'AI credits'
 
   // ── Findings by hat
   const findingsByHat = new Map<string, number>()
@@ -372,7 +366,7 @@ export default function OverviewView({ report, reportId }: Props) {
           <KpiCard label="Avg Review Time"        value={fmtMs(avgTimeMs)} />
           <KpiCard label="Changes Requested"      value={`${changesPct}%`} sub={`${changesCount} of ${reviews.length}`} accent="#dc2626" />
           <KpiCard label="Avg Accuracy Rating"    value={`${avgAccuracy.toFixed(1)}%`} accent="#16a34a" />
-          <KpiCard label={billingLabel} value={billingValue} sub={billingReviews.length > 0 ? `${billingReviews.length} of ${reviews.length} reviews` : 'no Copilot billing data'} accent="#7c3aed" />
+          <KpiCard label={billingLabel} value={billingValue} sub={billingSub} accent="#7c3aed" />
         </div>
 
         {/* Reviews by period + token usage */}
