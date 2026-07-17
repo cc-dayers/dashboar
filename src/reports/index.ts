@@ -1,8 +1,15 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
 
+/** Result of the most recent manual refresh — drives the brief status bubble next to the refresh button. */
+export type RefreshStatus = { kind: 'updated' | 'no-updates'; nonce: number } | null
+
 export interface ReportProps {
   data: unknown
   reportId: string
+  /** Refetches the current report's blob data in place (Dashboard stays mounted). */
+  onRefresh?: () => void
+  refreshing?: boolean
+  refreshStatus?: RefreshStatus
 }
 
 export interface RegistryEntry {

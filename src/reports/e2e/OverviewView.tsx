@@ -156,6 +156,85 @@ function StackedBar({ passed, failed, flaky, skipped, total, height = 8 }: { pas
   )
 }
 
+// ── Section: Suite tier banner ────────────────────────────────────────────────
+//
+// Fixed, always-present cards for the three CI suite tiers (@smoke/@core/@regression
+// tags per AGENTS.md) — a missing tier (e.g. its pipeline didn't run) should be
+// obviously visible as its own "no runs" card, not silently absent.
+
+const SUITE_TIERS = ['Smoke', 'Core', 'Regression'] as const
+
+function matchesTier(run: E2eRunEntry, tier: string): boolean {
+  const re  = new RegExp(`\\b${tier}\\b`, 'i')
+  const hay = [run.suiteName, run.suite, run.jobName].filter(Boolean).join(' ')
+  return re.test(hay)
+}
+
+function latestRunForTier(runs: E2eRunEntry[], tier: string): E2eRunEntry | null {
+  let latest: E2eRunEntry | null = null
+  let latestMs = -Infinity
+  for (const r of runs) {
+    if (!matchesTier(r, tier)) continue
+    const ms = r.generatedAt ? new Date(r.generatedAt).getTime() : 0
+    if (ms >= latestMs) { latest = r; latestMs = ms }
+  }
+  return latest
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  passed: 'Passed', succeeded: 'Passed', failed: 'Failed', timedout: 'Timed Out',
+  flaky: 'Flaky', succeeded_with_issues: 'Succeeded w/ Issues', interrupted: 'Interrupted',
+  inProgress: 'In Progress', notStarted: 'Not Started', cancelling: 'Cancelling',
+}
+
+function tierEmoji(effectiveStatus: string): string {
+  if (effectiveStatus === 'passed' || effectiveStatus === 'succeeded')   return '👍'
+  if (effectiveStatus === 'failed' || effectiveStatus === 'timedout')    return '👎'
+  return '🤨'
+}
+
+function fmtWhen(iso: string | undefined) {
+  if (!iso) return null
+  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+function SuiteTierCard({ tier, run }: { tier: string; run: E2eRunEntry | null }) {
+  const eff   = run ? runEffectiveStatus(run) : null
+  const color = eff ? runStatusColor(eff) : S.fgSubtle
+  const emoji = eff ? tierEmoji(eff) : '—'
+  const label = eff ? (STATUS_LABEL[eff] ?? eff) : 'No runs recorded'
+  const when  = run ? fmtWhen(run.generatedAt) : null
+  const browser = run ? browserName(run.matrixLabel) : null
+
+  return (
+    <div style={{
+      flex: '1 1 200px', minWidth: '180px',
+      background: S.surface, border: `1px solid ${S.border}`, borderTop: `3px solid ${color}`,
+      borderRadius: '14px', padding: '18px 20px 16px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px',
+    }}>
+      <div style={{ fontSize: '12px', fontWeight: 700, color: S.fgMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        {tier}
+      </div>
+      <div style={{ fontSize: '56px', lineHeight: 1.15 }}>{emoji}</div>
+      <div style={{ fontSize: '14px', fontWeight: 600, color }}>{label}</div>
+      <div style={{ fontSize: '11px', color: S.fgSubtle }}>
+        {when ? `Last run ${when}${browser ? ` · ${browser}` : ''}` : 'No runs in this report'}
+      </div>
+    </div>
+  )
+}
+
+function SuiteTierBanner({ runs }: { runs: E2eRunEntry[] }) {
+  return (
+    <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+      {SUITE_TIERS.map(tier => (
+        <SuiteTierCard key={tier} tier={tier} run={latestRunForTier(runs, tier)} />
+      ))}
+    </div>
+  )
+}
+
 // ── Section: KPI row ─────────────────────────────────────────────────────────
 
 function KpiRow({ report, runs }: { report: E2eAggregateReport; runs: E2eRunEntry[] }) {
@@ -356,6 +435,8 @@ export default function OverviewView({ report }: Props) {
       />
 
       <div style={{ flex: 1, overflowY: 'auto', background: 'var(--color-background)', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <SuiteTierBanner runs={runs} />
+
         {runs.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: S.fgMuted }}>No runs in this report.</div>
         ) : (

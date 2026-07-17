@@ -1,9 +1,40 @@
-import { Suspense, useEffect, useState, type ReactNode } from 'react'
-import { registry, DEFAULT_TYPE } from './reports'
+import { Suspense, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { registry, DEFAULT_TYPE, type RegistryEntry, type RefreshStatus } from './reports'
 import LandingPage from './components/LandingPage'
 import AuthGate from './components/AuthGate'
 import { validateAgainstSchema, type ValidationResult } from './lib/validateSchema'
 import { resolveSchemaVersion, isSupportedVersion } from './lib/schemaVersion'
+
+// ── Report fetch + validate ────────────────────────────────────────────────────
+
+type FetchResult =
+  | { ok: true; data: unknown; unknownVersion: string | null; validation: ValidationResult | null }
+  | { ok: false; error: string }
+
+async function fetchReport(blobUrl: string, entry: RegistryEntry): Promise<FetchResult> {
+  try {
+    const res  = await fetch(blobUrl)
+    const json = await res.json()
+    if (!res.ok) throw new Error((json as { error?: string }).error ?? `HTTP ${res.status}`)
+
+    const resolved       = resolveSchemaVersion(json)
+    const unknownVersion = isSupportedVersion(resolved.version) ? null : resolved.version
+
+    let validation: ValidationResult | null = null
+    const schemaUrl = isSupportedVersion(resolved.version) ? entry.schemaVersions?.[resolved.version] : null
+    if (schemaUrl) {
+      const schemaRes = await fetch(schemaUrl)
+      if (schemaRes.ok) {
+        const schema = await schemaRes.json()
+        const result = validateAgainstSchema(json, schema)
+        if (!result.valid) validation = result
+      }
+    }
+    return { ok: true, data: json, unknownVersion, validation }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Unexpected error' }
+  }
+}
 
 // ── Loading / error screens ───────────────────────────────────────────────────
 
@@ -157,6 +188,22 @@ function SchemaBanner({ result, onDismiss }: { result: ValidationResult; onDismi
   )
 }
 
+// ── Refresh error toast ────────────────────────────────────────────────────────
+
+function RefreshErrorToast({ message }: { message: string }) {
+  return (
+    <div style={{
+      position: 'fixed', bottom: '20px', left: '20px', zIndex: 9999,
+      maxWidth: '360px',
+      background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b',
+      borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,.12)',
+      fontSize: '12px', padding: '10px 14px', fontWeight: 500,
+    }}>
+      Refresh failed: {message}
+    </div>
+  )
+}
+
 // ── Main app ──────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -170,6 +217,8 @@ export default function App() {
 
   const entry = registry[reportType]
 
+  const blobUrl = `/api/get-blob?report=${encodeURIComponent(reportType)}${storagePath ? `&path=${encodeURIComponent(storagePath)}` : ''}${idParam != null ? `&id=${encodeURIComponent(idParam)}` : ''}${fixture ? `&_fixture=${encodeURIComponent(fixture)}` : ''}`
+
   const [data,            setData]           = useState<unknown>(null)
   const [loading,         setLoading]        = useState(false)
   const [error,           setError]          = useState<string | null>(null)
@@ -177,59 +226,59 @@ export default function App() {
   const [dismissed,       setDismissed]      = useState(false)
   const [unknownVersion,  setUnknownVersion] = useState<string | null>(null)
   const [verDismissed,    setVerDismissed]   = useState(false)
+  const [refreshing,      setRefreshing]     = useState(false)
+  const [refreshError,    setRefreshError]   = useState<string | null>(null)
+  const [refreshStatus,   setRefreshStatus]  = useState<RefreshStatus>(null)
 
   useEffect(() => {
     if (!hasReport || !id || !entry) return
 
     let cancelled = false
+    setLoading(true)
+    setError(null)
+    setValidation(null)
+    setDismissed(false)
+    setUnknownVersion(null)
+    setVerDismissed(false)
 
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      setValidation(null)
-      setDismissed(false)
-      setUnknownVersion(null)
-      setVerDismissed(false)
-
-      try {
-        const blobUrl = `/api/get-blob?report=${encodeURIComponent(reportType)}${storagePath ? `&path=${encodeURIComponent(storagePath)}` : ''}${idParam != null ? `&id=${encodeURIComponent(idParam)}` : ''}${fixture ? `&_fixture=${encodeURIComponent(fixture)}` : ''}`
-        const res  = await fetch(blobUrl)
-        const json = await res.json()
-        if (!res.ok) throw new Error((json as { error?: string }).error ?? `HTTP ${res.status}`)
-        if (cancelled) return
-
-        setData(json)
-
-        // Resolve schema version from the payload
-        const resolved = resolveSchemaVersion(json)
-        if (!isSupportedVersion(resolved.version)) {
-          setUnknownVersion(resolved.version)
-        }
-
-        // Load the versioned schema for validation (served as a static asset from public/)
-        // Only validate if we have a schema registered for the resolved version.
-        // Skip for unknown future versions — we can't validate against an unknown schema.
-        const schemaUrl = isSupportedVersion(resolved.version)
-          ? entry.schemaVersions?.[resolved.version]
-          : null
-        if (schemaUrl) {
-          const schemaRes = await fetch(schemaUrl)
-          if (!cancelled && schemaRes.ok) {
-            const schema = await schemaRes.json()
-            const result = validateAgainstSchema(json, schema)
-            if (!result.valid) setValidation(result)
-          }
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Unexpected error')
-      } finally {
-        if (!cancelled) setLoading(false)
+    fetchReport(blobUrl, entry).then(result => {
+      if (cancelled) return
+      if (result.ok) {
+        setData(result.data)
+        setUnknownVersion(result.unknownVersion)
+        setValidation(result.validation)
+      } else {
+        setError(result.error)
       }
-    }
+      setLoading(false)
+    })
 
-    load()
     return () => { cancelled = true }
-  }, [hasReport, idParam, reportType, storagePath, fixture, entry])
+  }, [hasReport, idParam, reportType, storagePath, fixture, entry, blobUrl])
+
+  // Refetches the current report's blob in place — Dashboard stays mounted
+  // with its existing data until the new payload lands (or the fetch fails).
+  const handleRefresh = useCallback(() => {
+    if (!entry || refreshing) return
+    setRefreshing(true)
+    setRefreshError(null)
+    const previous = data
+    fetchReport(blobUrl, entry).then(result => {
+      if (result.ok) {
+        const changed = JSON.stringify(previous) !== JSON.stringify(result.data)
+        setData(result.data)
+        setUnknownVersion(result.unknownVersion)
+        setValidation(result.validation)
+        setDismissed(false)
+        setVerDismissed(false)
+        setRefreshStatus({ kind: changed ? 'updated' : 'no-updates', nonce: Date.now() })
+      } else {
+        setRefreshError(result.error)
+        setTimeout(() => setRefreshError(null), 4000)
+      }
+      setRefreshing(false)
+    })
+  }, [blobUrl, entry, refreshing, data])
 
   let content: ReactNode
 
@@ -248,7 +297,7 @@ export default function App() {
     content = (
       <div style={{ height: '100vh', overflow: 'hidden' }}>
         <Suspense fallback={<LoadingScreen />}>
-          <Dashboard data={data} reportId={id} />
+          <Dashboard data={data} reportId={id} onRefresh={handleRefresh} refreshing={refreshing} refreshStatus={refreshStatus} />
         </Suspense>
         {unknownVersion && !verDismissed && (
           <VersionBanner version={unknownVersion} onDismiss={() => setVerDismissed(true)} />
@@ -256,6 +305,7 @@ export default function App() {
         {validation && !dismissed && (
           <SchemaBanner result={validation} onDismiss={() => setDismissed(true)} />
         )}
+        {refreshError && <RefreshErrorToast message={refreshError} />}
       </div>
     )
   }

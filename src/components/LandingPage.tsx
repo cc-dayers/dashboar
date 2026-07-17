@@ -4,6 +4,8 @@ import BoarMark from './BoarMark'
 import ThemeToggle from './ThemeToggle'
 import DocsButton from './DocsButton'
 import DocsModal from './DocsModal'
+import ReportVisibilityModal from './ReportVisibilityModal'
+import { loadVisibleReportTypes, saveVisibleReportTypes } from '../lib/reportVisibility'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,6 +62,16 @@ function FileIcon() {
     <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
         d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z" />
+    </svg>
+  )
+}
+
+function GearIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   )
 }
@@ -169,11 +181,20 @@ function TypeEntry({
 type BrowseState = 'initial-loading' | 'refreshing' | 'done'
 
 export default function LandingPage() {
-  const types = Object.entries(registry)
-  const [browseState, setBrowseState] = useState<BrowseState>('initial-loading')
-  const [reports,     setReports]     = useState<DiscoveredReport[]>([])
-  const [errors,      setErrors]      = useState<FetchError[]>([])
-  const [showDocs,    setShowDocs]    = useState(false)
+  const allTypes = Object.entries(registry)
+  const [browseState,   setBrowseState]   = useState<BrowseState>('initial-loading')
+  const [reports,       setReports]       = useState<DiscoveredReport[]>([])
+  const [errors,        setErrors]        = useState<FetchError[]>([])
+  const [showDocs,      setShowDocs]      = useState(false)
+  const [showConfig,    setShowConfig]    = useState(false)
+  const [visibleTypes,  setVisibleTypes]  = useState(() => loadVisibleReportTypes(Object.keys(registry)))
+
+  const types = allTypes.filter(([key]) => visibleTypes.has(key))
+
+  function updateVisibleTypes(next: Set<string>) {
+    setVisibleTypes(next)
+    saveVisibleReportTypes(next)
+  }
 
   useEffect(() => { void loadFromStorage(false) }, [])
 
@@ -205,7 +226,7 @@ export default function LandingPage() {
     return acc
   }, {})
 
-  const totalInStorage = reports.length
+  const totalInStorage = reports.filter(r => visibleTypes.has(r.reportType)).length
   const isInitialLoading = browseState === 'initial-loading'
   const isRefreshing = browseState === 'refreshing'
   const isLoading = isInitialLoading || isRefreshing
@@ -238,7 +259,18 @@ export default function LandingPage() {
         {/* Unified reports panel */}
         <div className="bg-surface rounded-2xl shadow-sm border border-border overflow-hidden">
           <div className="px-5 py-3 border-b border-border-subtle flex items-center justify-between">
-            <h2 className="text-xs font-semibold text-foreground-muted uppercase tracking-wider">Reports</h2>
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-xs font-semibold text-foreground-muted uppercase tracking-wider">Reports</h2>
+              <button
+                onClick={() => setShowConfig(true)}
+                className="text-foreground-muted hover:text-accent cursor-pointer transition-colors leading-none"
+                title="Configure visible reports"
+                aria-label="Configure visible reports"
+                style={{ padding: '2px' }}
+              >
+                <GearIcon />
+              </button>
+            </div>
             <div className="flex items-center gap-3">
               {isLoading && (
                 <div className="w-3.5 h-3.5 border border-accent border-t-transparent rounded-full animate-spin" />
@@ -259,6 +291,20 @@ export default function LandingPage() {
               </button>
             </div>
           </div>
+
+          {types.length === 0 && (
+            <div className="px-5 py-8 text-center">
+              <p className="text-xs text-foreground-muted">
+                No report types selected.{' '}
+                <button
+                  onClick={() => setShowConfig(true)}
+                  className="text-accent hover:underline cursor-pointer"
+                >
+                  Choose reports to show
+                </button>
+              </p>
+            </div>
+          )}
 
           <div style={{ position: 'relative' }} aria-busy={isLoading}>
             {types.map(([key, entry], i) => (
@@ -330,6 +376,13 @@ export default function LandingPage() {
 
       <DocsButton active={showDocs} onClick={() => setShowDocs(true)} />
       {showDocs && <DocsModal onClose={() => setShowDocs(false)} />}
+      {showConfig && (
+        <ReportVisibilityModal
+          visible={visibleTypes}
+          onChange={updateVisibleTypes}
+          onClose={() => setShowConfig(false)}
+        />
+      )}
     </div>
   )
 }

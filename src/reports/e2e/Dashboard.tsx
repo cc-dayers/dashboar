@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { E2eAggregateReport, E2eRunEntry } from "./types";
-import type { ReportProps } from "../index";
+import type { ReportProps, RefreshStatus } from "../index";
 import OverviewView, {
   runLabel,
   runStatusColor,
@@ -14,6 +14,7 @@ import JsonToggleButton from "../../components/JsonToggleButton";
 import RawJsonModal from "../../components/RawJsonModal";
 import DocsButton from "../../components/DocsButton";
 import DocsModal from "../../components/DocsModal";
+import { useSidebarWidth } from "../../hooks/useSidebarWidth";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -301,11 +302,16 @@ interface SidebarProps {
   sidebarOpen: boolean;
   search: string;
   statusFilter: "failed" | "passed" | null;
+  width: number;
+  onWidthChange: (width: number) => void;
   onClose: () => void;
   onSearch: (q: string) => void;
   onStatusFilter: (f: "failed" | "passed" | null) => void;
   onOverview: () => void;
   onSelect: (key: string) => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  refreshStatus?: RefreshStatus;
 }
 
 function Sidebar({
@@ -315,11 +321,16 @@ function Sidebar({
   sidebarOpen,
   search,
   statusFilter,
+  width,
+  onWidthChange,
   onClose,
   onSearch,
   onStatusFilter,
   onOverview,
   onSelect,
+  onRefresh,
+  refreshing,
+  refreshStatus,
 }: SidebarProps) {
   const runs = report.reviews ?? report.runs ?? [];
   const trimQ = search.trim().toLowerCase();
@@ -355,7 +366,9 @@ function Sidebar({
       isMobile={isMobile}
       open={sidebarOpen}
       onClose={onClose}
-      header={<SidebarBoarHeader />}
+      width={width}
+      onWidthChange={onWidthChange}
+      header={<SidebarBoarHeader onRefresh={onRefresh} refreshing={refreshing} refreshStatus={refreshStatus} />}
     >
       <div style={{ padding: "8px 8px 0", flexShrink: 0 }}>
         <OverviewLink active={!selKey} onClick={onOverview} />
@@ -550,7 +563,7 @@ function Sidebar({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Dashboard({ data }: ReportProps) {
+export default function Dashboard({ data, onRefresh, refreshing, refreshStatus }: ReportProps) {
   const report = data as E2eAggregateReport;
   const allRuns = report.reviews ?? report.runs ?? [];
   const reportType =
@@ -571,6 +584,7 @@ export default function Dashboard({ data }: ReportProps) {
   );
   const [showJson, setShowJson] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useSidebarWidth(reportType);
 
   useEffect(() => {
     const onResize = () => {
@@ -617,11 +631,16 @@ export default function Dashboard({ data }: ReportProps) {
         sidebarOpen={sidebarOpen}
         search={search}
         statusFilter={statusFilter}
+        width={sidebarWidth}
+        onWidthChange={setSidebarWidth}
         onClose={() => setSidebarOpen(false)}
         onSearch={setSearch}
         onStatusFilter={setStatusFilter}
         onOverview={handleOverview}
         onSelect={handleSelect}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        refreshStatus={refreshStatus}
       />
 
       <main

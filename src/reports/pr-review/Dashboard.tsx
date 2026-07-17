@@ -10,6 +10,8 @@ import RawJsonModal from '../../components/RawJsonModal'
 import DocsButton from '../../components/DocsButton'
 import DocsModal from '../../components/DocsModal'
 import { authorBg, initials } from '../../lib/avatar'
+import { useSidebarWidth } from '../../hooks/useSidebarWidth'
+import type { RefreshStatus } from '../index'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -47,14 +49,19 @@ interface SidebarProps {
   isMobile:     boolean
   sidebarOpen:  boolean
   search:       string
+  width:        number
+  onWidthChange: (width: number) => void
   onClose:      () => void
   onSearch:     (q: string) => void
   onOverview:   () => void
   onSelectPr:   (id: string) => void
   onLoadMore:   () => void
+  onRefresh?:   () => void
+  refreshing?:  boolean
+  refreshStatus?: RefreshStatus
 }
 
-function Sidebar({ report, selId, loaded, isMobile, sidebarOpen, search, onClose, onSearch, onOverview, onSelectPr, onLoadMore }: SidebarProps) {
+function Sidebar({ report, selId, loaded, isMobile, sidebarOpen, search, width, onWidthChange, onClose, onSearch, onOverview, onSelectPr, onLoadMore, onRefresh, refreshing, refreshStatus }: SidebarProps) {
   const allReviews = report.reviews
 
   const trimQ = search.trim()
@@ -73,7 +80,9 @@ function Sidebar({ report, selId, loaded, isMobile, sidebarOpen, search, onClose
       isMobile={isMobile}
       open={sidebarOpen}
       onClose={onClose}
-      header={<SidebarBoarHeader />}
+      width={width}
+      onWidthChange={onWidthChange}
+      header={<SidebarBoarHeader onRefresh={onRefresh} refreshing={refreshing} refreshStatus={refreshStatus} />}
     >
       {/* Sticky: Overview + Search + section label */}
       <div style={{ padding: '8px 8px 0', flexShrink: 0 }}>
@@ -217,11 +226,14 @@ function SidebarLoadMore({ onClick }: { onClick: () => void }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface Props {
-  data:     unknown
-  reportId: string
+  data:        unknown
+  reportId:    string
+  onRefresh?:  () => void
+  refreshing?: boolean
+  refreshStatus?: RefreshStatus
 }
 
-export default function Dashboard({ data, reportId }: Props) {
+export default function Dashboard({ data, reportId, onRefresh, refreshing, refreshStatus }: Props) {
   const report = data as PrReviewReport
 
   const [selId,       setSelId]       = useState<string | null>(null)
@@ -231,6 +243,7 @@ export default function Dashboard({ data, reportId }: Props) {
   const [search,      setSearch]      = useState('')
   const [showJson,    setShowJson]    = useState(false)
   const [showDocs,    setShowDocs]    = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useSidebarWidth('pr-review')
 
   useEffect(() => {
     const onResize = () => {
@@ -263,11 +276,16 @@ export default function Dashboard({ data, reportId }: Props) {
         isMobile={isMobile}
         sidebarOpen={sidebarOpen}
         search={search}
+        width={sidebarWidth}
+        onWidthChange={setSidebarWidth}
         onClose={() => setSidebarOpen(false)}
         onSearch={setSearch}
         onOverview={() => { setSelId(null); if (isMobile) setSidebarOpen(false) }}
         onSelectPr={handleSelectPr}
         onLoadMore={() => setLoaded(l => l + 10)}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        refreshStatus={refreshStatus}
       />
 
       <main style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
