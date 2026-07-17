@@ -17,6 +17,7 @@
     "postinstall": "node -e \"require('fs').cpSync('node_modules/playwright-core/lib/vite/traceViewer', 'public/trace-viewer', {recursive: true, force: true})\""
   },
   "dependencies": {
+    "marked": "^18.0.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.8.1"

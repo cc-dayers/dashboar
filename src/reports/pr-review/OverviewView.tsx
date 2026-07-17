@@ -5,147 +5,17 @@ import {
 } from 'recharts'
 import { getCopilotBillingUsage, type PrReview, type PrReviewReport, type LlmProvider } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
+import Card from '../../components/report-ui/Card'
+import KpiCard from '../../components/report-ui/KpiCard'
+import HBar from '../../components/report-ui/HBar'
+import ChartTip from '../../components/report-ui/ChartTip'
+import { S } from '../../lib/designTokens'
+import { fmtMs, fmtTokensK, shortDate, isoWeekKey, timeBucket, TIME_BUCKETS } from '../../lib/format'
+import { PROVIDER_COLOR, hatStyle } from '../../lib/reviewStyles'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function mean(xs: number[]) { return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0 }
-
-function fmtMs(ms: number) {
-  const m = Math.floor(ms / 60000)
-  const s = Math.floor((ms % 60000) / 1000)
-  return m > 0 ? `${m}m ${s}s` : `${s}s`
-}
-function fmtTokensK(n: number) { return `${(n / 1000).toFixed(1)}k` }
-
-function isoWeekKey(iso: string) {
-  const d = new Date(iso)
-  const day = d.getDay()
-  const monday = new Date(d)
-  monday.setDate(d.getDate() - ((day + 6) % 7))
-  return monday.toISOString().slice(0, 10)
-}
-
-function shortDate(isoDate: string) {
-  return new Date(isoDate + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-}
-
-function timeBucket(ms: number) {
-  if (ms < 30000)  return '0–30s'
-  if (ms < 60000)  return '30–60s'
-  if (ms < 120000) return '1–2m'
-  if (ms < 300000) return '2–5m'
-  if (ms < 600000) return '5–10m'
-  return '10m+'
-}
-
-const TIME_BUCKETS = ['0–30s','30–60s','1–2m','2–5m','5–10m','10m+']
-
-// ── Design token shortcuts ─────────────────────────────────────────────────────
-
-const S = {
-  surface:  'var(--color-surface)',
-  border:   'var(--color-border)',
-  fg:       'var(--color-foreground)',
-  fgSec:    'var(--color-foreground-secondary)',
-  fgMuted:  'var(--color-foreground-muted)',
-  fgSubtle: 'var(--color-foreground-subtle)',
-  sunken:   'var(--color-surface-sunken)',
-}
-
-// ── Provider colors ───────────────────────────────────────────────────────────
-
-const PROVIDER_COLOR: Record<LlmProvider, string> = {
-  azure:   '#0078d4',
-  copilot: '#238636',
-  codex:   '#7c3aed',
-}
-
-// ── Hat style map ─────────────────────────────────────────────────────────────
-
-const HAT_STYLE: Record<string, { bg: string; color: string }> = {
-  'e2e-playwright':       { bg: '#f5f3ff', color: '#7c3aed' },
-  'portals-react':        { bg: '#ecfeff', color: '#0e7490' },
-  'dotnet-service':       { bg: '#eff6ff', color: '#1d4ed8' },
-  'ci-automation':        { bg: '#fffbeb', color: '#b45309' },
-  'data-persistence':     { bg: '#f0fdf4', color: '#15803d' },
-  'dotnet-best-practices':{ bg: '#f8fafc', color: '#475569' },
-  'design-review':        { bg: '#fdf4ff', color: '#a21caf' },
-  'interfacing':          { bg: '#fff7ed', color: '#c2410c' },
-  'agentic-development':  { bg: '#f7fee7', color: '#4d7c0f' },
-}
-
-function hatStyle(name: string) {
-  return HAT_STYLE[name] ?? { bg: '#f1f5f9', color: '#475569' }
-}
-
-// ── Chart helpers ─────────────────────────────────────────────────────────────
-
-function ChartTip({ active, payload, label, fmt }: {
-  active?: boolean
-  payload?: ReadonlyArray<{ value?: number; color?: string; name?: string }>
-  label?: string | number
-  fmt?: (v: number) => string
-}) {
-  if (!active || !payload?.length) return null
-  return (
-    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '8px', padding: '8px 12px', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,.12)' }}>
-      {label && <div style={{ color: S.fgMuted, marginBottom: '4px' }}>{label}</div>}
-      {payload.map((p, i) => (
-        <div key={i} style={{ color: p.color, fontWeight: 600 }}>
-          {p.name ? `${p.name}: ` : ''}{fmt ? fmt(Number(p.value) ?? 0) : p.value}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ── Shared card ───────────────────────────────────────────────────────────────
-
-function Card({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
-  return (
-    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '12px', padding: '20px' }}>
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '13px', fontWeight: 600, color: S.fgSec }}>{title}</div>
-        {sub && <div style={{ fontSize: '11px', color: S.fgSubtle, marginTop: '2px' }}>{sub}</div>}
-      </div>
-      {children}
-    </div>
-  )
-}
-
-// ── KPI card ──────────────────────────────────────────────────────────────────
-
-function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
-  return (
-    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '12px', padding: '16px 20px' }}>
-      <div style={{ fontSize: '11px', color: S.fgMuted, marginBottom: '6px', fontWeight: 500 }}>{label}</div>
-      <div style={{ fontSize: '26px', fontWeight: 700, color: accent ?? S.fg, lineHeight: 1, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
-        {value}
-      </div>
-      {sub && <div style={{ fontSize: '11px', color: S.fgSubtle, marginTop: '5px' }}>{sub}</div>}
-    </div>
-  )
-}
-
-// ── Horizontal bar ────────────────────────────────────────────────────────────
-
-function HBar({ label, value, max, color, badge }: {
-  label: string; value: number; max: number; color: string; badge?: string
-}) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-      <div style={{ fontSize: '11.5px', color: S.fgMuted, width: '130px', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={label}>
-        {label}
-      </div>
-      <div style={{ flex: 1, background: S.sunken, borderRadius: '4px', height: '7px', overflow: 'hidden', minWidth: 0 }}>
-        <div style={{ width: `${max > 0 ? (value / max) * 100 : 0}%`, height: '100%', background: color, borderRadius: '4px', transition: 'width 0.3s' }} />
-      </div>
-      <div style={{ fontSize: '12px', fontWeight: 600, color: S.fgSec, width: '28px', textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-        {badge ?? value}
-      </div>
-    </div>
-  )
-}
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
@@ -191,6 +61,26 @@ export default function OverviewView({ report, reportId }: Props) {
   const avgAccuracy    = mean(reviews.map(r => r.accuracyRating))
   const avgTimeMs      = mean(reviews.map(r => r.timeToReviewMs))
   const changesCount   = reviews.filter(r => r.result === 'changes-requested').length
+
+  // ── Avg review time trend — current window vs the immediately preceding
+  // equal-length window. For "All" there's no natural preceding window of
+  // the same length, so fall back to a fixed last-7d-vs-prior-7d comparison.
+  const trendWindowDays  = filterDays ?? 7
+  const trendCutoffMs    = latestMs - trendWindowDays * 864e5
+  const prevCutoffMs     = trendCutoffMs - trendWindowDays * 864e5
+  const currTrendReviews = filterDays == null
+    ? allReviews.filter(r => latestMs - new Date(r.reviewedAt).getTime() <= trendWindowDays * 864e5)
+    : reviews
+  const prevTrendReviews = allReviews.filter(r => {
+    const t = new Date(r.reviewedAt).getTime()
+    return t > prevCutoffMs && t <= trendCutoffMs
+  })
+  const avgTimeCurrMs = mean(currTrendReviews.map(r => r.timeToReviewMs))
+  const avgTimePrevMs = mean(prevTrendReviews.map(r => r.timeToReviewMs))
+  const hasTrend  = currTrendReviews.length > 0 && prevTrendReviews.length > 0 && avgTimePrevMs > 0
+  const trendPct  = hasTrend ? Math.round(((avgTimeCurrMs - avgTimePrevMs) / avgTimePrevMs) * 100) : null
+  const trendFaster = trendPct != null && trendPct <= 0
+
   const changesPct     = reviews.length > 0 ? Math.round((changesCount / reviews.length) * 100) : 0
   const billingReviews = reviews.flatMap(r => {
     const usage = getCopilotBillingUsage(r)
@@ -244,6 +134,51 @@ export default function OverviewView({ report, reportId }: Props) {
       ;(weekMap.get(wk)! as unknown as Record<string, number>)[r.result]++
     }
     periodData = Array.from(weekMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([, d]) => d)
+  }
+
+  // ── Avg review time over time — same bucket granularity as periodData
+  const avgTimeChartTitle = filterDays === 1 ? 'Avg Review Time by Hour'
+    : filterDays != null && filterDays <= 14 ? 'Avg Review Time by Day'
+    : 'Avg Review Time by Week'
+
+  type AvgTimePoint = { label: string; avgMs: number }
+  let avgTimeSeriesData: AvgTimePoint[]
+  if (filterDays === 1) {
+    const hourSums = Array.from({ length: 24 }, () => ({ sum: 0, count: 0 }))
+    for (const r of reviews) {
+      const h = new Date(r.reviewedAt).getHours()
+      hourSums[h].sum += r.timeToReviewMs
+      hourSums[h].count++
+    }
+    avgTimeSeriesData = hourSums
+      .map((b, h) => ({ h, ...b }))
+      .filter(b => b.count > 0)
+      .map(b => ({
+        label: b.h === 0 ? '12am' : b.h < 12 ? `${b.h}am` : b.h === 12 ? '12pm' : `${b.h - 12}pm`,
+        avgMs: b.sum / b.count,
+      }))
+  } else if (filterDays != null && filterDays <= 14) {
+    const dayMap = new Map<string, { sum: number; count: number }>()
+    for (const r of reviews) {
+      const key = r.reviewedAt.slice(0, 10)
+      const b = dayMap.get(key) ?? { sum: 0, count: 0 }
+      b.sum += r.timeToReviewMs; b.count++
+      dayMap.set(key, b)
+    }
+    avgTimeSeriesData = Array.from(dayMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, b]) => ({ label: shortDate(key), avgMs: b.sum / b.count }))
+  } else {
+    const weekMap = new Map<string, { sum: number; count: number }>()
+    for (const r of reviews) {
+      const wk = isoWeekKey(r.reviewedAt)
+      const b = weekMap.get(wk) ?? { sum: 0, count: 0 }
+      b.sum += r.timeToReviewMs; b.count++
+      weekMap.set(wk, b)
+    }
+    avgTimeSeriesData = Array.from(weekMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, b]) => ({ label: shortDate(key), avgMs: b.sum / b.count }))
   }
 
   // ── Token + Copilot billing usage per review
@@ -363,10 +298,55 @@ export default function OverviewView({ report, reportId }: Props) {
         {/* KPI row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '16px' }}>
           <KpiCard label="Total Reviews"         value={String(reviews.length)} sub={activePeriodLabel} />
-          <KpiCard label="Avg Review Time"        value={fmtMs(avgTimeMs)} />
+          <KpiCard
+            label="Avg Review Time"
+            value={fmtMs(avgTimeMs)}
+            sub={trendPct != null && (
+              <span style={{ color: trendFaster ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                {trendFaster ? '▼' : '▲'} {Math.abs(trendPct)}% {trendFaster ? 'faster' : 'slower'}
+                <span style={{ color: S.fgSubtle, fontWeight: 400 }}> · prior {trendWindowDays}d</span>
+              </span>
+            )}
+          />
           <KpiCard label="Changes Requested"      value={`${changesPct}%`} sub={`${changesCount} of ${reviews.length}`} accent="#dc2626" />
           <KpiCard label="Avg Accuracy Rating"    value={`${avgAccuracy.toFixed(1)}%`} accent="#16a34a" />
           <KpiCard label={billingLabel} value={billingValue} sub={billingSub} accent="#7c3aed" />
+        </div>
+
+        {/* Avg review time over time */}
+        <div style={{ marginBottom: '12px' }}>
+          <Card title={avgTimeChartTitle} sub="average time-to-review per bucket">
+            {avgTimeSeriesData.length === 0 ? (
+              <div style={{ height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: S.fgSubtle, fontSize: '12px' }}>
+                No reviews in this range
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={160}>
+                <AreaChart data={avgTimeSeriesData} margin={{ top: 6, right: 8, bottom: 0, left: -4 }}>
+                  <defs>
+                    <linearGradient id="avgTimeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#0ea5e9" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid {...GRID} />
+                  <XAxis dataKey="label" tick={AXIS} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                  <YAxis tick={AXIS} axisLine={false} tickLine={false} tickFormatter={v => fmtMs(v)} width={48} />
+                  <Tooltip content={(p) => <ChartTip {...(p as any)} fmt={fmtMs} />} />
+                  <Area
+                    type="monotone"
+                    dataKey="avgMs"
+                    name="Avg time"
+                    stroke="#0ea5e9"
+                    strokeWidth={2}
+                    fill="url(#avgTimeGrad)"
+                    dot={avgTimeSeriesData.length <= 30 ? { r: 3, fill: '#0ea5e9', strokeWidth: 0 } : false}
+                    activeDot={{ r: 5, fill: '#0ea5e9', stroke: S.surface, strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </Card>
         </div>
 
         {/* Reviews by period + token usage */}

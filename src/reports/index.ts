@@ -17,6 +17,8 @@ export interface RegistryEntry {
    */
   schemaVersions?: Record<string, string>
   fixtures?: string[]
+  /** Path under /public/docs/ rendered in the Docs overlay for this report type. */
+  docs?: string
 }
 
 export const registry: Record<string, RegistryEntry> = {
@@ -25,6 +27,7 @@ export const registry: Record<string, RegistryEntry> = {
     label: 'PR Review',
     description: 'AI PR review agent: accuracy trends, review time, cost, hats, and per-PR findings.',
     schemaVersions: {
+      '5':      '/schemas/pr-review.v5.schema.json',
       '4':      '/schemas/pr-review.v4.schema.json',
       '3':      '/schemas/pr-review.v3.schema.json',
       '2':      '/schemas/pr-review.v2.schema.json',
@@ -32,12 +35,14 @@ export const registry: Record<string, RegistryEntry> = {
       'legacy': '/schemas/pr-review.v1.schema.json',
     },
     fixtures: ['example', 'report', 'legacy', 'v1', 'v3', 'v4', 'future'],
+    docs: '/docs/pr-review.md',
   },
   'playwright-trace': {
     component: lazy(() => import('./e2e/Dashboard')),
     label: 'Playwright Traces',
     description: 'Playwright/E2E test runs — run status, per-run test detail, and Playwright report links.',
     fixtures: ['example', 'report', 'future'],
+    docs: '/docs/playwright-trace.md',
   },
   'review-audit': {
     component: lazy(() => import('./review-audit/Dashboard')),
@@ -48,12 +53,7 @@ export const registry: Record<string, RegistryEntry> = {
       'legacy': '/schemas/review-audit.v1.schema.json',
     },
     fixtures: ['example'],
-  },
-  'e2e-aggregate': {
-    component: lazy(() => import('./e2e/Dashboard')),
-    label: 'E2E Aggregate',
-    description: 'Playwright/E2E test runs — run status, per-run test detail, and Playwright report links.',
-    fixtures: ['report', 'future'],
+    docs: '/docs/review-audit.md',
   },
 }
 

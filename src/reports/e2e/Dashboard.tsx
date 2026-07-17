@@ -12,6 +12,8 @@ import SidebarBoarHeader from "../../components/SidebarBoarHeader";
 import MobileTopBar from "../../components/MobileTopBar";
 import JsonToggleButton from "../../components/JsonToggleButton";
 import RawJsonModal from "../../components/RawJsonModal";
+import DocsButton from "../../components/DocsButton";
+import DocsModal from "../../components/DocsModal";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -553,7 +555,7 @@ export default function Dashboard({ data }: ReportProps) {
   const allRuns = report.reviews ?? report.runs ?? [];
   const reportType =
     new URLSearchParams(window.location.search).get("report") ??
-    "e2e-aggregate";
+    "playwright-trace";
 
   const [selKey, setSelKey] = useState<string | null>(null);
   // lastSelKey persists the last viewed run so RunDetailView stays mounted
@@ -568,6 +570,7 @@ export default function Dashboard({ data }: ReportProps) {
     null,
   );
   const [showJson, setShowJson] = useState(false);
+  const [showDocs, setShowDocs] = useState(false);
 
   useEffect(() => {
     const onResize = () => {
@@ -673,7 +676,7 @@ export default function Dashboard({ data }: ReportProps) {
         </div>
       </main>
 
-      <JsonToggleButton active={showJson} onClick={() => setShowJson(true)} top={selKey && viewRun ? 112 : 80} />
+      <JsonToggleButton active={showJson} onClick={() => setShowJson(true)} />
       {showJson && (
         <RawJsonModal
           data={selKey ? (viewRun ?? report) : report}
@@ -682,6 +685,9 @@ export default function Dashboard({ data }: ReportProps) {
           onClose={() => setShowJson(false)}
         />
       )}
+
+      <DocsButton active={showDocs} onClick={() => setShowDocs(true)} />
+      {showDocs && <DocsModal defaultTopic={reportType} onClose={() => setShowDocs(false)} />}
     </div>
   );
 }

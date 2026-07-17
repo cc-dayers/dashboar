@@ -7,6 +7,9 @@ import SidebarBoarHeader from '../../components/SidebarBoarHeader'
 import MobileTopBar from '../../components/MobileTopBar'
 import JsonToggleButton from '../../components/JsonToggleButton'
 import RawJsonModal from '../../components/RawJsonModal'
+import DocsButton from '../../components/DocsButton'
+import DocsModal from '../../components/DocsModal'
+import { authorBg, initials } from '../../lib/avatar'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -21,17 +24,6 @@ function sColor(r: string) {
   return r === 'approved' ? '#16a34a' : r === 'changes-requested' ? '#dc2626' : '#d97706'
 }
 
-function initials(n: string) {
-  const p = (n || '').trim().split(/\s+/)
-  return ((p[0]?.[0] ?? '') + (p[1]?.[0] ?? '')).toUpperCase() || '?'
-}
-
-function authorBg(n: string) {
-  const palette = ['#3b82f6','#8b5cf6','#ec4899','#06b6d4','#10b981','#f59e0b','#ef4444','#14b8a6','#f97316','#84cc16']
-  if (!n) return palette[0]
-  return palette[n.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % palette.length]
-}
-
 function scoreReview(r: PrReview, q: string): number {
   const lq = q.toLowerCase()
   let score = 0
@@ -41,6 +33,7 @@ function scoreReview(r: PrReview, q: string): number {
   if (r.repository.toLowerCase().includes(lq))   score += 3
   if (r.author?.toLowerCase().includes(lq))      score += 3
   if (r.branch?.toLowerCase().includes(lq))      score += 2
+  if (r.targetRelease?.toLowerCase().includes(lq)) score += 2
   if (r.notes?.toLowerCase().includes(lq))       score += 1
   return score
 }
@@ -188,7 +181,12 @@ function SidebarPrItem({ r, active, onClick }: { r: PrReview; active: boolean; o
       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
         <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: sColor(r.result), flexShrink: 0 }} />
         <span style={{ color: 'var(--color-sidebar-muted)', fontSize: '10px', fontFamily: 'ui-monospace,monospace' }}>#{r.prNumber}</span>
-        <span style={{ color: 'var(--color-sidebar-secondary)', fontSize: '10px', marginLeft: 'auto' }}>{fmtShort(r.reviewedAt)}</span>
+        {r.targetRelease && (
+          <span style={{ color: 'var(--color-sidebar-muted)', fontSize: '10px', fontFamily: 'ui-monospace,monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            → {r.targetRelease}
+          </span>
+        )}
+        <span style={{ color: 'var(--color-sidebar-secondary)', fontSize: '10px', marginLeft: 'auto', flexShrink: 0 }}>{fmtShort(r.reviewedAt)}</span>
       </div>
       <div style={{ color: 'var(--color-sidebar-secondary)', fontSize: '11px', lineHeight: 1.4, overflow: 'hidden', maxHeight: '2.8em' }}>
         {r.prTitle.length > 55 ? r.prTitle.slice(0, 53) + '…' : r.prTitle}
@@ -232,6 +230,7 @@ export default function Dashboard({ data, reportId }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768)
   const [search,      setSearch]      = useState('')
   const [showJson,    setShowJson]    = useState(false)
+  const [showDocs,    setShowDocs]    = useState(false)
 
   useEffect(() => {
     const onResize = () => {
@@ -296,6 +295,9 @@ export default function Dashboard({ data, reportId }: Props) {
           onClose={() => setShowJson(false)}
         />
       )}
+
+      <DocsButton active={showDocs} onClick={() => setShowDocs(true)} />
+      {showDocs && <DocsModal defaultTopic="pr-review" onClose={() => setShowDocs(false)} />}
     </div>
   )
 }

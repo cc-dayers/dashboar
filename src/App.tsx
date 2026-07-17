@@ -113,7 +113,8 @@ function SchemaBanner({ result, onDismiss }: { result: ValidationResult; onDismi
 
   return (
     <div style={{
-      position: 'fixed', bottom: '16px', right: '16px', zIndex: 9999,
+      // bottom offset clears the JSON/Docs button stack (JsonToggleButton/DocsButton)
+      position: 'fixed', bottom: '112px', right: '16px', zIndex: 9999,
       maxWidth: '400px', width: 'calc(100vw - 32px)',
       background: '#fffbeb', border: '1px solid #fcd34d',
       borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,.12)',

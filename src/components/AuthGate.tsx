@@ -82,7 +82,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const toast = welcomeUser && (
     <div style={{
       position: 'fixed',
-      bottom: '20px',
+      // Sits above the bottom-right JSON/Docs button stack (JsonToggleButton/
+      // DocsButton) so a fresh login's welcome toast doesn't cover them.
+      bottom: '112px',
       right: '20px',
       zIndex: 9999,
       background: 'var(--color-foreground)',

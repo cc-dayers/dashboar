@@ -10,7 +10,7 @@ test.describe('Error and edge-case states', () => {
   test('unknown type screen lists the available types', async ({ page }) => {
     await page.goto('/?report=nonexistent-report-type')
     await expect(page.getByText('pr-review')).toBeVisible()
-    await expect(page.getByText('e2e-aggregate')).toBeVisible()
+    await expect(page.getByText('playwright-trace')).toBeVisible()
   })
 
   test('404 blob response shows the failed-to-load screen', async ({ page }) => {

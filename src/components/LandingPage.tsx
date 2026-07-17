@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { registry } from '../reports'
 import BoarMark from './BoarMark'
 import ThemeToggle from './ThemeToggle'
+import DocsButton from './DocsButton'
+import DocsModal from './DocsModal'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -75,6 +77,7 @@ function TypeEntry({
   isLoading:      boolean
   isLast:         boolean
 }) {
+  const [fixturesOpen, setFixturesOpen] = useState(false)
   const hasFixtures = entry.fixtures && entry.fixtures.length > 0
   const hasStorage  = storageReports.length > 0
 
@@ -94,19 +97,35 @@ function TypeEntry({
         </div>
       </div>
 
-      {/* Fixtures */}
+      {/* Fixtures — collapsed by default to avoid overwhelming the primary view */}
       {hasFixtures && (
         <div className="mt-2.5 ml-11">
-          <span className="text-xs text-foreground-muted mr-1.5">Examples:</span>
-          {entry.fixtures!.map(id => (
-            <a
-              key={id}
-              href={fixtureHref(id, reportType)}
-              className="inline-block text-xs font-mono text-accent-foreground bg-accent-surface hover:opacity-75 px-1.5 py-0.5 rounded mr-1.5 mb-1 transition-opacity"
+          <button
+            onClick={() => setFixturesOpen(o => !o)}
+            className="inline-flex items-center gap-1 text-xs text-foreground-muted hover:text-accent transition-colors cursor-pointer"
+            aria-expanded={fixturesOpen}
+          >
+            <svg
+              className={`w-3 h-3 transition-transform${fixturesOpen ? ' rotate-90' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
             >
-              {id}
-            </a>
-          ))}
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            Fixtures ({entry.fixtures!.length})
+          </button>
+          {fixturesOpen && (
+            <div className="mt-1.5">
+              {entry.fixtures!.map(id => (
+                <a
+                  key={id}
+                  href={fixtureHref(id, reportType)}
+                  className="inline-block text-xs font-mono text-accent-foreground bg-accent-surface hover:opacity-75 px-1.5 py-0.5 rounded mr-1.5 mb-1 transition-opacity"
+                >
+                  {id}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -154,6 +173,7 @@ export default function LandingPage() {
   const [browseState, setBrowseState] = useState<BrowseState>('initial-loading')
   const [reports,     setReports]     = useState<DiscoveredReport[]>([])
   const [errors,      setErrors]      = useState<FetchError[]>([])
+  const [showDocs,    setShowDocs]    = useState(false)
 
   useEffect(() => { void loadFromStorage(false) }, [])
 
@@ -307,6 +327,9 @@ export default function LandingPage() {
           [style*="boarFloat"] { animation: none !important; }
         }
       `}</style>
+
+      <DocsButton active={showDocs} onClick={() => setShowDocs(true)} />
+      {showDocs && <DocsModal onClose={() => setShowDocs(false)} />}
     </div>
   )
 }

@@ -1,35 +1,17 @@
 import type { ReviewAuditReport, AuditSummary, SourceReport, ResultCounts } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
+import KpiCard from '../../components/report-ui/KpiCard'
+import { S } from '../../lib/designTokens'
+import { fmtTokens } from '../../lib/format'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtTokens(n: number) { return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n) }
 function fmtDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const S = {
-  surface:   'var(--color-surface)',
-  border:    'var(--color-border)',
-  fg:        'var(--color-foreground)',
-  fgMuted:   'var(--color-foreground-muted)',
-  fgSubtle:  'var(--color-foreground-subtle)',
-  fgSec:     'var(--color-foreground-secondary)',
-  sunken:    'var(--color-surface-sunken)',
-}
-
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
-  return (
-    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', padding: '16px 18px' }}>
-      <div style={{ fontSize: '11px', color: S.fgMuted, fontWeight: 500, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
-      <div style={{ fontSize: '26px', fontWeight: 700, color: accent ?? S.fg, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      {sub && <div style={{ fontSize: '12px', color: S.fgSubtle, marginTop: '5px' }}>{sub}</div>}
-    </div>
-  )
-}
 
 function ResultBar({ counts }: { counts: ResultCounts }) {
   const total = counts.approved + counts['changes-requested'] + counts.commented

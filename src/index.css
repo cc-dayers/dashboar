@@ -110,3 +110,42 @@
   --color-sidebar-danger:       #f87171;
   --color-sidebar-selected:     #2c3e54;
 }
+
+/* Rendered markdown inside DocsModal — minimal typographic defaults since the
+   HTML comes from `marked` (dangerouslySetInnerHTML), not JSX we can class. */
+.docs-markdown {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--color-foreground-secondary);
+}
+.docs-markdown h1, .docs-markdown h2, .docs-markdown h3 {
+  color: var(--color-foreground);
+  font-weight: 700;
+  margin: 1.4em 0 0.5em;
+}
+.docs-markdown h1 { font-size: 1.5em; margin-top: 0; }
+.docs-markdown h2 { font-size: 1.2em; }
+.docs-markdown h3 { font-size: 1.05em; }
+.docs-markdown p { margin: 0 0 1em; }
+.docs-markdown ul, .docs-markdown ol { margin: 0 0 1em; padding-left: 1.4em; }
+.docs-markdown li { margin-bottom: 0.35em; }
+.docs-markdown li > ul, .docs-markdown li > ol { margin-top: 0.35em; margin-bottom: 0; }
+.docs-markdown code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.92em;
+  background: var(--color-surface-sunken);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+}
+.docs-markdown pre {
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.docs-markdown pre code { background: none; padding: 0; }
+.docs-markdown a { color: var(--color-accent); }
+.docs-markdown strong { color: var(--color-foreground); }
+.docs-markdown hr { border: none; border-top: 1px solid var(--color-border); margin: 1.5em 0; }

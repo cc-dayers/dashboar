@@ -11,20 +11,21 @@ test.describe('Landing page', () => {
     // Use exact: true to match only the label spans, not parent containers
     await expect(page.getByText('PR Review', { exact: true })).toBeVisible()
     await expect(page.getByText('Review Audit', { exact: true })).toBeVisible()
-    await expect(page.getByText('E2E Aggregate', { exact: true })).toBeVisible()
     await expect(page.getByText('Playwright Traces', { exact: true })).toBeVisible()
   })
 
   test('shows fixture example links for report types that have them', async ({ page }) => {
     await page.goto('/')
-    // pr-review has 'example' fixture
+    // Fixtures are collapsed behind a toggle by default — expand pr-review's
+    await page.getByRole('button', { name: /Fixtures/ }).first().click()
     const exampleLinks = page.getByRole('link', { name: 'example' })
     await expect(exampleLinks.first()).toBeVisible()
   })
 
   test('fixture links navigate to the correct report', async ({ page }) => {
     await page.goto('/')
-    // Click the first 'example' fixture link (pr-review)
+    // Expand the fixtures toggle, then click the first 'example' fixture link (pr-review)
+    await page.getByRole('button', { name: /Fixtures/ }).first().click()
     await page.getByRole('link', { name: 'example' }).first().click()
     // Should navigate away from landing (URL now has ?report=)
     await expect(page).toHaveURL(/[?&]report=/)

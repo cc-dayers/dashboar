@@ -7,6 +7,8 @@ import SidebarBoarHeader from '../../components/SidebarBoarHeader'
 import MobileTopBar from '../../components/MobileTopBar'
 import JsonToggleButton from '../../components/JsonToggleButton'
 import RawJsonModal from '../../components/RawJsonModal'
+import DocsButton from '../../components/DocsButton'
+import DocsModal from '../../components/DocsModal'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -206,6 +208,7 @@ export default function Dashboard({ data }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768)
   const [search,      setSearch]      = useState('')
   const [showJson,    setShowJson]    = useState(false)
+  const [showDocs,    setShowDocs]    = useState(false)
 
   useEffect(() => {
     const onResize = () => {
@@ -260,6 +263,9 @@ export default function Dashboard({ data }: Props) {
           onClose={() => setShowJson(false)}
         />
       )}
+
+      <DocsButton active={showDocs} onClick={() => setShowDocs(true)} />
+      {showDocs && <DocsModal defaultTopic="review-audit" onClose={() => setShowDocs(false)} />}
     </div>
   )
 }

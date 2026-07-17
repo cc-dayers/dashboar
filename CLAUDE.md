@@ -39,7 +39,7 @@ Every report type is registered here with:
 - `schemaVersions` — maps version strings to public schema URLs (optional)
 - `fixtures` — list of fixture filenames available under `fixtures/{type}/`
 
-Registered types: `pr-review`, `playwright-trace`, `review-audit`, `e2e-aggregate`. Both `playwright-trace` and `e2e-aggregate` load the same `src/reports/e2e/Dashboard.tsx`.
+Registered types: `pr-review`, `playwright-trace`, `review-audit`.
 
 ### Report module structure
 
@@ -94,6 +94,9 @@ CSS custom properties are defined in `src/index.css` using Tailwind's `@theme`. 
 - `SidebarBoarHeader` — boar logo + back-to-home link for the sidebar header
 - `MobileTopBar` — hamburger bar shown only on mobile
 - `ThemeToggle` — light/dark toggle, reads/writes `data-theme` on `<html>`
+- `JsonToggleButton` / `RawJsonModal` — fixed bottom-right button (stacked above `DocsButton`) that opens a full-screen raw JSON viewer for whatever's in view
+- `DocsButton` / `DocsModal` — fixed bottom-right button that opens a full-screen markdown docs viewer. Docs content lives as static files under `public/docs/`; register a report type's doc via the `docs` field in its registry entry (see `src/reports/index.ts`)
+- `src/components/report-ui/{Card,KpiCard,MetricCard,HBar,ChartTip}` — generic presentational primitives for overview/detail views; `src/lib/{designTokens,format,reviewStyles,avatar}.ts` hold the matching shared tokens/helpers. Reuse these instead of redefining `S`/`fmtMs`/`HAT_STYLE`/etc. per report
 
 ### Adding a new report type
 

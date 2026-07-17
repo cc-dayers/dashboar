@@ -64,6 +64,8 @@ export interface PrReview {
   prTitle: string
   repository: string
   branch?: string
+  /** Release the PR targets (e.g. "release/6.30"), when the producer supplies it. */
+  targetRelease?: string
   author?: string
   reviewedAt: string
   timeToReviewMs: number

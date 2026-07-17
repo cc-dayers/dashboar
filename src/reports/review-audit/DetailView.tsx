@@ -1,66 +1,18 @@
 import type { AuditReview, FeedbackSummary, ImprovementSignals } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
+import MetricCard from '../../components/report-ui/MetricCard'
+import { S } from '../../lib/designTokens'
+import { fmtMs, fmtTokens } from '../../lib/format'
+import { hatStyle, resultPill, PROVIDER_COLOR } from '../../lib/reviewStyles'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtMs(ms: number) {
-  const m = Math.floor(ms / 60000)
-  const s = Math.floor((ms % 60000) / 1000)
-  return m > 0 ? `${m}m ${s}s` : `${s}s`
-}
-function fmtTokens(n: number) { return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n) }
 function fmtDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-const S = {
-  surface:  'var(--color-surface)',
-  border:   'var(--color-border)',
-  divider:  'var(--color-border-subtle)',
-  fg:       'var(--color-foreground)',
-  fgSec:    'var(--color-foreground-secondary)',
-  fgMuted:  'var(--color-foreground-muted)',
-  fgSubtle: 'var(--color-foreground-subtle)',
-  sunken:   'var(--color-surface-sunken)',
-}
-
-function resultPill(r: string) {
-  if (r === 'approved')          return { bg: '#f0fdf4', color: '#16a34a', label: 'Approved' }
-  if (r === 'changes-requested') return { bg: '#fef2f2', color: '#dc2626', label: 'Changes Requested' }
-  return                                { bg: '#fffbeb', color: '#d97706', label: 'Commented' }
-}
-
-const PROVIDER_COLOR: Record<string, string> = {
-  azure:   '#0078d4',
-  copilot: '#238636',
-  codex:   '#7c3aed',
-}
-
-const HAT_STYLE: Record<string, { bg: string; color: string }> = {
-  'e2e-playwright':        { bg: '#f5f3ff', color: '#7c3aed' },
-  'portals-react':         { bg: '#ecfeff', color: '#0e7490' },
-  'dotnet-service':        { bg: '#eff6ff', color: '#1d4ed8' },
-  'ci-automation':         { bg: '#fffbeb', color: '#b45309' },
-  'data-persistence':      { bg: '#f0fdf4', color: '#15803d' },
-  'dotnet-best-practices': { bg: '#f8fafc', color: '#475569' },
-  'design-review':         { bg: '#fdf4ff', color: '#a21caf' },
-  'interfacing':           { bg: '#fff7ed', color: '#c2410c' },
-  'agentic-development':   { bg: '#f7fee7', color: '#4d7c0f' },
-}
-function hatStyle(name: string) { return HAT_STYLE[name] ?? { bg: '#f1f5f9', color: '#475569' } }
-
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', padding: '14px 16px' }}>
-      <div style={{ fontSize: '11px', color: S.fgMuted, marginBottom: '5px', fontWeight: 500 }}>{label}</div>
-      <div style={{ fontSize: '20px', fontWeight: 700, color: S.fg, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      {sub && <div style={{ fontSize: '11px', color: S.fgSubtle, marginTop: '4px' }}>{sub}</div>}
-    </div>
-  )
-}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

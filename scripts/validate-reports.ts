@@ -41,7 +41,7 @@ const hd   = (s: string) => `\n${C.bold}${C.cyan}${s}${C.reset}\n`
 
 // ── Schema constants (mirrors src/lib/schemaVersion.ts) ───────────────────────
 
-const SUPPORTED_VERSIONS = new Set(['1', '2', '3', '4', 'legacy'])
+const SUPPORTED_VERSIONS = new Set(['1', '2', '3', '4', '5', 'legacy'])
 const SCHEMA_FILE_RE = /\breport\.v(\d+)\.schema\.json$/
 
 function resolveSchemaVersion(r: Record<string, unknown>): { version: string; source: string } {
@@ -176,9 +176,7 @@ function validateContent(data: unknown, reportType: string, _label: string, expe
       break
     }
 
-    case 'playwright-trace':
-    // playwright-trace blobs use the same e2e-aggregate schema — fall through
-    case 'e2e-aggregate': {
+    case 'playwright-trace': {
       const runs = r['runs']
       if (!Array.isArray(runs)) {
         errors.push('Missing or non-array "runs" field')
