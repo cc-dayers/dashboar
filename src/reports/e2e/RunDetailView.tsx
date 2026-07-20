@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { E2eRunEntry, E2eRunStatus } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
+import { browserName } from './OverviewView'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -109,6 +110,53 @@ function TabBar({ active, hasReport, hasTrace, onChange }: {
   )
 }
 
+// ── Browser target bar ────────────────────────────────────────────────────────
+//
+// One CI build fans out into a separate report per browser target. `siblings`
+// holds every target for the same (build, suite) as `run` — render nothing
+// when there's only one (the common case for single-browser suites).
+
+function BrowserTargetBar({ siblings, run, onSelect }: {
+  siblings: E2eRunEntry[]
+  run:      E2eRunEntry
+  onSelect: (run: E2eRunEntry) => void
+}) {
+  if (siblings.length <= 1) return null
+  return (
+    <div style={{
+      display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center',
+      padding: '8px 16px', borderBottom: `1px solid ${S.border}`, background: S.surface, flexShrink: 0,
+    }}>
+      <span style={{ fontSize: '10px', fontWeight: 600, color: S.fgMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        Targets
+      </span>
+      {siblings.map((s, i) => {
+        const active = s === run
+        const eff    = s.result ?? s.status
+        const color  = runStatusColor(eff)
+        const label  = browserName(s.matrixLabel)
+        return (
+          <button
+            key={s.reportBlobPath ?? s.id ?? i}
+            onClick={() => onSelect(s)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              fontSize: '11.5px', fontWeight: 600, padding: '4px 10px', borderRadius: '999px',
+              border: `1px solid ${active ? color : S.border}`,
+              background: active ? `color-mix(in srgb, ${color} 14%, transparent)` : 'transparent',
+              color: active ? color : S.fgMuted,
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: color, flexShrink: 0 }} />
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Summary strip ─────────────────────────────────────────────────────────────
 
 function SummaryStrip({ run }: { run: E2eRunEntry }) {
@@ -175,12 +223,14 @@ function SummaryStrip({ run }: { run: E2eRunEntry }) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 interface Props {
-  run:        E2eRunEntry
-  reportType: string
-  onBack:     () => void
+  run:            E2eRunEntry
+  siblings:       E2eRunEntry[]
+  reportType:     string
+  onBack:         () => void
+  onSelectRun:    (run: E2eRunEntry) => void
 }
 
-export default function RunDetailView({ run, reportType, onBack }: Props) {
+export default function RunDetailView({ run, siblings, reportType, onBack, onSelectRun }: Props) {
   const colorScheme   = useAppTheme()
   const htmlReportUrl = run.links?.htmlReportUrl ?? null
   const trace         = run.trace
@@ -244,6 +294,8 @@ export default function RunDetailView({ run, reportType, onBack }: Props) {
           />
         }
       />
+
+      <BrowserTargetBar siblings={siblings} run={run} onSelect={onSelectRun} />
 
       {/* Content area — both tabs live in the DOM once activated; visibility swap avoids iframe reloads */}
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>

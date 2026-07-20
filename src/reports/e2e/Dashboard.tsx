@@ -5,6 +5,8 @@ import OverviewView, {
   runLabel,
   runStatusColor,
   isInProgressStatus,
+  runEffectiveStatus,
+  browserName,
 } from "./OverviewView";
 import RunDetailView from "./RunDetailView";
 import ReportSidebar from "../../components/ReportSidebar";
@@ -30,6 +32,88 @@ function fmtRunTime(iso?: string): string {
   const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   return `${date}, ${time}`;
+}
+
+// ── Run grouping ──────────────────────────────────────────────────────────────
+//
+// One CI build fans out into a separate report per browser target (its own
+// reportBlobPath, own pass/fail counts) but it's one logical "run" to a human.
+// Group sidebar rows by (build, suite) so browser targets become facets of one
+// row — shown as clickable chips — instead of separate rows.
+
+interface KeyedRun {
+  run: E2eRunEntry;
+  key: string;
+}
+
+interface RunGroup {
+  key: string;
+  suiteName: string;
+  entries: KeyedRun[]; // canonical browser order first (Chromium preferred)
+}
+
+const BROWSER_ORDER = ["chromium", "edge", "firefox", "webkit"];
+
+function browserRank(label: string | undefined): number {
+  const idx = BROWSER_ORDER.indexOf(browserName(label).toLowerCase());
+  return idx === -1 ? BROWSER_ORDER.length : idx;
+}
+
+function groupKeyFor({ run: r, key }: KeyedRun): string {
+  const build = r.buildId ?? r.buildNumber;
+  const suite = r.suiteName ?? r.suite ?? r.jobName ?? "Unknown";
+  if (build) return `build:${build}::${suite}`;
+  if (r.commit && r.branch) return `cb:${r.branch}::${r.commit}::${suite}`;
+  return `solo:${key}`; // nothing reliable to group on — its own group
+}
+
+function buildGroups(runs: E2eRunEntry[]): RunGroup[] {
+  const order: string[] = [];
+  const map = new Map<string, KeyedRun[]>();
+  runs.forEach((run, idx) => {
+    const kr: KeyedRun = { run, key: runKey(run, idx) };
+    const gk = groupKeyFor(kr);
+    if (!map.has(gk)) {
+      map.set(gk, []);
+      order.push(gk);
+    }
+    map.get(gk)!.push(kr);
+  });
+  return order.map((gk) => {
+    const entries = [...map.get(gk)!].sort(
+      (a, b) => browserRank(a.run.matrixLabel) - browserRank(b.run.matrixLabel),
+    );
+    const first = entries[0].run;
+    return {
+      key: gk,
+      suiteName: first.suiteName ?? first.suite ?? first.jobName ?? "Run",
+      entries,
+    };
+  });
+}
+
+// Severity ranking used to pick the "worst" browser target in a group — the
+// group's status dot always reflects the worst target, never hides a failure
+// behind a healthier default (Chromium).
+const STATUS_SEVERITY: Record<string, number> = {
+  failed: 0,
+  timedout: 0,
+  succeeded_with_issues: 1,
+  cancelling: 1,
+  flaky: 2,
+  interrupted: 3,
+  inProgress: 4,
+  notStarted: 4,
+};
+
+function severity(eff: string): number {
+  return STATUS_SEVERITY[eff] ?? 5; // passed/succeeded/unknown — lowest severity
+}
+
+function worstEntry(entries: KeyedRun[]): KeyedRun {
+  return entries.reduce((worst, e) =>
+    severity(runEffectiveStatus(e.run)) < severity(runEffectiveStatus(worst.run)) ? e : worst,
+  );
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -117,27 +201,40 @@ function OverviewLink({
   );
 }
 
-function RunRow({
-  run,
-  selected,
-  onClick,
+function GroupRow({
+  group,
+  selKey,
+  onSelect,
 }: {
-  run: E2eRunEntry;
-  selected: boolean;
-  onClick: () => void;
+  group: RunGroup;
+  selKey: string | null;
+  onSelect: (key: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
+
+  const defaultEntry = group.entries[0]; // Chromium-preferred (see browserRank)
+  const activeEntry = group.entries.find((e) => e.key === selKey) ?? null;
+  const selected = activeEntry !== null;
+  // The row's stats/meta reflect whichever target is actually selected; if
+  // none is (row isn't the active one), fall back to the default target.
+  const shown = activeEntry ?? defaultEntry;
+  const run = shown.run;
+
+  const worst = worstEntry(group.entries);
+  const worstEff = runEffectiveStatus(worst.run);
+  const statusColor = runStatusColor(worstEff);
+  const inProgress = isInProgressStatus(worstEff);
+
   const label = runLabel(run);
-  const eff = run.result ?? run.status;
-  const statusColor = runStatusColor(eff);
+  const eff = runEffectiveStatus(run);
   const isPass = eff === "passed" || eff === "succeeded";
-  const inProgress = isInProgressStatus(eff);
   const s = run.summary;
   const total = s?.total ?? run.testCount ?? 0;
+  const hasMultipleTargets = group.entries.length > 1;
 
   return (
     <div
-      onClick={onClick}
+      onClick={() => onSelect(defaultEntry.key)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -153,7 +250,7 @@ function RunRow({
         transition: "background 0.1s, border-color 0.1s",
       }}
     >
-      {/* Headline: dot + suite name + branch/ticket + stats */}
+      {/* Headline: dot (worst target across browsers) + suite name + branch/ticket + stats */}
       <div
         style={{
           display: "flex",
@@ -291,12 +388,48 @@ function RunRow({
           )}
         </div>
       )}
+      {/* Other browser targets for this same build/suite — click to jump straight to one */}
+      {hasMultipleTargets && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", paddingLeft: "13px", marginTop: "5px" }}>
+          {group.entries.map((e) => {
+            const name = browserName(e.run.matrixLabel);
+            const chipEff = runEffectiveStatus(e.run);
+            const chipColor = runStatusColor(chipEff);
+            const isShown = e.key === shown.key;
+            return (
+              <span
+                key={e.key}
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  onSelect(e.key);
+                }}
+                title={`${name} · ${chipEff}`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  fontSize: "9.5px",
+                  fontWeight: 600,
+                  padding: "1.5px 6px",
+                  borderRadius: "999px",
+                  border: `1px solid ${isShown ? chipColor : "var(--color-sidebar-border)"}`,
+                  color: isShown ? chipColor : "var(--color-sidebar-muted)",
+                  cursor: "pointer",
+                }}
+              >
+                <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: chipColor, flexShrink: 0 }} />
+                {name}
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 interface SidebarProps {
-  report: E2eAggregateReport;
+  groups: RunGroup[];
   selKey: string | null;
   isMobile: boolean;
   sidebarOpen: boolean;
@@ -315,7 +448,7 @@ interface SidebarProps {
 }
 
 function Sidebar({
-  report,
+  groups,
   selKey,
   isMobile,
   sidebarOpen,
@@ -332,33 +465,36 @@ function Sidebar({
   refreshing,
   refreshStatus,
 }: SidebarProps) {
-  const runs = report.reviews ?? report.runs ?? [];
   const trimQ = search.trim().toLowerCase();
 
-  const eff = (r: (typeof runs)[0]) => r.result ?? r.status;
-  const isUnhealthy = (r: (typeof runs)[0]) => {
-    const e = eff(r);
+  const groupWorstEff = (g: RunGroup) => runEffectiveStatus(worstEntry(g.entries).run);
+  const isUnhealthy = (g: RunGroup) => {
+    const e = groupWorstEff(g);
     return e === "failed" || e === "succeeded_with_issues" || e === "timedout";
   };
-  const isHealthy = (r: (typeof runs)[0]) => {
-    const e = eff(r);
+  const isHealthy = (g: RunGroup) => {
+    const e = groupWorstEff(g);
     return e === "passed" || e === "succeeded";
   };
 
-  const failed = runs.filter(isUnhealthy).length;
-  const passed = runs.filter(isHealthy).length;
+  const failed = groups.filter(isUnhealthy).length;
+  const passed = groups.filter(isHealthy).length;
 
-  const filtered = runs.filter((r) => {
-    if (statusFilter === "failed" && !isUnhealthy(r)) return false;
-    if (statusFilter === "passed" && !isHealthy(r)) return false;
-    if (!trimQ) return true;
-    return (
-      runLabel(r).toLowerCase().includes(trimQ) ||
-      r.branch?.toLowerCase().includes(trimQ) ||
-      r.commit?.toLowerCase().includes(trimQ) ||
-      r.matrixLabel?.toLowerCase().includes(trimQ) ||
-      r.buildNumber?.toLowerCase().includes(trimQ)
+  const groupMatchesSearch = (g: RunGroup) =>
+    g.entries.some(
+      ({ run: r }) =>
+        runLabel(r).toLowerCase().includes(trimQ) ||
+        r.branch?.toLowerCase().includes(trimQ) ||
+        r.commit?.toLowerCase().includes(trimQ) ||
+        r.matrixLabel?.toLowerCase().includes(trimQ) ||
+        r.buildNumber?.toLowerCase().includes(trimQ),
     );
+
+  const filtered = groups.filter((g) => {
+    if (statusFilter === "failed" && !isUnhealthy(g)) return false;
+    if (statusFilter === "passed" && !isHealthy(g)) return false;
+    if (!trimQ) return true;
+    return groupMatchesSearch(g);
   });
 
   return (
@@ -526,8 +662,8 @@ function Sidebar({
           }}
         >
           {trimQ || statusFilter
-            ? `${filtered.length} of ${runs.length}`
-            : `${runs.length} Run${runs.length !== 1 ? "s" : ""}`}
+            ? `${filtered.length} of ${groups.length}`
+            : `${groups.length} Run${groups.length !== 1 ? "s" : ""}`}
         </div>
       </div>
 
@@ -544,17 +680,9 @@ function Sidebar({
             No runs match your filter.
           </div>
         ) : (
-          filtered.map((r, i) => {
-            const key = runKey(r, i);
-            return (
-              <RunRow
-                key={key}
-                run={r}
-                selected={key === selKey}
-                onClick={() => onSelect(key)}
-              />
-            );
-          })
+          filtered.map((g) => (
+            <GroupRow key={g.key} group={g} selKey={selKey} onSelect={onSelect} />
+          ))
         )}
       </div>
     </ReportSidebar>
@@ -566,6 +694,7 @@ function Sidebar({
 export default function Dashboard({ data, onRefresh, refreshing, refreshStatus }: ReportProps) {
   const report = data as E2eAggregateReport;
   const allRuns = report.reviews ?? report.runs ?? [];
+  const groups = buildGroups(allRuns);
   const reportType =
     new URLSearchParams(window.location.search).get("report") ??
     "playwright-trace";
@@ -609,11 +738,24 @@ export default function Dashboard({ data, onRefresh, refreshing, refreshStatus }
     if (isMobile) setSidebarOpen(false);
   };
 
+  const handleSelectRun = (run: E2eRunEntry) => {
+    const idx = allRuns.indexOf(run);
+    if (idx === -1) return;
+    handleSelect(runKey(run, idx));
+  };
+
   // The run we keep rendered (may differ from selKey when on overview)
   const viewKey = selKey ?? lastSelKey;
   const viewRun = viewKey
     ? (allRuns.find((r, i) => runKey(r, i) === viewKey) ?? null)
     : null;
+
+  // Other browser targets for the same (build, suite) as viewRun — powers the
+  // pill switcher in RunDetailView. Falls back to just the run itself when it
+  // couldn't be grouped with anything.
+  const siblings = viewRun
+    ? (groups.find((g) => g.entries.some((e) => e.run === viewRun))?.entries.map((e) => e.run) ?? [viewRun])
+    : [];
 
   return (
     <div
@@ -625,7 +767,7 @@ export default function Dashboard({ data, onRefresh, refreshing, refreshStatus }
       }}
     >
       <Sidebar
-        report={report}
+        groups={groups}
         selKey={selKey}
         isMobile={isMobile}
         sidebarOpen={sidebarOpen}
@@ -675,8 +817,10 @@ export default function Dashboard({ data, onRefresh, refreshing, refreshStatus }
             >
               <RunDetailView
                 run={viewRun}
+                siblings={siblings}
                 reportType={reportType}
                 onBack={handleOverview}
+                onSelectRun={handleSelectRun}
               />
             </div>
           )}
@@ -690,7 +834,7 @@ export default function Dashboard({ data, onRefresh, refreshing, refreshStatus }
               pointerEvents: selKey ? "none" : "auto",
             }}
           >
-            <OverviewView report={report} />
+            <OverviewView report={report} onSelectRun={handleSelectRun} />
           </div>
         </div>
       </main>

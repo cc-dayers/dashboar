@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { AreaChart, Area, ResponsiveContainer } from 'recharts'
 import type { E2eAggregateReport, E2eRunEntry, E2eRunStatus } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
+import { S } from '../../lib/designTokens'
 
 // ── Exported helpers (used by Dashboard sidebar) ──────────────────────────────
 
@@ -39,17 +41,50 @@ function fmtMs(ms: number) {
   return `${s}s`
 }
 
-function fmtDate(iso: string) {
-  return new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+function fmtWhen(iso: string | undefined) {
+  if (!iso) return null
+  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 function pct(n: number, total: number) {
   return total > 0 ? Math.round((n / total) * 100) : 0
 }
 
-function browserName(label: string | undefined): string {
+export function browserName(label: string | undefined): string {
   if (!label) return 'Unknown'
   return label.includes('·') ? label.split('·')[0].trim() : label.trim()
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  passed: 'Passed', succeeded: 'Passed', failed: 'Failed', timedout: 'Timed Out',
+  flaky: 'Flaky', succeeded_with_issues: 'Succeeded w/ Issues', interrupted: 'Interrupted',
+  inProgress: 'In Progress', notStarted: 'Not Started', cancelling: 'Cancelling',
+}
+
+// ── Time range filter ─────────────────────────────────────────────────────────
+
+const RANGES = ['24H', '7D', '30D', 'ALL'] as const
+type Range = typeof RANGES[number]
+
+const RANGE_WINDOW_MS: Record<Exclude<Range, 'ALL'>, number> = {
+  '24H': 24 * 3_600_000,
+  '7D':  7 * 24 * 3_600_000,
+  '30D': 30 * 24 * 3_600_000,
+}
+
+// Anchors the window to the newest run in the report (not wall-clock now) so
+// historical/fixture reports still show data instead of an empty range.
+function filterByRange(runs: E2eRunEntry[], range: Range): E2eRunEntry[] {
+  if (range === 'ALL') return runs
+  let anchor = -Infinity
+  for (const r of runs) {
+    if (!r.generatedAt) continue
+    const ms = new Date(r.generatedAt).getTime()
+    if (ms > anchor) anchor = ms
+  }
+  if (!Number.isFinite(anchor)) return runs
+  const cutoff = anchor - RANGE_WINDOW_MS[range]
+  return runs.filter(r => r.generatedAt && new Date(r.generatedAt).getTime() >= cutoff)
 }
 
 // ── Data derivation ───────────────────────────────────────────────────────────
@@ -111,159 +146,39 @@ function timeSeries(runs: E2eRunEntry[], getKey: (r: E2eRunEntry) => string) {
   return result
 }
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
-
-const S = {
-  surface:  'var(--color-surface)',
-  border:   'var(--color-border)',
-  fg:       'var(--color-foreground)',
-  fgSec:    'var(--color-foreground-secondary)',
-  fgMuted:  'var(--color-foreground-muted)',
-  fgSubtle: 'var(--color-foreground-subtle)',
-  sunken:   'var(--color-surface-sunken)',
+function latestOf(runs: E2eRunEntry[]): E2eRunEntry | null {
+  let best: E2eRunEntry | null = null
+  let bestMs = -Infinity
+  for (const r of runs) {
+    const ms = r.generatedAt ? new Date(r.generatedAt).getTime() : -Infinity
+    if (ms >= bestMs) { best = r; bestMs = ms }
+  }
+  return best
 }
 
+// ── Status colors ─────────────────────────────────────────────────────────────
+
 const C = {
-  pass:   '#22c55e',
-  fail:   '#ef4444',
-  flaky:  '#f59e0b',
-  skip:   '#94a3b8',
-  passBg: '#22c55e18',
-  failBg: '#ef444418',
+  pass:  '#22c55e',
+  fail:  '#ef4444',
+  flaky: '#f59e0b',
+  skip:  '#94a3b8',
+}
+
+function rateColor(rate: number): string {
+  if (rate >= 90) return C.pass
+  if (rate >= 70) return C.flaky
+  return C.fail
 }
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
-function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
+function TrendChart({ points, color, height = 48, gradKey }: {
+  points: { date: string; rate: number }[]; color: string; height?: number; gradKey: string
+}) {
+  const gradId = `e2ov-${gradKey.replace(/[^a-zA-Z0-9]/g, '')}-${color.replace('#', '')}`
   return (
-    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', padding: '14px 18px', minWidth: 0 }}>
-      <div style={{ fontSize: '10px', color: S.fgMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '5px' }}>{label}</div>
-      <div style={{ fontSize: '24px', fontWeight: 700, color: accent ?? S.fg, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      {sub && <div style={{ fontSize: '11px', color: S.fgSubtle, marginTop: '4px' }}>{sub}</div>}
-    </div>
-  )
-}
-
-function StackedBar({ passed, failed, flaky, skipped, total, height = 8 }: { passed: number; failed: number; flaky: number; skipped: number; total: number; height?: number }) {
-  if (total === 0) return <div style={{ height, background: S.sunken, borderRadius: '4px' }} />
-  return (
-    <div style={{ display: 'flex', height, borderRadius: '4px', overflow: 'hidden', background: S.sunken }}>
-      {passed  > 0 && <div style={{ flex: passed,  background: C.pass  }} title={`Passed: ${passed}`} />}
-      {failed  > 0 && <div style={{ flex: failed,  background: C.fail  }} title={`Failed: ${failed}`} />}
-      {flaky   > 0 && <div style={{ flex: flaky,   background: C.flaky }} title={`Flaky: ${flaky}`} />}
-      {skipped > 0 && <div style={{ flex: skipped, background: C.skip  }} title={`Skipped: ${skipped}`} />}
-    </div>
-  )
-}
-
-// ── Section: Suite tier banner ────────────────────────────────────────────────
-//
-// Fixed, always-present cards for the three CI suite tiers (@smoke/@core/@regression
-// tags per AGENTS.md) — a missing tier (e.g. its pipeline didn't run) should be
-// obviously visible as its own "no runs" card, not silently absent.
-
-const SUITE_TIERS = ['Smoke', 'Core', 'Regression'] as const
-
-function matchesTier(run: E2eRunEntry, tier: string): boolean {
-  const re  = new RegExp(`\\b${tier}\\b`, 'i')
-  const hay = [run.suiteName, run.suite, run.jobName].filter(Boolean).join(' ')
-  return re.test(hay)
-}
-
-function latestRunForTier(runs: E2eRunEntry[], tier: string): E2eRunEntry | null {
-  let latest: E2eRunEntry | null = null
-  let latestMs = -Infinity
-  for (const r of runs) {
-    if (!matchesTier(r, tier)) continue
-    const ms = r.generatedAt ? new Date(r.generatedAt).getTime() : 0
-    if (ms >= latestMs) { latest = r; latestMs = ms }
-  }
-  return latest
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  passed: 'Passed', succeeded: 'Passed', failed: 'Failed', timedout: 'Timed Out',
-  flaky: 'Flaky', succeeded_with_issues: 'Succeeded w/ Issues', interrupted: 'Interrupted',
-  inProgress: 'In Progress', notStarted: 'Not Started', cancelling: 'Cancelling',
-}
-
-function tierEmoji(effectiveStatus: string): string {
-  if (effectiveStatus === 'passed' || effectiveStatus === 'succeeded')   return '👍'
-  if (effectiveStatus === 'failed' || effectiveStatus === 'timedout')    return '👎'
-  return '🤨'
-}
-
-function fmtWhen(iso: string | undefined) {
-  if (!iso) return null
-  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-}
-
-function SuiteTierCard({ tier, run }: { tier: string; run: E2eRunEntry | null }) {
-  const eff   = run ? runEffectiveStatus(run) : null
-  const color = eff ? runStatusColor(eff) : S.fgSubtle
-  const emoji = eff ? tierEmoji(eff) : '—'
-  const label = eff ? (STATUS_LABEL[eff] ?? eff) : 'No runs recorded'
-  const when  = run ? fmtWhen(run.generatedAt) : null
-  const browser = run ? browserName(run.matrixLabel) : null
-
-  return (
-    <div style={{
-      flex: '1 1 200px', minWidth: '180px',
-      background: S.surface, border: `1px solid ${S.border}`, borderTop: `3px solid ${color}`,
-      borderRadius: '14px', padding: '18px 20px 16px',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px',
-    }}>
-      <div style={{ fontSize: '12px', fontWeight: 700, color: S.fgMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-        {tier}
-      </div>
-      <div style={{ fontSize: '56px', lineHeight: 1.15 }}>{emoji}</div>
-      <div style={{ fontSize: '14px', fontWeight: 600, color }}>{label}</div>
-      <div style={{ fontSize: '11px', color: S.fgSubtle }}>
-        {when ? `Last run ${when}${browser ? ` · ${browser}` : ''}` : 'No runs in this report'}
-      </div>
-    </div>
-  )
-}
-
-function SuiteTierBanner({ runs }: { runs: E2eRunEntry[] }) {
-  return (
-    <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-      {SUITE_TIERS.map(tier => (
-        <SuiteTierCard key={tier} tier={tier} run={latestRunForTier(runs, tier)} />
-      ))}
-    </div>
-  )
-}
-
-// ── Section: KPI row ─────────────────────────────────────────────────────────
-
-function KpiRow({ report, runs }: { report: E2eAggregateReport; runs: E2eRunEntry[] }) {
-  const s = report.summary
-  const totalRuns     = s?.totalRuns    ?? runs.length
-  const failedRuns    = s?.failedRuns   ?? runs.filter(r => runEffectiveStatus(r) === 'failed' || runEffectiveStatus(r) === 'succeeded_with_issues').length
-  const totalTests    = s?.totalTests   ?? runs.reduce((n, r) => n + (r.summary?.total ?? 0), 0)
-  const failedTests   = s?.failedTests  ?? runs.reduce((n, r) => n + (r.summary?.failed ?? 0), 0)
-  const flakyTests    = s?.flakyTests   ?? runs.reduce((n, r) => n + (r.summary?.flaky ?? 0), 0)
-  const passedTests   = s?.passedTests  ?? runs.reduce((n, r) => n + (r.summary?.passed ?? 0), 0)
-  const passRate      = pct(passedTests, totalTests)
-
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px', marginBottom: '16px' }}>
-      <KpiCard label="Runs"         value={String(totalRuns)} sub={failedRuns > 0 ? `${failedRuns} failed` : 'all healthy'} accent={failedRuns > 0 ? C.fail : C.pass} />
-      <KpiCard label="Pass Rate"    value={`${passRate}%`}    accent={passRate >= 90 ? C.pass : passRate >= 70 ? C.flaky : C.fail} />
-      <KpiCard label="Tests"        value={String(totalTests)} sub={failedTests > 0 ? `${failedTests} failed` : undefined} />
-      <KpiCard label="Flaky"        value={String(flakyTests)} accent={flakyTests > 0 ? C.flaky : undefined} />
-      {/* Duration intentionally omitted — averaging smoke + core runs produces a meaningless number */}
-    </div>
-  )
-}
-
-// ── Section: Health breakdown row ─────────────────────────────────────────────
-
-function TrendChart({ points, color }: { points: { date: string; rate: number }[]; color: string }) {
-  const gradId = `tc${color.replace('#', '')}`
-  return (
-    <ResponsiveContainer width="100%" height={48}>
+    <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={points} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
@@ -275,10 +190,10 @@ function TrendChart({ points, color }: { points: { date: string; rate: number }[
           type="monotone"
           dataKey="rate"
           stroke={color}
-          strokeWidth={2}
+          strokeWidth={1.5}
           fill={`url(#${gradId})`}
-          dot={{ r: 3, fill: color, strokeWidth: 0 }}
-          activeDot={{ r: 4, fill: color }}
+          dot={false}
+          activeDot={{ r: 3, fill: color }}
           isAnimationActive={false}
         />
       </AreaChart>
@@ -286,102 +201,183 @@ function TrendChart({ points, color }: { points: { date: string; rate: number }[
   )
 }
 
-function HealthRow({ label, data, showBrowser = false }: {
-  label: string
-  data: { key: string; bucket: BucketData; trend: { date: string; rate: number }[] }[]
-  showBrowser?: boolean
-}) {
-  if (data.length === 0) return null
+function RangeToggle({ range, onChange }: { range: Range; onChange: (r: Range) => void }) {
   return (
-    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', overflow: 'hidden' }}>
-      <div style={{ padding: '10px 14px 8px', fontSize: '11px', fontWeight: 600, color: S.fgMuted, textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: `1px solid ${S.border}` }}>
-        {label}
+    <div style={{ display: 'flex', border: `1px solid ${S.border}`, borderRadius: '7px', overflow: 'hidden', flexShrink: 0 }}>
+      {RANGES.map((label, i) => {
+        const active = label === range
+        return (
+          <button
+            key={label}
+            onClick={() => onChange(label)}
+            style={{
+              padding:      '5px 10px',
+              fontSize:     '11px',
+              fontWeight:   600,
+              border:       'none',
+              borderLeft:   i > 0 ? `1px solid ${S.border}` : 'none',
+              cursor:       'pointer',
+              background:   active ? 'color-mix(in srgb, var(--color-accent) 14%, transparent)' : 'transparent',
+              color:        active ? 'var(--color-accent)' : S.fgMuted,
+            }}
+          >
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function SummaryStat({ label, value, sub, subColor }: { label: string; value: string; sub?: string; subColor?: string }) {
+  return (
+    <div style={{ textAlign: 'right' }}>
+      <div style={{ fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: S.fgMuted }}>{label}</div>
+      <div style={{ fontSize: '19px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: S.fg, marginTop: '2px' }}>{value}</div>
+      {sub && <div style={{ fontSize: '10.5px', color: subColor ?? S.fgSubtle }}>{sub}</div>}
+    </div>
+  )
+}
+
+function MiniStat({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: '9.5px', letterSpacing: '0.06em', textTransform: 'uppercase', color: S.fgMuted }}>{label}</div>
+      <div style={{ fontSize: '17px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color, marginTop: '1px' }}>{value}</div>
+    </div>
+  )
+}
+
+// ── Section: Suite cards ──────────────────────────────────────────────────────
+
+function SuiteCard({ name, latest, bucket, trend, onOpen }: {
+  name: string
+  latest: E2eRunEntry
+  bucket: BucketData
+  trend: { date: string; rate: number }[]
+  onOpen: () => void
+}) {
+  const eff         = runEffectiveStatus(latest)
+  const statusColor = runStatusColor(eff)
+  const statusLabel = STATUS_LABEL[eff] ?? eff
+  const rate        = pct(bucket.passed, bucket.total)
+  const rColor      = rateColor(rate)
+  const avgMs       = bucket.durationCount > 0 ? Math.round(bucket.totalDurationMs / bucket.durationCount) : null
+  const browser     = browserName(latest.matrixLabel)
+  const when        = fmtWhen(latest.generatedAt)
+
+  const metaParts = [
+    when ? `Last run ${when}` : null,
+    browser !== 'Unknown' ? browser : null,
+    `${bucket.runs} run${bucket.runs !== 1 ? 's' : ''}`,
+    avgMs !== null ? `avg ${fmtMs(avgMs)}` : null,
+  ].filter(Boolean)
+
+  return (
+    <div
+      onClick={onOpen}
+      style={{
+        cursor:       'pointer',
+        background:   S.surface,
+        border:       `1px solid ${S.border}`,
+        borderLeft:   `3px solid ${statusColor}`,
+        borderRadius: '12px',
+        padding:      '16px 18px',
+        display:      'flex',
+        flexDirection: 'column',
+        gap:          '8px',
+        minWidth:     0,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: S.fg, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {name}
+        </div>
+        <span style={{
+          fontSize: '10.5px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', flexShrink: 0, whiteSpace: 'nowrap',
+          background: `color-mix(in srgb, ${statusColor} 16%, transparent)`, color: statusColor,
+        }}>
+          {statusLabel}
+        </span>
       </div>
-      <div style={{ padding: '8px 14px 14px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {data.map(({ key, bucket: b, trend }) => {
-          const rate      = pct(b.passed, b.total)
-          const rateColor = rate >= 90 ? C.pass : rate >= 70 ? C.flaky : C.fail
-          const avgMs     = b.durationCount > 0 ? Math.round(b.totalDurationMs / b.durationCount) : null
-          return (
-            <div key={key}>
-              {/* Header: name + meta left, large rate right */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {showBrowser && (
-                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: rateColor, flexShrink: 0 }} />
-                    )}
-                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: S.fg }}>{key}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '3px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '10.5px', color: S.fgSubtle }}>{b.runs} run{b.runs !== 1 ? 's' : ''}</span>
-                    {avgMs !== null && <span style={{ fontSize: '10.5px', color: S.fgSubtle }}>avg {fmtMs(avgMs)}</span>}
-                    {b.failed > 0 && <span style={{ fontSize: '10.5px', color: C.fail,  fontWeight: 600 }}>{b.failed} failed</span>}
-                    {b.flaky  > 0 && <span style={{ fontSize: '10.5px', color: C.flaky              }}>{b.flaky} flaky</span>}
-                  </div>
-                </div>
-                <div style={{ fontSize: '22px', fontWeight: 700, color: rateColor, lineHeight: 1, fontVariantNumeric: 'tabular-nums', flexShrink: 0, paddingTop: '2px' }}>
-                  {rate}%
-                </div>
-              </div>
-              {/* Stacked bar */}
-              <StackedBar {...b} height={6} />
-              {/* Trend line — only when there are ≥2 data points */}
-              {trend.length >= 2 && (
-                <div style={{ marginTop: '8px' }}>
-                  <TrendChart points={trend} color={rateColor} />
-                </div>
-              )}
-            </div>
-          )
-        })}
+
+      <div style={{ fontSize: '11px', color: S.fgSubtle }}>{metaParts.join(' · ')}</div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '2px' }}>
+        <MiniStat label="Pass rate" value={`${rate}%`} color={rColor} />
+        <MiniStat label="Failed"    value={String(bucket.failed)} color={bucket.failed > 0 ? C.fail  : S.fgMuted} />
+        <MiniStat label="Flaky"     value={String(bucket.flaky)}  color={bucket.flaky  > 0 ? C.flaky : S.fgMuted} />
+      </div>
+
+      {trend.length >= 2 && (
+        <div style={{ marginTop: '2px' }}>
+          <TrendChart points={trend} color={rColor} height={32} gradKey={`suite-${name}`} />
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+        <span style={{ fontSize: '11.5px', color: S.fgSubtle }}>
+          {bucket.failed > 0 ? `${bucket.failed} tests failed recently` : 'All tests passing'}
+        </span>
+        <span style={{ fontSize: '11.5px', color: 'var(--color-accent)', fontWeight: 600 }}>
+          Details ▸
+        </span>
       </div>
     </div>
   )
 }
 
-// ── Section: Daily trend ──────────────────────────────────────────────────────
+// ── Section: Browser matrix ───────────────────────────────────────────────────
 
-function DailyTrend({ dateMap }: { dateMap: Map<string, BucketData> }) {
-  const dates = [...dateMap.entries()].sort(([a], [b]) => a < b ? -1 : 1)
-  if (dates.length < 1) return null
+const MATRIX_COLS = '1.3fr 0.7fr 0.8fr 0.7fr 0.7fr 0.8fr 1.6fr'
 
-  const maxRuns = Math.max(...dates.map(([, b]) => b.runs))
-
+function BrowserMatrix({ data }: {
+  data: { key: string; bucket: BucketData; trend: { date: string; rate: number }[] }[]
+}) {
+  if (data.length === 0) return null
   return (
-    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', overflow: 'hidden' }}>
-      <div style={{ padding: '10px 14px 8px', fontSize: '11px', fontWeight: 600, color: S.fgMuted, textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: `1px solid ${S.border}` }}>
-        Daily Trend
-      </div>
-      <div style={{ padding: '12px 14px', display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-        {dates.map(([date, b]) => {
-          const rate = pct(b.passed, b.total)
-          const barH = maxRuns > 0 ? Math.max(24, Math.round((b.runs / maxRuns) * 72)) : 40
-          const rateColor = rate >= 90 ? C.pass : rate >= 70 ? C.flaky : C.fail
+    <div>
+      <h6 style={{ margin: '0 0 8px', fontSize: '11px', fontWeight: 600, color: S.fgMuted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+        Browser Matrix
+      </h6>
+      <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', padding: '0 16px' }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: MATRIX_COLS, gap: '10px',
+          fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: S.fgSubtle,
+          padding: '10px 0', borderBottom: `1px solid ${S.divider}`,
+        }}>
+          <div>Browser</div>
+          <div style={{ textAlign: 'right' }}>Runs</div>
+          <div style={{ textAlign: 'right' }}>Avg</div>
+          <div style={{ textAlign: 'right' }}>Failed</div>
+          <div style={{ textAlign: 'right' }}>Flaky</div>
+          <div style={{ textAlign: 'right' }}>Pass rate</div>
+          <div />
+        </div>
+        {data.map(({ key, bucket: b, trend }, i) => {
+          const rate   = pct(b.passed, b.total)
+          const rColor = rateColor(rate)
+          const avgMs  = b.durationCount > 0 ? Math.round(b.totalDurationMs / b.durationCount) : null
           return (
-            <div key={date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', minWidth: '64px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: rateColor }}>{rate}%</span>
-              <div style={{ width: '100%', height: barH, borderRadius: '5px', overflow: 'hidden', display: 'flex', flexDirection: 'column-reverse' }}>
-                <div style={{ flex: b.passed, background: C.pass, minHeight: b.passed > 0 ? 2 : 0 }} />
-                <div style={{ flex: b.failed, background: C.fail, minHeight: b.failed > 0 ? 2 : 0 }} />
-                <div style={{ flex: b.flaky,  background: C.flaky, minHeight: b.flaky > 0 ? 2 : 0 }} />
-                <div style={{ flex: Math.max(0, b.total - b.passed - b.failed - b.flaky), background: C.skip, minHeight: 0 }} />
+            <div key={key} style={{
+              display: 'grid', gridTemplateColumns: MATRIX_COLS, gap: '10px', alignItems: 'center', padding: '10px 0',
+              borderBottom: i < data.length - 1 ? `1px solid ${S.divider}` : 'none',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', fontWeight: 600, color: S.fg, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: rColor, flexShrink: 0 }} />
+                {key}
               </div>
-              <span style={{ fontSize: '10px', color: S.fgMuted }}>{fmtDate(date)}</span>
-              <span style={{ fontSize: '10px', color: S.fgSubtle }}>{b.runs} runs</span>
+              <div style={{ textAlign: 'right', fontSize: '12.5px', fontVariantNumeric: 'tabular-nums', color: S.fgSec }}>{b.runs}</div>
+              <div style={{ textAlign: 'right', fontSize: '12.5px', fontVariantNumeric: 'tabular-nums', color: S.fgSec }}>{avgMs !== null ? fmtMs(avgMs) : '—'}</div>
+              <div style={{ textAlign: 'right', fontSize: '12.5px', fontVariantNumeric: 'tabular-nums', color: b.failed > 0 ? C.fail  : S.fgMuted }}>{b.failed}</div>
+              <div style={{ textAlign: 'right', fontSize: '12.5px', fontVariantNumeric: 'tabular-nums', color: b.flaky  > 0 ? C.flaky : S.fgMuted }}>{b.flaky}</div>
+              <div style={{ textAlign: 'right', fontSize: '15px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: rColor }}>{rate}%</div>
+              <div style={{ height: '22px' }}>
+                {trend.length >= 2 && <TrendChart points={trend} color={rColor} height={22} gradKey={`browser-${key}`} />}
+              </div>
             </div>
           )
         })}
-
-        {/* Legend */}
-        <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', justifyContent: 'center', paddingBottom: '26px' }}>
-          {([['Passed', C.pass], ['Failed', C.fail], ['Flaky', C.flaky], ['Skipped', C.skip]] as const).map(([l, c]) => (
-            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: c }} />
-              <span style={{ fontSize: '10px', color: S.fgSubtle }}>{l}</span>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   )
@@ -391,26 +387,47 @@ function DailyTrend({ dateMap }: { dateMap: Map<string, BucketData> }) {
 
 interface Props {
   report: E2eAggregateReport
+  onSelectRun: (run: E2eRunEntry) => void
 }
 
-export default function OverviewView({ report }: Props) {
-  const runs = report.reviews ?? report.runs ?? []
+export default function OverviewView({ report, onSelectRun }: Props) {
+  const [range, setRange] = useState<Range>('7D')
 
-  const suiteMap   = groupBy(runs, r => r.suiteName ?? r.suite ?? 'Unknown')
-  const browserMap = groupBy(runs, r => browserName(r.matrixLabel))
-  const dateMap    = groupBy(runs, r => (r.generatedAt ?? '').slice(0, 10) || 'unknown')
+  const allRuns = report.reviews ?? report.runs ?? []
+  const runs    = filterByRange(allRuns, range)
 
+  const suiteRunsMap = new Map<string, E2eRunEntry[]>()
+  for (const r of runs) {
+    const k = r.suiteName ?? r.suite ?? 'Unknown'
+    if (!suiteRunsMap.has(k)) suiteRunsMap.set(k, [])
+    suiteRunsMap.get(k)!.push(r)
+  }
+
+  const suiteMap      = groupBy(runs, r => r.suiteName ?? r.suite ?? 'Unknown')
+  const browserMap    = groupBy(runs, r => browserName(r.matrixLabel))
   const suiteTrends   = timeSeries(runs, r => r.suiteName ?? r.suite ?? 'Unknown')
   const browserTrends = timeSeries(runs, r => browserName(r.matrixLabel))
 
-  const suiteData   = [...suiteMap.entries()]
-    .map(([k, b]) => ({ key: k, bucket: b, trend: suiteTrends.get(k) ?? [] }))
+  const suiteData = [...suiteMap.entries()]
+    .map(([k, b]) => ({ key: k, bucket: b, trend: suiteTrends.get(k) ?? [], latest: latestOf(suiteRunsMap.get(k) ?? []) }))
+    .filter((d): d is typeof d & { latest: E2eRunEntry } => d.latest !== null)
     .sort((a, b) => b.bucket.total - a.bucket.total)
 
   const browserData = [...browserMap.entries()]
     .filter(([k]) => k !== 'Unknown')
     .map(([k, b]) => ({ key: k, bucket: b, trend: browserTrends.get(k) ?? [] }))
     .sort((a, b) => b.bucket.total - a.bucket.total)
+
+  const totalRuns   = runs.length
+  const failedRuns  = runs.filter(r => {
+    const e = runEffectiveStatus(r)
+    return e === 'failed' || e === 'succeeded_with_issues' || e === 'timedout'
+  }).length
+  const totalTests  = runs.reduce((n, r) => n + (r.summary?.total  ?? 0), 0)
+  const failedTests = runs.reduce((n, r) => n + (r.summary?.failed ?? 0), 0)
+  const flakyTests  = runs.reduce((n, r) => n + (r.summary?.flaky  ?? 0), 0)
+  const passedTests = runs.reduce((n, r) => n + (r.summary?.passed ?? 0), 0)
+  const passRate    = pct(passedTests, totalTests)
 
   const updatedAt = report.updatedAt ?? report.generatedAt
 
@@ -428,27 +445,35 @@ export default function OverviewView({ report }: Props) {
           </div>
         }
         right={
-          report.schemaVersion
-            ? <div style={{ fontSize: '11px', color: S.fgSubtle }}>v{report.schemaVersion}</div>
-            : undefined
+          <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
+            {allRuns.length > 0 && (
+              <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap' }}>
+                <SummaryStat label="Runs"      value={String(totalRuns)} sub={failedRuns > 0 ? `${failedRuns} failed` : 'all healthy'} subColor={failedRuns > 0 ? C.fail : C.pass} />
+                <SummaryStat label="Pass rate" value={`${passRate}%`}    sub={`${range} range`} />
+                <SummaryStat label="Tests"     value={String(totalTests)} sub={failedTests > 0 ? `${failedTests} failed` : undefined} subColor={C.fail} />
+                <SummaryStat label="Flaky"     value={String(flakyTests)} sub={flakyTests > 0 ? 'flagged' : undefined} subColor={C.flaky} />
+              </div>
+            )}
+            <RangeToggle range={range} onChange={setRange} />
+            {report.schemaVersion && <div style={{ fontSize: '11px', color: S.fgSubtle }}>v{report.schemaVersion}</div>}
+          </div>
         }
       />
 
-      <div style={{ flex: 1, overflowY: 'auto', background: 'var(--color-background)', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <SuiteTierBanner runs={runs} />
-
-        {runs.length === 0 ? (
+      <div style={{ flex: 1, overflowY: 'auto', background: 'var(--color-background)', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        {allRuns.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: S.fgMuted }}>No runs in this report.</div>
+        ) : runs.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: S.fgMuted }}>No runs in the selected range.</div>
         ) : (
           <>
-            <KpiRow report={report} runs={runs} />
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-              <HealthRow label="Suite Health"   data={suiteData} />
-              <HealthRow label="Browser Matrix" data={browserData} showBrowser />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+              {suiteData.map(({ key, bucket, trend, latest }) => (
+                <SuiteCard key={key} name={key} latest={latest} bucket={bucket} trend={trend} onOpen={() => onSelectRun(latest)} />
+              ))}
             </div>
 
-            <DailyTrend dateMap={dateMap} />
+            <BrowserMatrix data={browserData} />
           </>
         )}
       </div>
