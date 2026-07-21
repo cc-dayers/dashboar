@@ -20,6 +20,14 @@ import { useSidebarWidth } from "../../hooks/useSidebarWidth";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Theme-aware chip text/border color — runStatusColor()'s raw hex reads fine on a
+// dark sidebar but is too low-contrast for passed/failed once the sidebar goes light.
+function chipTextColor(status: string): string {
+  if (status === "passed" || status === "succeeded") return "var(--color-sidebar-success)";
+  if (status === "failed") return "var(--color-sidebar-danger)";
+  return runStatusColor(status);
+}
+
 // Stable key for a run entry: prefer reportBlobPath (unique per run), else positional
 function runKey(r: E2eRunEntry, idx: number): string {
   return r.reportBlobPath ?? `run-${idx}`;
@@ -395,6 +403,7 @@ function GroupRow({
             const name = browserName(e.run.matrixLabel);
             const chipEff = runEffectiveStatus(e.run);
             const chipColor = runStatusColor(chipEff);
+            const chipText = chipTextColor(chipEff);
             const isShown = e.key === shown.key;
             return (
               <span
@@ -412,8 +421,10 @@ function GroupRow({
                   fontWeight: 600,
                   padding: "1.5px 6px",
                   borderRadius: "999px",
-                  border: `1px solid ${isShown ? chipColor : "var(--color-sidebar-border)"}`,
-                  color: isShown ? chipColor : "var(--color-sidebar-muted)",
+                  border: `1px solid ${isShown ? `color-mix(in srgb, ${chipText} 45%, transparent)` : "var(--color-sidebar-border)"}`,
+                  background: isShown ? "var(--color-surface)" : "transparent",
+                  color: isShown ? chipText : "var(--color-sidebar-muted)",
+                  opacity: isShown ? 1 : 0.7,
                   cursor: "pointer",
                 }}
               >
