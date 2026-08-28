@@ -4,12 +4,17 @@ import MetricCard from '../../components/report-ui/MetricCard'
 import { S } from '../../lib/designTokens'
 import { fmtMs, fmtTokens } from '../../lib/format'
 import { hatStyle, resultPill, PROVIDER_COLOR } from '../../lib/reviewStyles'
+import GroundingHealthCard from '../../components/report-ui/GroundingHealthCard'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+function fmtCredits(value: number) {
+  return value.toLocaleString('en-US', { maximumFractionDigits: 2 })
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -252,8 +257,8 @@ export default function DetailView({ review: r, onBack }: Props) {
           }}>
             <MetricCard label="Review Time"     value={fmtMs(r.timeToReviewMs)} />
             <MetricCard label="Accuracy"         value={`${r.accuracyRating}%`} />
-            <MetricCard label="Tokens / Cost"    value={fmtTokens(r.tokensUsed)} sub={`$${r.estimatedCostUsd.toFixed(2)}`} />
-            {r.aicCreditsUsed != null && <MetricCard label="AIC Credits" value={String(r.aicCreditsUsed)} />}
+            <MetricCard label="Tokens / Cost"    value={r.tokensUsed == null ? '—' : fmtTokens(r.tokensUsed)} sub={r.estimatedCostUsd == null ? 'cost unavailable' : `$${r.estimatedCostUsd.toFixed(2)}`} />
+            {r.aicCreditsUsed != null && <MetricCard label="AIC Credits" value={fmtCredits(r.aicCreditsUsed)} sub="attributed to this review" accent="#7c3aed" />}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '14px' }}>
@@ -278,11 +283,13 @@ export default function DetailView({ review: r, onBack }: Props) {
             <DownstreamImpactSection impact={r.downstreamImpact} />
           )}
 
+          {r.diffGrounding && <GroundingHealthCard grounding={r.diffGrounding} />}
+
           {/* Feedback */}
           <FeedbackSection fb={r.feedback} />
 
           {/* Improvement signals */}
-          <ImprovementSignalsSection signals={r.improvementSignals} hasCostData={r.tokensUsed > 0 || r.estimatedCostUsd > 0} />
+          <ImprovementSignalsSection signals={r.improvementSignals} hasCostData={(r.tokensUsed ?? 0) > 0 || (r.estimatedCostUsd ?? 0) > 0} />
         </div>
       </div>
     </div>

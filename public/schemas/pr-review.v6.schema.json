@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "report.v6.schema.json",
+  "title": "PR Review Report - Schema v6",
+  "description": "Frozen schema for report.json. Version 6 preserves unavailable token and cost telemetry as null.",
+  "type": "object",
+  "required": ["schemaVersion", "reviews"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "string", "const": "6" },
+    "title": { "type": "string" },
+    "subtitle": { "type": "string" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "period": { "type": "string" },
+    "copilotUsage": { "$ref": "pr-review.v5.schema.json#/$defs/CopilotUsageSummary" },
+    "reviews": { "type": "array", "items": { "$ref": "#/$defs/ReviewEntry" } }
+  },
+  "$defs": {
+    "ReviewEntry": {
+      "type": "object",
+      "required": ["id", "prNumber", "prTitle", "repository", "reviewedAt", "timeToReviewMs", "accuracyRating", "result", "hats", "tokensUsed", "estimatedCostUsd"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "pr-review.v5.schema.json#/$defs/ReviewEntry/properties/id" },
+        "prNumber": { "$ref": "pr-review.v5.schema.json#/$defs/ReviewEntry/properties/prNumber" },
+        "prTitle": { "type": "string" }, "repository": { "type": "string" }, "branch": { "type": "string" }, "author": { "type": "string" },
+        "reviewedAt": { "type": "string", "format": "date-time" }, "timeToReviewMs": { "type": "integer", "minimum": 0 },
+        "accuracyRating": { "type": "number", "minimum": 0, "maximum": 100 },
+        "result": { "$ref": "pr-review.v5.schema.json#/$defs/ReviewEntry/properties/result" },
+        "hats": { "type": "array", "items": { "type": "string" } },
+        "hatDetails": { "type": "array", "items": { "$ref": "pr-review.v5.schema.json#/$defs/HatDetail" } },
+        "tokensUsed": { "type": ["integer", "null"], "minimum": 0 }, "estimatedCostUsd": { "type": ["number", "null"], "minimum": 0 },
+        "aicCreditsUsed": { "type": "number", "exclusiveMinimum": 0 }, "copilotBillingUsage": { "$ref": "pr-review.v5.schema.json#/$defs/CopilotBillingUsage" },
+        "model": { "type": "string" }, "provider": { "$ref": "pr-review.v5.schema.json#/$defs/ReviewEntry/properties/provider" },
+        "modelsUsed": { "type": "array", "items": { "$ref": "pr-review.v5.schema.json#/$defs/ModelUsageEntry" } },
+        "notes": { "type": "string" }, "jiraTicket": { "$ref": "pr-review.v5.schema.json#/$defs/JiraTicketRef" },
+        "downstreamImpact": { "$ref": "pr-review.v5.schema.json#/$defs/DownstreamImpactSummary" },
+        "botComments": { "type": "array", "items": { "$ref": "pr-review.v5.schema.json#/$defs/BotComment" } }
+      }
+    }
+  }
+}

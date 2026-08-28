@@ -58,7 +58,7 @@ test.describe('PR Review dashboard', () => {
   test('schema v4 displays fractional AI-credit usage', async ({ page }) => {
     await page.goto('/?report=pr-review&id=v4&_fixture=dev')
     await expect(page.getByText('Unsupported schema version')).not.toBeVisible()
-    await expect(page.getByText('AI Credits Used', { exact: true })).toBeVisible()
+    await expect(page.getByText('Official AIC Usage', { exact: true })).toBeVisible()
     await expect(page.getByText('15.75', { exact: true })).toBeVisible()
     await expect(page.getByText(/Jun 17 – Jul 14 · 2 users/)).toBeVisible()
     await expect(page.getByText('AI Credits per Review', { exact: true })).toBeVisible()
@@ -66,5 +66,22 @@ test.describe('PR Review dashboard', () => {
     await page.getByText('Capture Copilot billing telemetry').first().click()
     await expect(page.getByRole('main').getByText('AI Credits', { exact: true })).toBeVisible()
     await expect(page.getByRole('main').getByText('1.25', { exact: true })).toBeVisible()
+  })
+
+  test('schema v7 distinguishes official and attributed AIC and shows grounding health', async ({ page }) => {
+    await page.goto('/?report=pr-review&id=v7&_fixture=dev')
+    await expect(page.getByText('Unsupported schema version')).not.toBeVisible()
+    await expect(page.getByText('Official AIC Usage', { exact: true })).toBeVisible()
+    await expect(page.getByText('18.63', { exact: true })).toBeVisible()
+    await expect(page.getByText('Attributed AIC', { exact: true })).toBeVisible()
+    await expect(page.getByText('1.38', { exact: true })).toBeVisible()
+    await expect(page.getByText('1 attributed reviews', { exact: true })).toBeVisible()
+    await expect(page.getByText('Degraded Grounding', { exact: true })).toBeVisible()
+
+    await page.getByText('Synthetic telemetry fixture').first().click()
+    const main = page.getByRole('main')
+    await expect(main.getByText('cost unavailable', { exact: true })).toBeVisible()
+    await expect(main.getByText('Grounding degraded', { exact: true })).toBeVisible()
+    await expect(main.getByText('findings reanchored', { exact: true })).toBeVisible()
   })
 })

@@ -1,0 +1,25 @@
+{
+  "$schema": "review-audit.v4.schema.json",
+  "schemaVersion": "4",
+  "generatedAt": "2026-08-28T20:00:00.000Z",
+  "period": "2026-08-01 – 2026-08-28",
+  "sourceReport": { "reportJsonUri": "reports/report.json", "reportSchemaUri": "reports/report.v7.schema.json", "reportSchemaVersion": "7", "reportGeneratedAt": "2026-08-28T19:55:00.000Z", "reportTitle": "Synthetic review report" },
+  "summary": {
+    "reviewCount": 1, "findingCount": 1, "reviewsWithFindings": 1, "downstreamImpactReviewCount": 0,
+    "resultCounts": { "approved": 1, "changes-requested": 0, "commented": 0 },
+    "totalTokensUsed": null, "estimatedCostUsd": null, "totalAicCreditsUsed": 18.625,
+    "feedbackCollectionStatus": "not-collected", "humanReplyCount": null, "acceptedOrThankedCount": null, "falsePositiveClaimedCount": null, "noObservedReplyCount": null
+  },
+  "reviews": [
+    {
+      "id": "synthetic-audit-v4-1", "prNumber": 18660, "prTitle": "Synthetic telemetry fixture", "repository": "carecontinuity/carecontinuity.app",
+      "workspace": "carecontinuity", "repoSlug": "carecontinuity.app", "branch": "feature/CCW-18660-canary", "authorPresent": false,
+      "reviewedAt": "2026-08-28T19:55:00.000Z", "timeToReviewMs": 12500, "accuracyRating": 92, "result": "approved", "hats": ["ci-automation"], "findingCount": 1,
+      "tokensUsed": null, "estimatedCostUsd": null, "aicCreditsUsed": 1.375, "model": "gpt-5.4", "provider": "copilot", "modelsUsedCount": 1,
+      "modelsUsed": [{ "provider": "copilot", "model": "gpt-5.4", "source": "review-track" }], "jiraTicketKey": "CCW-18660", "downstreamImpact": null,
+      "diffGrounding": { "enforced": true, "degraded": true, "degradationReason": "synthetic fixture", "invalidAnchorCount": 1, "invalidArchitectureEvidenceCount": 0, "demotedFindingCount": 1, "droppedFindingCount": 0, "reanchoredFindingCount": 1 },
+      "feedback": { "collectionStatus": "not-collected", "botCommentCount": null, "humanReplyCount": null, "firstHumanReplyAt": null, "labels": [], "threadResolvedCount": null, "commitsAfterBotComment": null },
+      "improvementSignals": { "hasFindingDetails": true, "findingDetailsSource": "state", "downstreamImpactTriggered": false, "hasModelTelemetry": true, "hasCostTelemetry": false }
+    }
+  ]
+}

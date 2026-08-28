@@ -58,6 +58,17 @@ export interface DownstreamImpactSummary {
   warningCount?: number
 }
 
+export interface DiffGroundingSummary {
+  enforced: boolean
+  degraded: boolean
+  degradationReason: string | null
+  invalidAnchorCount: number
+  invalidArchitectureEvidenceCount: number
+  demotedFindingCount: number
+  droppedFindingCount: number
+  reanchoredFindingCount: number
+}
+
 export interface PrReview {
   id: string
   prNumber: number
@@ -74,8 +85,8 @@ export interface PrReview {
   workspace?: string | null
   hats: string[]
   hatDetails?: ReviewHat[]
-  tokensUsed: number
-  estimatedCostUsd: number
+  tokensUsed: number | null
+  estimatedCostUsd: number | null
   aicCreditsUsed?: number
   copilotBillingUsage?: CopilotBillingUsage
   model?: string
@@ -84,6 +95,7 @@ export interface PrReview {
   notes?: string
   jiraTicket?: JiraTicketRef
   downstreamImpact?: DownstreamImpactSummary
+  diffGrounding?: DiffGroundingSummary
 }
 
 export function getCopilotBillingUsage(review: PrReview): CopilotBillingUsage | null {

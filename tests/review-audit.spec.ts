@@ -4,6 +4,13 @@ import { test, expect } from './test'
 const FIXTURE_URL = '/?report=review-audit&id=example&_fixture=dev'
 
 test.describe('Review Audit dashboard', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/get-blob?*', async route => {
+      const reportId = new URL(route.request().url()).searchParams.get('id') ?? 'example'
+      await route.fulfill({ path: `fixtures/review-audit/${reportId}.json` })
+    })
+  })
+
   test('loads the overview with summary stats', async ({ page }) => {
     await page.goto(FIXTURE_URL)
     // Overview heading is in the main panel; sidebar also has an "Overview" link
@@ -46,5 +53,22 @@ test.describe('Review Audit dashboard', () => {
     await page.getByRole('complementary').getByText('Overview').click()
     // Back in overview — the reviewCount KPI reappears
     await expect(page.getByRole('main').getByText('18', { exact: true })).toBeVisible()
+  })
+
+  test('schema v4 surfaces AIC attribution and degraded grounding diagnostics', async ({ page }) => {
+    await page.goto('/?report=review-audit&id=v4&_fixture=dev')
+    const main = page.getByRole('main')
+    await expect(page.getByText('Unsupported schema version')).not.toBeVisible()
+    await expect(main.getByText('Official AIC Usage', { exact: true })).toBeVisible()
+    await expect(main.getByText('18.63', { exact: true })).toBeVisible()
+    await expect(main.getByText('Attributed AIC', { exact: true })).toBeVisible()
+    await expect(main.getByText('1.38', { exact: true })).toBeVisible()
+    await expect(main.getByText('Grounding Repairs', { exact: true })).toBeVisible()
+
+    await page.getByText('Synthetic telemetry fixture').first().click()
+    await expect(main.getByText('AIC Credits', { exact: true })).toBeVisible()
+    await expect(main.getByText('attributed to this review', { exact: true })).toBeVisible()
+    await expect(main.getByText('Grounding degraded', { exact: true })).toBeVisible()
+    await expect(main.getByText('synthetic fixture', { exact: true })).toBeVisible()
   })
 })

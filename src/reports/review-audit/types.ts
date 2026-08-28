@@ -22,8 +22,9 @@ export interface AuditSummary {
   reviewsWithFindings: number
   downstreamImpactReviewCount: number
   resultCounts: ResultCounts
-  totalTokensUsed: number
-  estimatedCostUsd: number
+  totalTokensUsed: number | null
+  estimatedCostUsd: number | null
+  totalAicCreditsUsed?: number | null
   feedbackCollectionStatus: FeedbackStatus
   humanReplyCount: number | null
   acceptedOrThankedCount: number | null
@@ -49,6 +50,29 @@ export interface ImprovementSignals {
   hasCostTelemetry: boolean
 }
 
+export interface DiffGroundingSummary {
+  enforced: boolean
+  degraded: boolean
+  degradationReason: string | null
+  invalidAnchorCount: number
+  invalidArchitectureEvidenceCount: number
+  demotedFindingCount: number
+  droppedFindingCount: number
+  reanchoredFindingCount: number
+}
+
+export interface ModelUsageEntry {
+  provider: string
+  model: string
+  label?: string
+  source?: string
+  tier?: string
+  reasoningEffort?: string
+  attemptedModels?: string[]
+  attemptedReasoningEfforts?: string[]
+  attemptedConfigurations?: string[]
+}
+
 export interface AuditReview {
   id: string
   prNumber: number
@@ -64,14 +88,16 @@ export interface AuditReview {
   result: ReviewResult
   hats: string[]
   findingCount: number
-  tokensUsed: number
-  estimatedCostUsd: number
+  tokensUsed: number | null
+  estimatedCostUsd: number | null
   aicCreditsUsed: number | null
   model: string | null
   provider: string | null
   modelsUsedCount: number
+  modelsUsed?: ModelUsageEntry[]
   jiraTicketKey: string | null
   downstreamImpact: Record<string, unknown> | null
+  diffGrounding?: DiffGroundingSummary | null
   feedback: FeedbackSummary
   improvementSignals: ImprovementSignals
 }

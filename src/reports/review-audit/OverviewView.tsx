@@ -11,6 +11,10 @@ function fmtDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function fmtCredits(value: number) {
+  return value.toLocaleString('en-US', { maximumFractionDigits: 2 })
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function ResultBar({ counts }: { counts: ResultCounts }) {
@@ -81,6 +85,14 @@ interface Props {
 export default function OverviewView({ report }: Props) {
   const summary     = report.summary     ?? {} as AuditSummary
   const sourceReport = report.sourceReport ?? {} as SourceReport
+  const groundedReviews = report.reviews.filter(review => review.diffGrounding)
+  const degradedGroundingCount = groundedReviews.filter(review => review.diffGrounding?.degraded || !review.diffGrounding?.enforced).length
+  const groundingRepairCount = groundedReviews.reduce((sum, review) => {
+    const grounding = review.diffGrounding
+    return sum + (grounding ? grounding.reanchoredFindingCount + grounding.demotedFindingCount + grounding.droppedFindingCount : 0)
+  }, 0)
+  const reviewsWithAic = report.reviews.filter(review => review.aicCreditsUsed != null)
+  const attributedAic = reviewsWithAic.reduce((sum, review) => sum + (review.aicCreditsUsed ?? 0), 0)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -109,18 +121,37 @@ export default function OverviewView({ report }: Props) {
           <KpiCard label="Downstream Impact" value={String(summary.downstreamImpactReviewCount)} sub="reviews triggered" />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '14px' }}>
           <KpiCard
             label="Tokens Used"
-            value={fmtTokens(summary.totalTokensUsed)}
-            sub={`$${summary.estimatedCostUsd.toFixed(2)} estimated cost`}
+            value={summary.totalTokensUsed == null ? '—' : fmtTokens(summary.totalTokensUsed)}
+            sub={summary.estimatedCostUsd == null ? 'cost unavailable' : `$${summary.estimatedCostUsd.toFixed(2)} estimated cost`}
           />
           <KpiCard
             label="Schema Version"
             value={report.schemaVersion ?? '—'}
             sub={sourceReport.reportSchemaVersion ? `source v${sourceReport.reportSchemaVersion}` : undefined}
           />
+          <KpiCard
+            label="Official AIC Usage"
+            value={summary.totalAicCreditsUsed == null ? '—' : fmtCredits(summary.totalAicCreditsUsed)}
+            sub={summary.totalAicCreditsUsed == null ? 'GitHub usage unavailable' : 'authoritative GitHub scope total'}
+            accent="#7c3aed"
+          />
         </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '14px' }}>
+          <KpiCard label="Attributed AIC" value={reviewsWithAic.length > 0 ? fmtCredits(attributedAic) : '—'} sub="sum of per-review telemetry" accent="#7c3aed" />
+          <KpiCard label="AIC Attribution Coverage" value={report.reviews.length > 0 ? `${Math.round((reviewsWithAic.length / report.reviews.length) * 100)}%` : '—'} sub={`${reviewsWithAic.length} of ${report.reviews.length} reviews`} />
+        </div>
+
+        {groundedReviews.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '14px' }}>
+            <KpiCard label="Grounding Coverage" value={`${Math.round((groundedReviews.length / report.reviews.length) * 100)}%`} sub={`${groundedReviews.length} of ${report.reviews.length} reviews`} accent="#0284c7" />
+            <KpiCard label="Degraded Grounding" value={String(degradedGroundingCount)} sub="requires trust review" accent={degradedGroundingCount > 0 ? '#d97706' : '#16a34a'} />
+            <KpiCard label="Grounding Repairs" value={String(groundingRepairCount)} sub="reanchored · demoted · dropped" accent="#7c3aed" />
+          </div>
+        )}
 
         {/* Result breakdown */}
         <div style={{ marginBottom: '14px' }}>

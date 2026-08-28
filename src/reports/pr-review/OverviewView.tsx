@@ -16,6 +16,7 @@ import { PROVIDER_COLOR, hatStyle } from '../../lib/reviewStyles'
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function mean(xs: number[]) { return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0 }
+function fmtCredits(value: number) { return value.toLocaleString('en-US', { maximumFractionDigits: 2 }) }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,12 @@ export default function OverviewView({ report, reportId }: Props) {
   const avgAccuracy    = mean(reviews.map(r => r.accuracyRating))
   const avgTimeMs      = mean(reviews.map(r => r.timeToReviewMs))
   const changesCount   = reviews.filter(r => r.result === 'changes-requested').length
+  const groundedReviews = reviews.filter(r => r.diffGrounding)
+  const degradedGroundingCount = groundedReviews.filter(r => r.diffGrounding?.degraded || !r.diffGrounding?.enforced).length
+  const groundingRepairCount = groundedReviews.reduce((sum, r) => {
+    const g = r.diffGrounding
+    return sum + (g ? g.reanchoredFindingCount + g.demotedFindingCount + g.droppedFindingCount : 0)
+  }, 0)
 
   // ── Avg review time trend — current window vs the immediately preceding
   // equal-length window. For "All" there's no natural preceding window of
@@ -90,13 +97,14 @@ export default function OverviewView({ report, reportId }: Props) {
     .reduce((sum, { usage }) => sum + usage.value, 0)
   const billingLabel = 'AI Credits Used'
   const authoritativeUsage = report.copilotUsage
-  const billingValue = authoritativeUsage
-    ? String(authoritativeUsage.totalAiCreditsUsed)
-    : billingReviews.length > 0 ? String(totalAiCredits) : '—'
+  const billingValue = authoritativeUsage ? fmtCredits(authoritativeUsage.totalAiCreditsUsed) : '—'
   const billingSub = authoritativeUsage
-    ? `${shortDate(authoritativeUsage.reportStartDay)} – ${shortDate(authoritativeUsage.reportEndDay)} · ${authoritativeUsage.userCount} users`
-    : billingReviews.length > 0 ? `${billingReviews.length} of ${reviews.length} reviews`
-    : 'official GitHub usage data unavailable'
+    ? `GitHub ${authoritativeUsage.scopeType} · ${shortDate(authoritativeUsage.reportStartDay)} – ${shortDate(authoritativeUsage.reportEndDay)} · ${authoritativeUsage.userCount} users`
+    : 'official GitHub usage unavailable'
+  const attributedCreditsValue = billingReviews.length > 0 ? fmtCredits(totalAiCredits) : '—'
+  const attributedCreditsSub = billingReviews.length > 0
+    ? `${billingReviews.length} of ${reviews.length} reviews · ${Math.round((billingReviews.length / reviews.length) * 100)}% coverage`
+    : 'per-review attribution unavailable'
 
   // ── Reviews by period — bucket granularity adapts to filter range
   type PeriodBucket = { label: string; approved: number; 'changes-requested': number; commented: number }
@@ -310,8 +318,22 @@ export default function OverviewView({ report, reportId }: Props) {
           />
           <KpiCard label="Changes Requested"      value={`${changesPct}%`} sub={`${changesCount} of ${reviews.length}`} accent="#dc2626" />
           <KpiCard label="Avg Accuracy Rating"    value={`${avgAccuracy.toFixed(1)}%`} accent="#16a34a" />
-          <KpiCard label={billingLabel} value={billingValue} sub={billingSub} accent="#7c3aed" />
+          <KpiCard label="Official AIC Usage" value={billingValue} sub={billingSub} accent="#7c3aed" />
         </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
+          <KpiCard label="Attributed AIC" value={attributedCreditsValue} sub={attributedCreditsSub} accent="#7c3aed" />
+          <KpiCard label="AIC Data Source" value={authoritativeUsage ? 'GitHub' : billingReviews.length > 0 ? 'Review runs' : '—'} sub={authoritativeUsage ? authoritativeUsage.scope : 'No authoritative scope configured'} />
+          <KpiCard label="AIC Coverage" value={reviews.length > 0 ? `${Math.round((billingReviews.length / reviews.length) * 100)}%` : '—'} sub={`${billingReviews.length} attributed reviews`} />
+        </div>
+
+        {groundedReviews.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
+            <KpiCard label="Grounding Coverage" value={`${Math.round((groundedReviews.length / reviews.length) * 100)}%`} sub={`${groundedReviews.length} of ${reviews.length} reviews`} accent="#0284c7" />
+            <KpiCard label="Degraded Grounding" value={String(degradedGroundingCount)} sub="requires trust review" accent={degradedGroundingCount > 0 ? '#d97706' : '#16a34a'} />
+            <KpiCard label="Grounding Repairs" value={String(groundingRepairCount)} sub="reanchored · demoted · dropped" accent="#7c3aed" />
+          </div>
+        )}
 
         {/* Avg review time over time */}
         <div style={{ marginBottom: '12px' }}>
@@ -413,8 +435,8 @@ export default function OverviewView({ report, reportId }: Props) {
                         <div style={{ color: S.fgSec, fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
                           {d.title.length > 52 ? d.title.slice(0, 50) + '…' : d.title}
                         </div>
-                        <div style={{ color: '#6366f1', fontWeight: 700 }}>{fmtTokensK(d.tokens)} tokens</div>
-                        <div style={{ color: S.fgSubtle, fontSize: '11px', marginTop: '2px' }}>${d.cost.toFixed(3)}</div>
+                        <div style={{ color: '#6366f1', fontWeight: 700 }}>{d.tokens == null ? 'tokens unavailable' : `${fmtTokensK(d.tokens)} tokens`}</div>
+                        <div style={{ color: S.fgSubtle, fontSize: '11px', marginTop: '2px' }}>{d.cost == null ? 'cost unavailable' : `$${d.cost.toFixed(3)}`}</div>
                       </div>
                     )
                   }} />
@@ -463,7 +485,7 @@ export default function OverviewView({ report, reportId }: Props) {
                         <div style={{ color: S.fgSec, fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
                           {d.title.length > 52 ? d.title.slice(0, 50) + '…' : d.title}
                         </div>
-                        <div style={{ color: '#7c3aed', fontWeight: 700 }}>{d.usage} {billingUnitLabel}</div>
+                        <div style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtCredits(d.usage)} {billingUnitLabel}</div>
                       </div>
                     )
                   }} />

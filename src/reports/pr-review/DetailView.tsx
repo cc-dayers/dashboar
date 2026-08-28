@@ -5,6 +5,7 @@ import { authorBg, initials } from '../../lib/avatar'
 import { hatStyle, resultPill, PROVIDER_COLOR as SHARED_PROVIDER_COLOR } from '../../lib/reviewStyles'
 import MetricCard from '../../components/report-ui/MetricCard'
 import { bitbucketPrUrl, jiraTicketUrl } from '../../lib/links'
+import GroundingHealthCard from '../../components/report-ui/GroundingHealthCard'
 
 // ── Finding card ──────────────────────────────────────────────────────────────
 
@@ -200,6 +201,10 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
   )
 }
 
+function fmtCredits(value: number) {
+  return value.toLocaleString('en-US', { maximumFractionDigits: 2 })
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -296,8 +301,8 @@ export default function DetailView({ pr, onBack }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '14px' }}>
           <MetricCard label="Review Time"    value={fmtMs(pr.timeToReviewMs)} />
           <MetricCard label="Accuracy Rating" value={`${pr.accuracyRating}%`} />
-          <MetricCard label="Tokens Used"    value={fmtTokens(pr.tokensUsed)} sub={`$${pr.estimatedCostUsd.toFixed(2)}`} />
-          <MetricCard label={billingLabel} value={billingUsage ? String(billingUsage.value) : '—'} accent={billingUsage ? '#7c3aed' : undefined} />
+          <MetricCard label="Tokens Used"    value={pr.tokensUsed == null ? '—' : fmtTokens(pr.tokensUsed)} sub={pr.estimatedCostUsd == null ? 'cost unavailable' : `$${pr.estimatedCostUsd.toFixed(2)}`} />
+          <MetricCard label={billingLabel} value={billingUsage ? fmtCredits(billingUsage.value) : '—'} sub={billingUsage ? 'attributed to this review' : 'attribution unavailable'} accent={billingUsage ? '#7c3aed' : undefined} />
         </div>
 
         {/* Jira ticket */}
@@ -335,6 +340,8 @@ export default function DetailView({ pr, onBack }: Props) {
         {pr.downstreamImpact?.triggered && (
           <DownstreamImpactBanner impact={pr.downstreamImpact} />
         )}
+
+        {pr.diffGrounding && <GroundingHealthCard grounding={pr.diffGrounding} />}
 
         {/* Notes */}
         {pr.notes && (

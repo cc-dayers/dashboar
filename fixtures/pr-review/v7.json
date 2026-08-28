@@ -1,0 +1,43 @@
+{
+  "$schema": "report.v7.schema.json",
+  "schemaVersion": "7",
+  "title": "AIC and grounding telemetry",
+  "generatedAt": "2026-08-28T20:00:00.000Z",
+  "copilotUsage": {
+    "source": "github-copilot-usage-metrics",
+    "scopeType": "organization",
+    "scope": "carecontinuity",
+    "reportStartDay": "2026-08-01",
+    "reportEndDay": "2026-08-28",
+    "totalAiCreditsUsed": 18.625,
+    "userCount": 3
+  },
+  "reviews": [
+    {
+      "id": "synthetic-v7-1",
+      "prNumber": 18660,
+      "prTitle": "Synthetic telemetry fixture",
+      "repository": "carecontinuity/carecontinuity.app",
+      "reviewedAt": "2026-08-28T19:55:00.000Z",
+      "timeToReviewMs": 12500,
+      "accuracyRating": 92,
+      "result": "approved",
+      "hats": ["ci-automation"],
+      "tokensUsed": null,
+      "estimatedCostUsd": null,
+      "provider": "copilot",
+      "model": "gpt-5.4",
+      "copilotBillingUsage": { "value": 1.375, "unit": "ai-credits" },
+      "diffGrounding": {
+        "enforced": true,
+        "degraded": true,
+        "degradationReason": "synthetic fixture",
+        "invalidAnchorCount": 1,
+        "invalidArchitectureEvidenceCount": 0,
+        "demotedFindingCount": 1,
+        "droppedFindingCount": 0,
+        "reanchoredFindingCount": 1
+      }
+    }
+  ]
+}

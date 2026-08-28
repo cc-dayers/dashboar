@@ -34,6 +34,8 @@ export const registry: Record<string, RegistryEntry> = {
     label: 'PR Review',
     description: 'AI PR review agent: accuracy trends, review time, cost, hats, and per-PR findings.',
     schemaVersions: {
+      '7':      '/schemas/pr-review.v7.schema.json',
+      '6':      '/schemas/pr-review.v6.schema.json',
       '5':      '/schemas/pr-review.v5.schema.json',
       '4':      '/schemas/pr-review.v4.schema.json',
       '3':      '/schemas/pr-review.v3.schema.json',
@@ -41,7 +43,7 @@ export const registry: Record<string, RegistryEntry> = {
       '1':      '/schemas/pr-review.v1.schema.json',
       'legacy': '/schemas/pr-review.v1.schema.json',
     },
-    fixtures: ['example', 'report', 'legacy', 'v1', 'v3', 'v4', 'future'],
+    fixtures: ['example', 'report', 'legacy', 'v1', 'v3', 'v4', 'v7', 'future'],
     docs: '/docs/pr-review.md',
   },
   'playwright-trace': {
@@ -56,10 +58,13 @@ export const registry: Record<string, RegistryEntry> = {
     label: 'Review Audit',
     description: 'PR review audit: per-review feedback, improvement signals, downstream impact, and summary stats.',
     schemaVersions: {
+      '4':      '/schemas/review-audit.v4.schema.json',
+      '3':      '/schemas/review-audit.v3.schema.json',
+      '2':      '/schemas/review-audit.v2.schema.json',
       '1':      '/schemas/review-audit.v1.schema.json',
       'legacy': '/schemas/review-audit.v1.schema.json',
     },
-    fixtures: ['example'],
+    fixtures: ['example', 'v4'],
     docs: '/docs/review-audit.md',
   },
 }
