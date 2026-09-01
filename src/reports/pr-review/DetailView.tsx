@@ -1,4 +1,4 @@
-import { getCopilotBillingUsage, type PrReview, type ReviewFinding, type DownstreamImpactSummary, type ModelUsageEntry } from './types'
+import { getCopilotBillingUsage, getTokenUsage, type PrReview, type ReviewFinding, type DownstreamImpactSummary, type ModelUsageEntry, type TokenUsage } from './types'
 import { S } from '../../lib/designTokens'
 import { fmtMs, fmtTokens } from '../../lib/format'
 import { authorBg, initials } from '../../lib/avatar'
@@ -205,6 +205,52 @@ function fmtCredits(value: number) {
   return value.toLocaleString('en-US', { maximumFractionDigits: 2 })
 }
 
+function UsageTelemetryCard({ usage, estimatedCostUsd }: { usage: TokenUsage; estimatedCostUsd: number | null }) {
+  const cells = [
+    { label: 'Prompt packet', value: usage.promptTokensEstimated, suffix: 'estimated' },
+    { label: 'Provider input', value: usage.inputTokens },
+    { label: 'Cache read', value: usage.cacheReadTokens },
+    { label: 'Cache write', value: usage.cacheWriteTokens },
+    { label: 'Provider output', value: usage.outputTokens },
+    { label: 'Reasoning', value: usage.reasoningTokens },
+  ]
+  const sourceCopy = usage.source === 'provider'
+    ? 'Provider-measured session usage. Cache and reasoning breakouts are shown when the provider reports them.'
+    : usage.source === 'estimated'
+    ? 'Only the initial prompt packet was estimated; this is not complete session token usage.'
+    : 'Token provenance is unavailable for this legacy review.'
+
+  return (
+    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', padding: '16px 18px', marginBottom: '14px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
+        <div>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: S.fgSec }}>Usage anatomy</div>
+          <div style={{ fontSize: '11px', color: S.fgSubtle, marginTop: '2px' }}>{sourceCopy}</div>
+        </div>
+        <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: usage.source === 'provider' ? '#15803d' : S.fgMuted, background: usage.source === 'provider' ? '#dcfce7' : S.sunken, borderRadius: '999px', padding: '3px 7px', flexShrink: 0 }}>
+          {usage.source}
+        </span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', background: S.divider, border: `1px solid ${S.divider}`, borderRadius: '8px', overflow: 'hidden' }}>
+        {cells.map(cell => (
+          <div key={cell.label} style={{ background: S.surface, padding: '10px 12px' }}>
+            <div style={{ fontSize: '9.5px', color: S.fgSubtle, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{cell.label}</div>
+            <div style={{ fontSize: '16px', fontWeight: 650, color: cell.value == null ? S.fgSubtle : S.fg, marginTop: '3px', fontVariantNumeric: 'tabular-nums' }}>
+              {cell.value == null ? '—' : fmtTokens(cell.value)}
+            </div>
+            {cell.suffix && cell.value != null && <div style={{ fontSize: '9px', color: S.fgSubtle }}>{cell.suffix}</div>}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', marginTop: '10px', fontSize: '11px', color: S.fgMuted }}>
+        <span>Requests / turns: <strong style={{ color: S.fgSec }}>{usage.requestCount ?? '—'}</strong></span>
+        <span>Token cost: <strong style={{ color: S.fgSec }}>{estimatedCostUsd == null ? 'unavailable' : `$${estimatedCostUsd.toFixed(3)}`}</strong></span>
+        <span style={{ color: S.fgSubtle }}>AIC is reported separately because it is a billing unit, not a token count.</span>
+      </div>
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -214,6 +260,7 @@ interface Props {
 
 export default function DetailView({ pr, onBack }: Props) {
   const billingUsage = getCopilotBillingUsage(pr)
+  const tokenUsage = getTokenUsage(pr)
   const billingLabel = 'AI Credits'
   const pill  = resultPill(pr.result)
   const author = pr.author ?? ''
@@ -301,9 +348,17 @@ export default function DetailView({ pr, onBack }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '14px' }}>
           <MetricCard label="Review Time"    value={fmtMs(pr.timeToReviewMs)} />
           <MetricCard label="Accuracy Rating" value={`${pr.accuracyRating}%`} />
-          <MetricCard label="Tokens Used"    value={pr.tokensUsed == null ? '—' : fmtTokens(pr.tokensUsed)} sub={pr.estimatedCostUsd == null ? 'cost unavailable' : `$${pr.estimatedCostUsd.toFixed(2)}`} />
+          <MetricCard
+            label="Tokens Used"
+            value={tokenUsage?.totalTokens == null ? '—' : fmtTokens(tokenUsage.totalTokens)}
+            sub={tokenUsage?.source === 'provider'
+              ? [tokenUsage.inputTokens == null ? null : `${fmtTokens(tokenUsage.inputTokens)} in`, tokenUsage.outputTokens == null ? null : `${fmtTokens(tokenUsage.outputTokens)} out`].filter(Boolean).join(' · ') || 'provider measured'
+              : tokenUsage?.source === 'estimated' ? 'prompt estimate only' : 'provenance unavailable'}
+          />
           <MetricCard label={billingLabel} value={billingUsage ? fmtCredits(billingUsage.value) : '—'} sub={billingUsage ? 'attributed to this review' : 'attribution unavailable'} accent={billingUsage ? '#7c3aed' : undefined} />
         </div>
+
+        {tokenUsage && <UsageTelemetryCard usage={tokenUsage} estimatedCostUsd={pr.estimatedCostUsd} />}
 
         {/* Jira ticket */}
         {pr.jiraTicket && (

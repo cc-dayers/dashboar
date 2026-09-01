@@ -41,7 +41,7 @@ const hd   = (s: string) => `\n${C.bold}${C.cyan}${s}${C.reset}\n`
 
 // ── Schema constants (mirrors src/lib/schemaVersion.ts) ───────────────────────
 
-const SUPPORTED_VERSIONS = new Set(['1', '2', '3', '4', '5', '6', '7', 'legacy'])
+const SUPPORTED_VERSIONS = new Set(['1', '2', '3', '4', '5', '6', '7', '8', 'legacy'])
 const SCHEMA_FILE_RE = /\breport\.v(\d+)\.schema\.json$/
 
 function resolveSchemaVersion(r: Record<string, unknown>): { version: string; source: string } {

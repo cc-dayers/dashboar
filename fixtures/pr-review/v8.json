@@ -1,0 +1,45 @@
+{
+  "$schema": "report.v8.schema.json",
+  "schemaVersion": "8",
+  "title": "Provider usage telemetry",
+  "generatedAt": "2026-09-01T18:00:00.000Z",
+  "reviews": [
+    {
+      "id": "synthetic-v8-1",
+      "prNumber": 18660,
+      "prTitle": "Synthetic provider usage fixture",
+      "repository": "carecontinuity/carecontinuity.app",
+      "reviewedAt": "2026-09-01T17:55:00.000Z",
+      "timeToReviewMs": 83000,
+      "accuracyRating": 85,
+      "result": "approved",
+      "hats": ["agentic-development"],
+      "tokensUsed": 26450,
+      "tokenUsage": {
+        "inputTokens": 21673,
+        "outputTokens": 4777,
+        "totalTokens": 26450,
+        "cacheReadTokens": 14200,
+        "cacheWriteTokens": 1100,
+        "reasoningTokens": 825,
+        "requestCount": 3,
+        "promptTokensEstimated": 10769,
+        "source": "provider"
+      },
+      "estimatedCostUsd": null,
+      "provider": "copilot",
+      "model": "claude-sonnet-5",
+      "copilotBillingUsage": { "value": 7.0635735, "unit": "ai-credits" },
+      "diffGrounding": {
+        "enforced": true,
+        "degraded": false,
+        "degradationReason": null,
+        "invalidAnchorCount": 0,
+        "invalidArchitectureEvidenceCount": 0,
+        "demotedFindingCount": 0,
+        "droppedFindingCount": 0,
+        "reanchoredFindingCount": 0
+      }
+    }
+  ]
+}

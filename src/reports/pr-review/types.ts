@@ -69,6 +69,18 @@ export interface DiffGroundingSummary {
   reanchoredFindingCount: number
 }
 
+export interface TokenUsage {
+  inputTokens: number | null
+  outputTokens: number | null
+  totalTokens: number | null
+  cacheReadTokens: number | null
+  cacheWriteTokens: number | null
+  reasoningTokens: number | null
+  requestCount: number | null
+  promptTokensEstimated: number | null
+  source: 'provider' | 'estimated' | 'unknown'
+}
+
 export interface PrReview {
   id: string
   prNumber: number
@@ -86,6 +98,7 @@ export interface PrReview {
   hats: string[]
   hatDetails?: ReviewHat[]
   tokensUsed: number | null
+  tokenUsage?: TokenUsage
   estimatedCostUsd: number | null
   aicCreditsUsed?: number
   copilotBillingUsage?: CopilotBillingUsage
@@ -96,6 +109,23 @@ export interface PrReview {
   jiraTicket?: JiraTicketRef
   downstreamImpact?: DownstreamImpactSummary
   diffGrounding?: DiffGroundingSummary
+}
+
+export function getTokenUsage(review: PrReview): TokenUsage | null {
+  if (review.tokenUsage) return review.tokenUsage
+  if (review.tokensUsed == null) return null
+
+  return {
+    inputTokens: null,
+    outputTokens: null,
+    totalTokens: review.tokensUsed,
+    cacheReadTokens: null,
+    cacheWriteTokens: null,
+    reasoningTokens: null,
+    requestCount: null,
+    promptTokensEstimated: null,
+    source: 'unknown',
+  }
 }
 
 export function getCopilotBillingUsage(review: PrReview): CopilotBillingUsage | null {
@@ -116,4 +146,3 @@ export interface PrReviewReport {
   copilotUsage?: CopilotUsageSummary
   reviews: PrReview[]
 }
-

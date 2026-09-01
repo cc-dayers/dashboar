@@ -3,7 +3,7 @@ import {
   Area, AreaChart, Bar, BarChart, CartesianGrid,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { getCopilotBillingUsage, type PrReview, type PrReviewReport, type LlmProvider } from './types'
+import { getCopilotBillingUsage, getTokenUsage, type PrReview, type PrReviewReport, type LlmProvider } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
 import Card from '../../components/report-ui/Card'
 import KpiCard from '../../components/report-ui/KpiCard'
@@ -105,6 +105,18 @@ export default function OverviewView({ report, reportId }: Props) {
   const attributedCreditsSub = billingReviews.length > 0
     ? `${billingReviews.length} of ${reviews.length} reviews · ${Math.round((billingReviews.length / reviews.length) * 100)}% coverage`
     : 'per-review attribution unavailable'
+  const tokenUsages = reviews.flatMap(review => {
+    const usage = getTokenUsage(review)
+    return usage ? [usage] : []
+  })
+  const measuredTokenReviews = tokenUsages.filter(usage => usage.source === 'provider' && usage.totalTokens != null)
+  const measuredTokenCoverage = reviews.length > 0
+    ? Math.round((measuredTokenReviews.length / reviews.length) * 100)
+    : null
+  const cacheTelemetry = measuredTokenReviews.filter(usage => usage.cacheReadTokens != null)
+  const cacheReadTokens = cacheTelemetry.reduce((sum, usage) => sum + (usage.cacheReadTokens ?? 0), 0)
+  const requestCounts = measuredTokenReviews.flatMap(usage => usage.requestCount == null ? [] : [usage.requestCount])
+  const avgRequests = requestCounts.length > 0 ? mean(requestCounts) : null
 
   // ── Reviews by period — bucket granularity adapts to filter range
   type PeriodBucket = { label: string; approved: number; 'changes-requested': number; commented: number }
@@ -190,14 +202,22 @@ export default function OverviewView({ report, reportId }: Props) {
   }
 
   // ── Token + Copilot billing usage per review
-  const tokenData = reviews.map(r => ({
+  const tokenData = reviews.map(r => {
+    const usage = getTokenUsage(r)
+    return {
     date:       shortDate(r.reviewedAt.slice(0, 10)),
-    tokens:     r.tokensUsed,
+    tokens:     usage?.totalTokens ?? null,
+    input:      usage?.inputTokens ?? null,
+    output:     usage?.outputTokens ?? null,
+    cacheRead:  usage?.cacheReadTokens ?? null,
+    prompt:     usage?.promptTokensEstimated ?? null,
+    source:     usage?.source ?? 'unknown',
     cost:       r.estimatedCostUsd,
     pr:         `#${r.prNumber}`,
     title:      r.prTitle,
     result:     r.result,
-  }))
+    }
+  })
 
   const billingData = billingReviews.map(({ review, usage }) => ({
       date:   shortDate(review.reviewedAt.slice(0, 10)),
@@ -323,8 +343,8 @@ export default function OverviewView({ report, reportId }: Props) {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
           <KpiCard label="Attributed AIC" value={attributedCreditsValue} sub={attributedCreditsSub} accent="#7c3aed" />
-          <KpiCard label="AIC Data Source" value={authoritativeUsage ? 'GitHub' : billingReviews.length > 0 ? 'Review runs' : '—'} sub={authoritativeUsage ? authoritativeUsage.scope : 'No authoritative scope configured'} />
-          <KpiCard label="AIC Coverage" value={reviews.length > 0 ? `${Math.round((billingReviews.length / reviews.length) * 100)}%` : '—'} sub={`${billingReviews.length} attributed reviews`} />
+          <KpiCard label="Measured Token Coverage" value={measuredTokenCoverage == null ? '—' : `${measuredTokenCoverage}%`} sub={`${measuredTokenReviews.length} of ${reviews.length} reviews · provider totals`} accent="#2563eb" />
+          <KpiCard label="Cache Read Tokens" value={cacheTelemetry.length === 0 ? '—' : fmtTokensK(cacheReadTokens)} sub={cacheTelemetry.length === 0 ? 'provider cache detail unavailable' : `${cacheTelemetry.length} reviews · provider reported${avgRequests == null ? '' : ` · ${avgRequests.toFixed(1)} avg requests`}`} accent="#0891b2" />
         </div>
 
         {groundedReviews.length > 0 && (
@@ -403,7 +423,7 @@ export default function OverviewView({ report, reportId }: Props) {
             )}
           </Card>
 
-          <Card title="Tokens per Review" sub="each point is one PR — hover for details">
+          <Card title="Token Traffic per Review" sub="provider totals when available; estimates are labeled">
             {tokenData.length === 0 ? (
               <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: S.fgSubtle, fontSize: '12px' }}>
                 No reviews in this range
@@ -436,7 +456,11 @@ export default function OverviewView({ report, reportId }: Props) {
                           {d.title.length > 52 ? d.title.slice(0, 50) + '…' : d.title}
                         </div>
                         <div style={{ color: '#6366f1', fontWeight: 700 }}>{d.tokens == null ? 'tokens unavailable' : `${fmtTokensK(d.tokens)} tokens`}</div>
-                        <div style={{ color: S.fgSubtle, fontSize: '11px', marginTop: '2px' }}>{d.cost == null ? 'cost unavailable' : `$${d.cost.toFixed(3)}`}</div>
+                        <div style={{ color: S.fgMuted, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>{d.source}</div>
+                        {d.input != null && <div style={{ color: S.fgSubtle, fontSize: '11px', marginTop: '4px' }}>{fmtTokensK(d.input)} input{d.output == null ? '' : ` · ${fmtTokensK(d.output)} output`}</div>}
+                        {d.cacheRead != null && <div style={{ color: S.fgSubtle, fontSize: '11px' }}>{fmtTokensK(d.cacheRead)} cache read</div>}
+                        {d.prompt != null && <div style={{ color: S.fgSubtle, fontSize: '11px' }}>{fmtTokensK(d.prompt)} prompt packet estimate</div>}
+                        <div style={{ color: S.fgSubtle, fontSize: '11px', marginTop: '2px' }}>{d.cost == null ? 'token cost unavailable' : `$${d.cost.toFixed(3)} estimated token cost`}</div>
                       </div>
                     )
                   }} />

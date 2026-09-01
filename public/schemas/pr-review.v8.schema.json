@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pr-review.v8.schema.json",
+  "title": "PR Review Report - Schema v8",
+  "description": "Frozen schema for report.json. Version 8 adds provenance-aware token usage details while preserving legacy total tokens.",
+  "type": "object",
+  "required": ["schemaVersion", "reviews"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "string", "const": "8" },
+    "title": { "type": "string" },
+    "subtitle": { "type": "string" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "period": { "type": "string" },
+    "copilotUsage": { "$ref": "pr-review.v5.schema.json#/$defs/CopilotUsageSummary" },
+    "reviews": { "type": "array", "items": { "$ref": "#/$defs/ReviewEntry" } }
+  },
+  "$defs": {
+    "DiffGroundingSummary": {
+      "type": "object",
+      "required": ["enforced", "degraded", "degradationReason", "invalidAnchorCount", "invalidArchitectureEvidenceCount", "demotedFindingCount", "droppedFindingCount", "reanchoredFindingCount"],
+      "additionalProperties": false,
+      "properties": {
+        "enforced": { "type": "boolean" },
+        "degraded": { "type": "boolean" },
+        "degradationReason": { "type": ["string", "null"] },
+        "invalidAnchorCount": { "type": "integer", "minimum": 0 },
+        "invalidArchitectureEvidenceCount": { "type": "integer", "minimum": 0 },
+        "demotedFindingCount": { "type": "integer", "minimum": 0 },
+        "droppedFindingCount": { "type": "integer", "minimum": 0 },
+        "reanchoredFindingCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "TokenUsage": {
+      "type": "object",
+      "required": ["inputTokens", "outputTokens", "totalTokens", "cacheReadTokens", "cacheWriteTokens", "reasoningTokens", "requestCount", "promptTokensEstimated", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "inputTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "outputTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "totalTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "cacheReadTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "cacheWriteTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "reasoningTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "requestCount": { "type": ["integer", "null"], "minimum": 0 },
+        "promptTokensEstimated": { "type": ["integer", "null"], "minimum": 0 },
+        "source": { "type": "string", "enum": ["provider", "estimated", "unknown"] }
+      }
+    },
+    "ReviewEntry": {
+      "type": "object",
+      "required": ["id", "prNumber", "prTitle", "repository", "reviewedAt", "timeToReviewMs", "accuracyRating", "result", "hats", "tokensUsed", "estimatedCostUsd"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "pr-review.v5.schema.json#/$defs/ReviewEntry/properties/id" },
+        "prNumber": { "$ref": "pr-review.v5.schema.json#/$defs/ReviewEntry/properties/prNumber" },
+        "prTitle": { "type": "string" },
+        "repository": { "type": "string" },
+        "branch": { "type": "string" },
+        "author": { "type": "string" },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "timeToReviewMs": { "type": "integer", "minimum": 0 },
+        "accuracyRating": { "type": "number", "minimum": 0, "maximum": 100 },
+        "result": { "$ref": "pr-review.v5.schema.json#/$defs/ReviewEntry/properties/result" },
+        "hats": { "type": "array", "items": { "type": "string" } },
+        "hatDetails": { "type": "array", "items": { "$ref": "pr-review.v5.schema.json#/$defs/HatDetail" } },
+        "tokensUsed": { "type": ["integer", "null"], "minimum": 0 },
+        "tokenUsage": { "$ref": "#/$defs/TokenUsage" },
+        "estimatedCostUsd": { "type": ["number", "null"], "minimum": 0 },
+        "aicCreditsUsed": { "type": "number", "exclusiveMinimum": 0 },
+        "copilotBillingUsage": { "$ref": "pr-review.v5.schema.json#/$defs/CopilotBillingUsage" },
+        "model": { "type": "string" },
+        "provider": { "$ref": "pr-review.v5.schema.json#/$defs/ReviewEntry/properties/provider" },
+        "modelsUsed": { "type": "array", "items": { "$ref": "pr-review.v5.schema.json#/$defs/ModelUsageEntry" } },
+        "notes": { "type": "string" },
+        "jiraTicket": { "$ref": "pr-review.v5.schema.json#/$defs/JiraTicketRef" },
+        "downstreamImpact": { "$ref": "pr-review.v5.schema.json#/$defs/DownstreamImpactSummary" },
+        "diffGrounding": { "$ref": "#/$defs/DiffGroundingSummary" },
+        "botComments": { "type": "array", "items": { "$ref": "pr-review.v5.schema.json#/$defs/BotComment" } }
+      }
+    }
+  }
+}

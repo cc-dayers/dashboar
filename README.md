@@ -97,6 +97,7 @@ The `path` parameter overrides the `REPORT_NAMES` storage path for that request.
 | `legacy` | `pr-review.v1.schema.json` | Pre-versioned reports |
 | `1` | `pr-review.v1.schema.json` | Initial schema |
 | `2` | `pr-review.v2.schema.json` | Adds expanded `downstreamImpact` fields (`riskClasses`, `affectedAreas`, `validationCount`, `warningCount`) |
+| `8` | `pr-review.v8.schema.json` | Adds provider token input/output, cache, reasoning, request count, prompt estimate, and provenance |
 
 Frozen schema snapshots live in `public/schemas/`. When a new schema version is introduced, add `pr-review.v{N}.schema.json` there, add the version to `SUPPORTED_VERSIONS` in `src/lib/schemaVersion.ts`, and register it in `src/reports/index.ts`.
 

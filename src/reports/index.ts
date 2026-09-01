@@ -34,6 +34,7 @@ export const registry: Record<string, RegistryEntry> = {
     label: 'PR Review',
     description: 'AI PR review agent: accuracy trends, review time, cost, hats, and per-PR findings.',
     schemaVersions: {
+      '8':      '/schemas/pr-review.v8.schema.json',
       '7':      '/schemas/pr-review.v7.schema.json',
       '6':      '/schemas/pr-review.v6.schema.json',
       '5':      '/schemas/pr-review.v5.schema.json',
@@ -43,7 +44,7 @@ export const registry: Record<string, RegistryEntry> = {
       '1':      '/schemas/pr-review.v1.schema.json',
       'legacy': '/schemas/pr-review.v1.schema.json',
     },
-    fixtures: ['example', 'report', 'legacy', 'v1', 'v3', 'v4', 'v7', 'future'],
+    fixtures: ['example', 'report', 'legacy', 'v1', 'v3', 'v4', 'v7', 'v8', 'future'],
     docs: '/docs/pr-review.md',
   },
   'playwright-trace': {
