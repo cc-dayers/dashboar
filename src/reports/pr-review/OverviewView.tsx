@@ -569,7 +569,7 @@ export default function OverviewView({ report, reportId }: Props) {
           </Card>
 
           {hasModelData && (
-            <Card title="Model & Provider" sub="reviews per provider / top models used">
+            <Card title="Model & Provider" sub="track executions per provider / top models used">
               <div style={{ paddingTop: '4px' }}>
                 {providerArr.length > 0 && (
                   <>
