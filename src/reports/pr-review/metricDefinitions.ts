@@ -1,0 +1,15 @@
+export const METRIC_EXPLANATIONS = {
+  prsReviewed: 'Count of PR snapshots in the selected range. The report currently stores the latest review for each PR, so reruns do not add another row.',
+  reviewTime: 'Median elapsed pipeline review time in the selected range. P90 is the duration at or below which 90% of reviews completed.',
+  reviewDuration: 'Elapsed pipeline time for this review, from review-agent start through its recorded completion.',
+  needsAttention: 'Distinct PRs that requested changes or reported degraded or unenforced grounding in the selected range.',
+  averageEvidenceConfidence: 'Average of the deterministic evidence-completeness scores emitted for PRs in the selected range. It reflects available context and grounding signals; it is not agreement with a human reviewer or a measured accuracy rate.',
+  evidenceConfidence: 'Deterministic evidence-completeness score emitted for this review. It reflects available context and grounding signals; it is not agreement with a human reviewer or a measured accuracy rate.',
+  reviewAic: 'Sum of AI credits attributed directly to review-agent executions in the selected range. Coverage shows how many stored PR snapshots include this telemetry.',
+  organizationAic: 'Organization- or enterprise-level GitHub Copilot usage for the provider-reported dates. It is broader than this review report and is shown only for reconciliation.',
+  tokenCoverage: 'Share of stored PR snapshots with provider-measured total tokens. Estimates and legacy totals with unknown provenance are excluded.',
+  groundingCoverage: 'Share of stored PR snapshots containing diff-grounding telemetry. This measures telemetry presence, not whether grounding passed.',
+  modelPolicyCoverage: 'Share of recorded model track executions that include a resolved policy tier. Fallbacks count executions with more than one attempted configuration.',
+  tokensUsed: 'Provider-measured total session tokens when available. Input, output, cache, and reasoning details depend on what the provider reports.',
+  reviewCredits: 'AI credits attributed to this review execution. AI credits are a billing unit and are not interchangeable with token counts.',
+} as const

@@ -20,8 +20,20 @@ test.describe('PR Review dashboard', () => {
 
   test('shows KPI cards in the overview', async ({ page }) => {
     await page.goto(FIXTURE_URL)
-    // Use exact match on the label span to avoid matching parent containers
-    await expect(page.getByText('Total Reviews', { exact: true })).toBeVisible()
+    await expect(page.getByText('PRs Reviewed', { exact: true })).toBeVisible()
+    await expect(page.getByText('Median Review Time', { exact: true })).toBeVisible()
+    await expect(page.getByText('Evidence Confidence', { exact: true })).toBeVisible()
+  })
+
+  test('explains derived metrics with an accessible disclosure', async ({ page }) => {
+    await page.goto('/?report=pr-review&id=v8&_fixture=dev')
+
+    await page.getByRole('button', { name: 'How Evidence Confidence is calculated' }).click()
+    await expect(page.getByRole('tooltip')).toContainText('deterministic evidence-completeness scores')
+    await expect(page.getByRole('tooltip')).toContainText('not agreement with a human reviewer')
+
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('tooltip')).not.toBeVisible()
   })
 
   test('selecting a review shows the detail panel', async ({ page }) => {
@@ -52,16 +64,17 @@ test.describe('PR Review dashboard', () => {
     await page.goto('/?report=pr-review&id=v3&_fixture=dev')
     await expect(page.getByText('Unsupported schema version')).not.toBeVisible()
     await page.getByText('Schema v3 model fallback telemetry').click()
-    await expect(page.getByText('2 attempts')).toBeVisible()
+    await expect(page.getByRole('cell', { name: '2 attempts' })).toBeVisible()
   })
 
   test('schema v4 displays fractional AI-credit usage', async ({ page }) => {
     await page.goto('/?report=pr-review&id=v4&_fixture=dev')
     await expect(page.getByText('Unsupported schema version')).not.toBeVisible()
-    await expect(page.getByText('Official AIC Usage', { exact: true })).toBeVisible()
+    await expect(page.getByText('Review-agent AIC', { exact: true })).toBeVisible()
+    await expect(page.getByText('Organization Copilot Usage', { exact: true })).toBeVisible()
     await expect(page.getByText('15.75', { exact: true })).toBeVisible()
     await expect(page.getByText(/Jun 17 – Jul 14 · 2 users/)).toBeVisible()
-    await expect(page.getByText('AI Credits per Review', { exact: true })).toBeVisible()
+    await expect(page.getByText('Attributed AIC per Review', { exact: true })).toBeVisible()
 
     await page.getByText('Capture Copilot billing telemetry').first().click()
     await expect(page.getByRole('main').getByText('AI Credits', { exact: true })).toBeVisible()
@@ -71,12 +84,14 @@ test.describe('PR Review dashboard', () => {
   test('schema v7 distinguishes official and attributed AIC and shows grounding health', async ({ page }) => {
     await page.goto('/?report=pr-review&id=v7&_fixture=dev')
     await expect(page.getByText('Unsupported schema version')).not.toBeVisible()
-    await expect(page.getByText('Official AIC Usage', { exact: true })).toBeVisible()
+    await expect(page.getByText('Organization Copilot Usage', { exact: true })).toBeVisible()
     await expect(page.getByText('18.63', { exact: true })).toBeVisible()
-    await expect(page.getByText('Attributed AIC', { exact: true })).toBeVisible()
+    await expect(page.getByText('Review-agent AIC', { exact: true })).toBeVisible()
     await expect(page.getByText('1.38', { exact: true })).toBeVisible()
-    await expect(page.getByText('1 of 1 reviews · 100% coverage', { exact: true })).toBeVisible()
-    await expect(page.getByText('Degraded Grounding', { exact: true })).toBeVisible()
+    await expect(page.getByText('1 of 1 PRs · 100% coverage', { exact: true })).toBeVisible()
+    const needsAttention = page.getByRole('group', { name: 'Needs Attention' })
+    await expect(needsAttention.getByText('1', { exact: true })).toBeVisible()
+    await expect(needsAttention.getByText('0 changes · 1 grounding', { exact: true })).toBeVisible()
 
     await page.getByText('Synthetic telemetry fixture').first().click()
     const main = page.getByRole('main')
@@ -88,13 +103,17 @@ test.describe('PR Review dashboard', () => {
   test('schema v8 shows provider token coverage and detailed usage anatomy', async ({ page }) => {
     await page.goto('/?report=pr-review&id=v8&_fixture=dev')
     await expect(page.getByText('Unsupported schema version')).not.toBeVisible()
-    const measuredCoverage = page.getByText('Measured Token Coverage', { exact: true }).locator('..')
+    await expect(page.getByText('Organization Copilot Usage', { exact: true })).not.toBeVisible()
+    const reviewAic = page.getByRole('group', { name: 'Review-agent AIC' })
+    await expect(reviewAic.getByText('7.06', { exact: true })).toBeVisible()
+    await expect(reviewAic.getByText('1 of 1 PRs · 100% coverage', { exact: true })).toBeVisible()
+    const measuredCoverage = page.getByRole('group', { name: 'Measured Token Coverage' })
     await expect(measuredCoverage.getByText('100%', { exact: true })).toBeVisible()
-    const cacheReadTokens = page.getByText('Cache Read Tokens', { exact: true }).locator('..')
-    await expect(cacheReadTokens.getByText('14.2k', { exact: true })).toBeVisible()
-
     await page.getByText('Synthetic provider usage fixture').first().click()
     const main = page.getByRole('main')
+    await expect(main.getByText('Evidence Confidence', { exact: true })).toBeVisible()
+    await expect(main.getByText('Model execution', { exact: true })).toBeVisible()
+    await expect(main.getByText('1 attempts', { exact: true })).not.toBeVisible()
     await expect(main.getByText('Usage anatomy', { exact: true })).toBeVisible()
     await expect(main.getByText('21.7k in · 4.8k out', { exact: true })).toBeVisible()
     await expect(main.getByText('14.2k', { exact: true })).toBeVisible()

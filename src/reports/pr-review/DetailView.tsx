@@ -6,6 +6,7 @@ import { hatStyle, resultPill, PROVIDER_COLOR as SHARED_PROVIDER_COLOR } from '.
 import MetricCard from '../../components/report-ui/MetricCard'
 import { bitbucketPrUrl, jiraTicketUrl } from '../../lib/links'
 import GroundingHealthCard from '../../components/report-ui/GroundingHealthCard'
+import { METRIC_EXPLANATIONS } from './metricDefinitions'
 
 // ── Finding card ──────────────────────────────────────────────────────────────
 
@@ -110,12 +111,53 @@ function ModelChips({ entries }: { entries: ModelUsageEntry[] }) {
               </span>
             )}
             {meta && <span style={{ color: S.fgSubtle }}>{meta}</span>}
-            {attemptCount > 0 && (
+            {attemptCount > 1 && (
               <span style={{ color, fontWeight: 600 }}>{attemptCount} attempts</span>
             )}
           </span>
         )
       })}
+    </div>
+  )
+}
+
+function ModelExecutionCard({ entries }: { entries: ModelUsageEntry[] }) {
+  return (
+    <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '10px', overflow: 'hidden', marginBottom: '14px' }}>
+      <div style={{ padding: '13px 16px 10px', borderBottom: `1px solid ${S.divider}` }}>
+        <div style={{ fontSize: '12px', fontWeight: 600, color: S.fgSec }}>Model execution</div>
+        <div style={{ fontSize: '11px', color: S.fgSubtle, marginTop: '2px' }}>Resolved model policy for each review track. Timing and token usage are session totals until per-track telemetry is available.</div>
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+          <thead>
+            <tr style={{ color: S.fgSubtle, textAlign: 'left' }}>
+              {['Track', 'Tier', 'Resolved model', 'Reasoning', 'Provider', 'Fallback'].map(label => (
+                <th key={label} style={{ padding: '8px 12px', fontWeight: 600, borderBottom: `1px solid ${S.divider}`, whiteSpace: 'nowrap' }}>{label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry, index) => {
+              const attemptCount = Math.max(
+                entry.attemptedModels?.length ?? 0,
+                entry.attemptedReasoningEfforts?.length ?? 0,
+                entry.attemptedConfigurations?.length ?? 0,
+              )
+              return (
+                <tr key={`${entry.label ?? entry.model}-${index}`} style={{ color: S.fgSec }}>
+                  <td style={{ padding: '9px 12px', borderBottom: `1px solid ${S.divider}` }}>{entry.label ?? 'Primary review'}</td>
+                  <td style={{ padding: '9px 12px', borderBottom: `1px solid ${S.divider}` }}>{entry.tier ?? '—'}</td>
+                  <td style={{ padding: '9px 12px', borderBottom: `1px solid ${S.divider}`, fontFamily: 'ui-monospace,monospace' }}>{entry.model}</td>
+                  <td style={{ padding: '9px 12px', borderBottom: `1px solid ${S.divider}` }}>{entry.reasoningEffort ?? '—'}</td>
+                  <td style={{ padding: '9px 12px', borderBottom: `1px solid ${S.divider}` }}>{entry.provider ?? '—'}</td>
+                  <td style={{ padding: '9px 12px', borderBottom: `1px solid ${S.divider}` }}>{attemptCount > 1 ? `${attemptCount} attempts` : 'None'}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -343,22 +385,28 @@ export default function DetailView({ pr, onBack }: Props) {
         </div>
       </div>
 
-      <div style={{ padding: '20px 24px', maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ padding: '20px 24px', maxWidth: '960px', margin: '0 auto' }}>
         {/* Metrics row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '14px' }}>
-          <MetricCard label="Review Time"    value={fmtMs(pr.timeToReviewMs)} />
-          <MetricCard label="Accuracy Rating" value={`${pr.accuracyRating}%`} />
+          <MetricCard label="Review Time" value={fmtMs(pr.timeToReviewMs)} explanation={METRIC_EXPLANATIONS.reviewDuration} />
+          <MetricCard label="Evidence Confidence" value={`${pr.accuracyRating}%`} explanation={METRIC_EXPLANATIONS.evidenceConfidence} />
           <MetricCard
             label="Tokens Used"
             value={tokenUsage?.totalTokens == null ? '—' : fmtTokens(tokenUsage.totalTokens)}
+            explanation={METRIC_EXPLANATIONS.tokensUsed}
             sub={tokenUsage?.source === 'provider'
               ? [tokenUsage.inputTokens == null ? null : `${fmtTokens(tokenUsage.inputTokens)} in`, tokenUsage.outputTokens == null ? null : `${fmtTokens(tokenUsage.outputTokens)} out`].filter(Boolean).join(' · ') || 'provider measured'
               : tokenUsage?.source === 'estimated' ? 'prompt estimate only' : 'provenance unavailable'}
           />
-          <MetricCard label={billingLabel} value={billingUsage ? fmtCredits(billingUsage.value) : '—'} sub={billingUsage ? 'attributed to this review' : 'attribution unavailable'} accent={billingUsage ? '#7c3aed' : undefined} />
+          <MetricCard label={billingLabel} value={billingUsage ? fmtCredits(billingUsage.value) : '—'} sub={billingUsage ? 'attributed to this review' : 'attribution unavailable'} accent={billingUsage ? '#7c3aed' : undefined} explanation={METRIC_EXPLANATIONS.reviewCredits} />
         </div>
 
         {tokenUsage && <UsageTelemetryCard usage={tokenUsage} estimatedCostUsd={pr.estimatedCostUsd} />}
+
+        {pr.modelsUsed && pr.modelsUsed.length > 0
+          ? <ModelExecutionCard entries={pr.modelsUsed} />
+          : pr.model && <ModelExecutionCard entries={[{ provider: pr.provider ?? 'copilot', model: pr.model }]} />
+        }
 
         {/* Jira ticket */}
         {pr.jiraTicket && (

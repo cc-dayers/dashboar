@@ -3,19 +3,26 @@ import {
   Area, AreaChart, Bar, BarChart, CartesianGrid,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { getCopilotBillingUsage, getTokenUsage, type PrReview, type PrReviewReport, type LlmProvider } from './types'
+import { getCopilotBillingUsage, getTokenUsage, type PrReview, type PrReviewReport } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
 import Card from '../../components/report-ui/Card'
 import KpiCard from '../../components/report-ui/KpiCard'
 import HBar from '../../components/report-ui/HBar'
 import ChartTip from '../../components/report-ui/ChartTip'
 import { S } from '../../lib/designTokens'
-import { fmtMs, fmtTokensK, shortDate, isoWeekKey, timeBucket, TIME_BUCKETS } from '../../lib/format'
-import { PROVIDER_COLOR, hatStyle } from '../../lib/reviewStyles'
+import { fmtMs, fmtTokensK, shortDate, isoWeekKey } from '../../lib/format'
+import { hatStyle } from '../../lib/reviewStyles'
+import { METRIC_EXPLANATIONS } from './metricDefinitions'
+import MetricLabel from '../../components/report-ui/MetricLabel'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function mean(xs: number[]) { return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0 }
+function percentile(xs: number[], value: number) {
+  if (xs.length === 0) return 0
+  const sorted = [...xs].sort((a, b) => a - b)
+  return sorted[Math.min(sorted.length - 1, Math.ceil(value * sorted.length) - 1)]
+}
 function fmtCredits(value: number) { return value.toLocaleString('en-US', { maximumFractionDigits: 2 }) }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -59,15 +66,15 @@ export default function OverviewView({ report, reportId }: Props) {
     : allReviews.filter(r => latestMs - new Date(r.reviewedAt).getTime() <= filterDays * 864e5)
 
   // ── KPIs
-  const avgAccuracy    = mean(reviews.map(r => r.accuracyRating))
-  const avgTimeMs      = mean(reviews.map(r => r.timeToReviewMs))
+  const evidenceConfidence = mean(reviews.map(r => r.accuracyRating))
+  const medianTimeMs   = percentile(reviews.map(r => r.timeToReviewMs), 0.5)
+  const p90TimeMs      = percentile(reviews.map(r => r.timeToReviewMs), 0.9)
   const changesCount   = reviews.filter(r => r.result === 'changes-requested').length
   const groundedReviews = reviews.filter(r => r.diffGrounding)
   const degradedGroundingCount = groundedReviews.filter(r => r.diffGrounding?.degraded || !r.diffGrounding?.enforced).length
-  const groundingRepairCount = groundedReviews.reduce((sum, r) => {
-    const g = r.diffGrounding
-    return sum + (g ? g.reanchoredFindingCount + g.demotedFindingCount + g.droppedFindingCount : 0)
-  }, 0)
+  const attentionCount = reviews.filter(r =>
+    r.result === 'changes-requested' || r.diffGrounding?.degraded || r.diffGrounding?.enforced === false,
+  ).length
 
   // ── Avg review time trend — current window vs the immediately preceding
   // equal-length window. For "All" there's no natural preceding window of
@@ -88,22 +95,20 @@ export default function OverviewView({ report, reportId }: Props) {
   const trendPct  = hasTrend ? Math.round(((avgTimeCurrMs - avgTimePrevMs) / avgTimePrevMs) * 100) : null
   const trendFaster = trendPct != null && trendPct <= 0
 
-  const changesPct     = reviews.length > 0 ? Math.round((changesCount / reviews.length) * 100) : 0
   const billingReviews = reviews.flatMap(r => {
     const usage = getCopilotBillingUsage(r)
     return usage ? [{ review: r, usage }] : []
   })
   const totalAiCredits = billingReviews
     .reduce((sum, { usage }) => sum + usage.value, 0)
-  const billingLabel = 'AI Credits Used'
+  const billingLabel = 'Attributed AIC'
   const authoritativeUsage = report.copilotUsage
-  const billingValue = authoritativeUsage ? fmtCredits(authoritativeUsage.totalAiCreditsUsed) : '—'
   const billingSub = authoritativeUsage
     ? `GitHub ${authoritativeUsage.scopeType} · ${shortDate(authoritativeUsage.reportStartDay)} – ${shortDate(authoritativeUsage.reportEndDay)} · ${authoritativeUsage.userCount} users`
     : 'official GitHub usage unavailable'
   const attributedCreditsValue = billingReviews.length > 0 ? fmtCredits(totalAiCredits) : '—'
   const attributedCreditsSub = billingReviews.length > 0
-    ? `${billingReviews.length} of ${reviews.length} reviews · ${Math.round((billingReviews.length / reviews.length) * 100)}% coverage`
+    ? `${billingReviews.length} of ${reviews.length} PRs · ${Math.round((billingReviews.length / reviews.length) * 100)}% coverage`
     : 'per-review attribution unavailable'
   const tokenUsages = reviews.flatMap(review => {
     const usage = getTokenUsage(review)
@@ -113,10 +118,16 @@ export default function OverviewView({ report, reportId }: Props) {
   const measuredTokenCoverage = reviews.length > 0
     ? Math.round((measuredTokenReviews.length / reviews.length) * 100)
     : null
-  const cacheTelemetry = measuredTokenReviews.filter(usage => usage.cacheReadTokens != null)
-  const cacheReadTokens = cacheTelemetry.reduce((sum, usage) => sum + (usage.cacheReadTokens ?? 0), 0)
-  const requestCounts = measuredTokenReviews.flatMap(usage => usage.requestCount == null ? [] : [usage.requestCount])
-  const avgRequests = requestCounts.length > 0 ? mean(requestCounts) : null
+  const modelExecutions = reviews.flatMap(r => r.modelsUsed ?? (r.provider && r.model ? [{ provider: r.provider, model: r.model }] : []))
+  const tieredModelExecutions = modelExecutions.filter(entry => entry.tier)
+  const modelPolicyCoverage = modelExecutions.length > 0
+    ? Math.round((tieredModelExecutions.length / modelExecutions.length) * 100)
+    : null
+  const fallbackExecutions = modelExecutions.filter(entry => Math.max(
+    entry.attemptedModels?.length ?? 0,
+    entry.attemptedReasoningEfforts?.length ?? 0,
+    entry.attemptedConfigurations?.length ?? 0,
+  ) > 1).length
 
   // ── Reviews by period — bucket granularity adapts to filter range
   type PeriodBucket = { label: string; approved: number; 'changes-requested': number; commented: number }
@@ -244,38 +255,18 @@ export default function OverviewView({ report, reportId }: Props) {
     .slice(0, 8)
   const maxFindings = findingsArr[0]?.count ?? 1
 
-  // ── Author activity
-  const authorMap = new Map<string, number>()
-  for (const r of reviews) {
-    const a = r.author ?? 'Unknown'
-    authorMap.set(a, (authorMap.get(a) ?? 0) + 1)
-  }
-  const authorArr = Array.from(authorMap.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8)
-  const maxAuthor = authorArr[0]?.count ?? 1
-
-  // ── Time distribution
-  const bucketCounts = Object.fromEntries(TIME_BUCKETS.map(b => [b, 0])) as Record<string, number>
-  for (const r of reviews) bucketCounts[timeBucket(r.timeToReviewMs)]++
-  const timeDistData = TIME_BUCKETS.map(b => ({ bucket: b, count: bucketCounts[b] }))
-
-  // ── Provider & model breakdown
-  const providerMap = new Map<string, number>()
+  // ── Model policy execution mix
+  const tierMap = new Map<string, number>()
   const modelMap    = new Map<string, number>()
-  for (const r of reviews) {
-    const entries = r.modelsUsed ?? (r.provider && r.model ? [{ provider: r.provider, model: r.model }] : [])
-    for (const e of entries) {
-      if (e.provider) providerMap.set(e.provider, (providerMap.get(e.provider) ?? 0) + 1)
-      if (e.model)    modelMap.set(e.model,        (modelMap.get(e.model)        ?? 0) + 1)
-    }
+  for (const entry of modelExecutions) {
+    if (entry.tier) tierMap.set(entry.tier, (tierMap.get(entry.tier) ?? 0) + 1)
+    if (entry.model) modelMap.set(entry.model, (modelMap.get(entry.model) ?? 0) + 1)
   }
-  const providerArr = Array.from(providerMap.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count)
+  const tierArr     = Array.from(tierMap.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count)
   const modelArr    = Array.from(modelMap.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 6)
-  const maxProvider = providerArr[0]?.count ?? 1
+  const maxTier     = tierArr[0]?.count ?? 1
   const maxModel    = modelArr[0]?.count ?? 1
-  const hasModelData = providerArr.length > 0 || modelArr.length > 0
+  const hasModelData = modelArr.length > 0
 
   const AXIS = { fontSize: 11, fill: 'var(--color-foreground-subtle)' }
   const GRID = { strokeDasharray: '3 3' as const, stroke: 'var(--color-border)' }
@@ -323,35 +314,39 @@ export default function OverviewView({ report, reportId }: Props) {
 
       <div style={{ padding: '20px 24px', maxWidth: '1100px', margin: '0 auto' }}>
 
-        {/* KPI row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '16px' }}>
-          <KpiCard label="Total Reviews"         value={String(reviews.length)} sub={activePeriodLabel} />
+        {/* Decision row: the four numbers stakeholders need first. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '12px' }}>
+          <KpiCard label="PRs Reviewed" value={String(reviews.length)} sub={activePeriodLabel} explanation={METRIC_EXPLANATIONS.prsReviewed} />
           <KpiCard
-            label="Avg Review Time"
-            value={fmtMs(avgTimeMs)}
-            sub={trendPct != null && (
+            label="Median Review Time"
+            value={fmtMs(medianTimeMs)}
+            explanation={METRIC_EXPLANATIONS.reviewTime}
+            sub={<>{`p90 ${fmtMs(p90TimeMs)}`}{trendPct != null && (
               <span style={{ color: trendFaster ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                {trendFaster ? '▼' : '▲'} {Math.abs(trendPct)}% {trendFaster ? 'faster' : 'slower'}
-                <span style={{ color: S.fgSubtle, fontWeight: 400 }}> · prior {trendWindowDays}d</span>
+                {' · '}{trendFaster ? '▼' : '▲'} {Math.abs(trendPct)}% avg {trendFaster ? 'faster' : 'slower'}
               </span>
-            )}
+            )}</>}
           />
-          <KpiCard label="Changes Requested"      value={`${changesPct}%`} sub={`${changesCount} of ${reviews.length}`} accent="#dc2626" />
-          <KpiCard label="Avg Accuracy Rating"    value={`${avgAccuracy.toFixed(1)}%`} accent="#16a34a" />
-          <KpiCard label="Official AIC Usage" value={billingValue} sub={billingSub} accent="#7c3aed" />
+          <KpiCard label="Needs Attention" value={String(attentionCount)} sub={`${changesCount} changes · ${degradedGroundingCount} grounding`} accent={attentionCount > 0 ? '#dc2626' : '#16a34a'} explanation={METRIC_EXPLANATIONS.needsAttention} />
+          <KpiCard label="Review-agent AIC" value={attributedCreditsValue} sub={attributedCreditsSub} accent="#7c3aed" explanation={METRIC_EXPLANATIONS.reviewAic} />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
-          <KpiCard label="Attributed AIC" value={attributedCreditsValue} sub={attributedCreditsSub} accent="#7c3aed" />
-          <KpiCard label="Measured Token Coverage" value={measuredTokenCoverage == null ? '—' : `${measuredTokenCoverage}%`} sub={`${measuredTokenReviews.length} of ${reviews.length} reviews · provider totals`} accent="#2563eb" />
-          <KpiCard label="Cache Read Tokens" value={cacheTelemetry.length === 0 ? '—' : fmtTokensK(cacheReadTokens)} sub={cacheTelemetry.length === 0 ? 'provider cache detail unavailable' : `${cacheTelemetry.length} reviews · provider reported${avgRequests == null ? '' : ` · ${avgRequests.toFixed(1)} avg requests`}`} accent="#0891b2" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '1px', background: S.divider, border: `1px solid ${S.divider}`, borderRadius: '10px', overflow: 'visible', marginBottom: '16px' }}>
+          <KpiCard label="Evidence Confidence" value={`${evidenceConfidence.toFixed(1)}%`} sub="deterministic evidence score" accent="#16a34a" explanation={METRIC_EXPLANATIONS.averageEvidenceConfidence} />
+          <KpiCard label="Grounding Coverage" value={reviews.length === 0 ? '—' : `${Math.round((groundedReviews.length / reviews.length) * 100)}%`} sub={`${groundedReviews.length} of ${reviews.length} PRs`} explanation={METRIC_EXPLANATIONS.groundingCoverage} />
+          <KpiCard label="Measured Token Coverage" value={measuredTokenCoverage == null ? '—' : `${measuredTokenCoverage}%`} sub={`${measuredTokenReviews.length} of ${reviews.length} PRs`} explanation={METRIC_EXPLANATIONS.tokenCoverage} />
+          <KpiCard label="Model Policy Metadata" value={modelPolicyCoverage == null ? '—' : `${modelPolicyCoverage}%`} sub={modelPolicyCoverage === 0 ? 'tier telemetry missing · freshness not reported' : `${tieredModelExecutions.length} of ${modelExecutions.length} executions · ${fallbackExecutions} fallbacks`} explanation={METRIC_EXPLANATIONS.modelPolicyCoverage} />
         </div>
 
-        {groundedReviews.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
-            <KpiCard label="Grounding Coverage" value={`${Math.round((groundedReviews.length / reviews.length) * 100)}%`} sub={`${groundedReviews.length} of ${reviews.length} reviews`} accent="#0284c7" />
-            <KpiCard label="Degraded Grounding" value={String(degradedGroundingCount)} sub="requires trust review" accent={degradedGroundingCount > 0 ? '#d97706' : '#16a34a'} />
-            <KpiCard label="Grounding Repairs" value={String(groundingRepairCount)} sub="reanchored · demoted · dropped" accent="#7c3aed" />
+        {authoritativeUsage && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', background: S.sunken, border: `1px solid ${S.border}`, borderRadius: '8px', padding: '9px 12px', marginBottom: '16px' }}>
+            <div style={{ fontSize: '11px', color: S.fgMuted }}>
+              <strong style={{ color: S.fgSec }}><MetricLabel explanation={METRIC_EXPLANATIONS.organizationAic}>Organization Copilot Usage</MetricLabel></strong> · {billingSub}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              <strong style={{ color: '#7c3aed', fontVariantNumeric: 'tabular-nums' }}>{fmtCredits(authoritativeUsage.totalAiCreditsUsed)}</strong>
+              <span style={{ color: S.fgMuted, fontSize: '11px' }}>AIC</span>
+            </div>
           </div>
         )}
 
@@ -482,7 +477,7 @@ export default function OverviewView({ report, reportId }: Props) {
         {/* Copilot billing usage line chart */}
         {hasBillingData && (
           <div style={{ marginBottom: '12px' }}>
-            <Card title={`${billingLabel.replace(' Used', '')} per Review`} sub={`GitHub Copilot ${billingUnitLabel} — each point is one PR`}>
+            <Card title={`${billingLabel} per Review`} sub={`GitHub Copilot ${billingUnitLabel} — each point is one stored PR snapshot`}>
               <ResponsiveContainer width="100%" height={160}>
                 <AreaChart data={billingData} margin={{ top: 6, right: 8, bottom: 0, left: -4 }}>
                   <defs>
@@ -493,7 +488,7 @@ export default function OverviewView({ report, reportId }: Props) {
                   </defs>
                   <CartesianGrid {...GRID} />
                   <XAxis dataKey="date" tick={AXIS} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                  <YAxis tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
+                  <YAxis tick={AXIS} axisLine={false} tickLine={false} tickFormatter={value => fmtCredits(value)} width={38} />
                   <Tooltip content={({ active, payload }) => {
                     if (!active || !payload?.length) return null
                     const d = payload[0]?.payload as typeof billingData[0]
@@ -528,8 +523,8 @@ export default function OverviewView({ report, reportId }: Props) {
           </div>
         )}
 
-        {/* Findings by hat + author activity */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+        {/* Review signal + policy execution mix */}
+        <div style={{ display: 'grid', gridTemplateColumns: hasModelData ? '1fr 1fr' : '1fr', gap: '12px', marginBottom: '12px' }}>
           <Card title="Findings by Hat" sub="total findings across all reviews">
             {findingsArr.length === 0 ? (
               <div style={{ color: S.fgSubtle, fontSize: '12px', paddingTop: '4px' }}>No finding data available.</div>
@@ -545,43 +540,20 @@ export default function OverviewView({ report, reportId }: Props) {
             )}
           </Card>
 
-          <Card title="Author Activity" sub="reviews submitted per author">
-            <div style={{ paddingTop: '4px' }}>
-              {authorArr.map(d => (
-                <HBar key={d.name} label={d.name} value={d.count} max={maxAuthor} color="#3b82f6" />
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        {/* Time distribution + model/provider */}
-        <div style={{ display: 'grid', gridTemplateColumns: hasModelData ? '1fr 1fr' : '1fr', gap: '12px' }}>
-          <Card title="Review Time Distribution" sub="number of reviews in each time range">
-            <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={timeDistData} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
-                <CartesianGrid {...GRID} />
-                <XAxis dataKey="bucket" tick={AXIS} axisLine={false} tickLine={false} />
-                <YAxis tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip content={(p) => <ChartTip {...(p as any)} />} />
-                <Bar dataKey="count" fill="#8b5cf6" radius={[4,4,0,0]} name="Reviews" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-
           {hasModelData && (
-            <Card title="Model & Provider" sub="track executions per provider / top models used">
+            <Card title="Model Execution Mix" sub="track executions; freshness requires policy-audit telemetry">
               <div style={{ paddingTop: '4px' }}>
-                {providerArr.length > 0 && (
+                {tierArr.length > 0 && (
                   <>
-                    <div style={{ fontSize: '10px', fontWeight: 600, color: S.fgSubtle, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Provider</div>
-                    {providerArr.map(d => (
-                      <HBar key={d.name} label={d.name} value={d.count} max={maxProvider} color={PROVIDER_COLOR[d.name as LlmProvider] ?? S.fgMuted} />
+                    <div style={{ fontSize: '10px', fontWeight: 600, color: S.fgSubtle, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Policy tier</div>
+                    {tierArr.map(d => (
+                      <HBar key={d.name} label={d.name} value={d.count} max={maxTier} color="#0ea5e9" />
                     ))}
                   </>
                 )}
                 {modelArr.length > 0 && (
                   <>
-                    <div style={{ fontSize: '10px', fontWeight: 600, color: S.fgSubtle, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: providerArr.length ? '12px' : '0', marginBottom: '6px' }}>Models</div>
+                    <div style={{ fontSize: '10px', fontWeight: 600, color: S.fgSubtle, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: tierArr.length ? '12px' : '0', marginBottom: '6px' }}>Resolved model</div>
                     {modelArr.map(d => (
                       <HBar key={d.name} label={d.name} value={d.count} max={maxModel} color="#6366f1" />
                     ))}
