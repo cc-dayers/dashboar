@@ -177,19 +177,21 @@ function validateContent(data: unknown, reportType: string, _label: string, expe
     }
 
     case 'playwright-trace': {
-      const runs = r['runs']
+      const collectionField = Array.isArray(r['reviews']) ? 'reviews' : 'runs'
+      const runs = r[collectionField]
       if (!Array.isArray(runs)) {
-        errors.push('Missing or non-array "runs" field')
-        lines.push(fail('Missing or non-array "runs" field'))
+        errors.push('Missing or non-array "reviews"/"runs" field')
+        lines.push(fail('Missing or non-array "reviews"/"runs" field'))
       } else {
         const rs = runs as Array<Record<string, unknown>>
-        const failed    = rs.filter(x => x['status'] === 'failed').length
-        const flaky     = rs.filter(x => x['status'] === 'flaky').length
+        const effectiveStatus = (run: Record<string, unknown>) => run['result'] ?? run['status']
+        const failed    = rs.filter(x => effectiveStatus(x) === 'failed').length
+        const flaky     = rs.filter(x => effectiveStatus(x) === 'flaky').length
         const noStatus  = rs.filter(x => typeof x['status'] !== 'string').length
         const noName    = rs.filter(x => !x['suiteName'] && !x['suite'] && !x['jobName']).length
         const noBlob    = rs.filter(x => !x['reportBlobPath']).length
 
-        lines.push(ok(`runs            ${rs.length} (${failed} failed, ${flaky} flaky, ${rs.length - failed - flaky} other)`))
+        lines.push(ok(`${collectionField.padEnd(15)} ${rs.length} (${failed} failed, ${flaky} flaky, ${rs.length - failed - flaky} other)`))
 
         if (noStatus > 0) {
           errors.push(`${noStatus} run(s) missing "status" field`)
