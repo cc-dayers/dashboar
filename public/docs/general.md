@@ -14,7 +14,7 @@ The URL shape is:
 ```
 
 - **`report`** — which report type to render (`pr-review`, `playwright-trace`,
-  `review-audit`, …). This selects both the Dashboard component and the schema
+  …). This selects both the Dashboard component and the schema
   used to validate the payload.
 - **`id`** — a label for the specific report instance. Defaults to `report` if
   omitted. Purely cosmetic — shown in the UI, not used to look anything up.

@@ -124,34 +124,6 @@ function validateContent(data: unknown, reportType: string, _label: string, expe
       break
     }
 
-    case 'review-audit': {
-      const summary = r['summary']
-      if (typeof summary !== 'object' || summary === null) {
-        errors.push('Missing or non-object "summary" field')
-        lines.push(fail('Missing or non-object "summary" field'))
-      } else {
-        const s = summary as Record<string, unknown>
-        const missingKpi = ['reviewCount', 'findingCount'].filter(f => typeof s[f] !== 'number')
-        if (missingKpi.length > 0) {
-          errors.push(`summary missing number fields: ${missingKpi.join(', ')}`)
-          lines.push(fail(`summary missing: ${missingKpi.join(', ')}`))
-        } else {
-          lines.push(ok(`reviewCount     ${s['reviewCount']}`))
-          lines.push(ok(`findingCount    ${s['findingCount']}`))
-        }
-        if (s['feedbackCollectionStatus']) {
-          lines.push(note(`feedbackCollectionStatus: ${s['feedbackCollectionStatus']}`))
-        }
-      }
-      if (!Array.isArray(r['reviews'])) {
-        errors.push('Missing or non-array "reviews" field')
-        lines.push(fail('Missing or non-array "reviews" field'))
-      } else {
-        lines.push(ok(`reviews         ${(r['reviews'] as unknown[]).length} entries`))
-      }
-      break
-    }
-
     case 'e2e-run': {
       // Per-run detail (fetched via get-artifact, not REPORT_NAMES)
       const tests = r['tests']

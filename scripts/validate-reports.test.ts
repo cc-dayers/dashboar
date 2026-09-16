@@ -21,6 +21,6 @@ assert.equal(
   `fixture validation should accept current reviews and legacy runs aggregates\n${output}`,
 )
 assert.match(output, /reviews\s+2 \(/, 'current reviews aggregate was not validated')
-assert.match(output, /runs\s+6 \(/, 'legacy runs aggregate was not validated')
+assert.match(output, /runs\s+1 \(/, 'alternate runs aggregate was not validated')
 
 console.log('validate-reports aggregate compatibility: passed')

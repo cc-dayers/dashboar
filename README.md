@@ -33,12 +33,12 @@ Open `http://localhost:5173` — the landing page lists all configured reports a
 Each entry is `type:path` or `type:path:filename`:
 
 ```
-REPORT_NAMES=pr-review:cc-review-agent/reports/pr-review,review-audit:cc-review-agent/reports:review-audit
+REPORT_NAMES=pr-review:cc-review-agent/reports/pr-review,playwright-trace:e2e-reports
 ```
 
-- **`type`** — must match a registered report type (`pr-review`, `review-audit`, etc.)
+- **`type`** — must match a registered report type (`pr-review`, `playwright-trace`, etc.)
 - **`path`** — full blob path including container, e.g. `cc-review-agent/reports/pr-review`
-- **`filename`** _(optional)_ — JSON filename without extension. Defaults to `report`; if not found, falls back to `{type}` (e.g. `review-audit.json`).
+- **`filename`** _(optional)_ — JSON filename without extension. Defaults to `report`; if not found, falls back to `{type}`.
 
 The full blob URL becomes `{AZURE_BLOB_BASE_URL}/{path}/{filename}.json`.
 
@@ -47,7 +47,7 @@ The full blob URL becomes `{AZURE_BLOB_BASE_URL}/{path}/{filename}.json`.
 Each entry is `type:token` where token is the raw SAS query string:
 
 ```
-AZURE_SAS_TOKENS=pr-review:sp=r&st=2026-01-01T00:00:00Z&se=2027-01-01T00:00:00Z&sig=...,review-audit:sp=r&st=...
+AZURE_SAS_TOKENS=pr-review:sp=r&st=2026-01-01T00:00:00Z&se=2027-01-01T00:00:00Z&sig=...,playwright-trace:sp=r&st=...
 ```
 
 - Entries are comma-separated; the type and token are split on the **first `:` only** — colons inside SAS timestamps (e.g. `00:19:11Z`) are preserved.
@@ -72,7 +72,6 @@ Set all env vars in the Vercel project settings (or via `vercel env add`). The A
 |---|---|
 | `/` | Landing page — lists all configured reports |
 | `/?report=pr-review&path=reports/pr-review` | Loads `report.json` (or `pr-review.json` as fallback) from the given path |
-| `/?report=review-audit&path=reports/pr-review&id=review-audit` | Loads `review-audit.json` explicitly |
 | `/?report=pr-review&id=example&_fixture=dev` | Serves `fixtures/pr-review/example.json` locally |
 
 The `path` parameter overrides the `REPORT_NAMES` storage path for that request. The `id` parameter overrides the filename (without `.json`).
@@ -84,7 +83,6 @@ The `path` parameter overrides the `REPORT_NAMES` storage path for that request.
 | Type | Schema | Description |
 |---|---|---|
 | `pr-review` | `report.schema.json` / `report.v{N}.schema.json` | AI PR review agent — accuracy trends, review time, cost, hats, per-PR findings |
-| `review-audit` | `review-audit.schema.json` | PR review audit — feedback signals, improvement data, downstream impact, summary stats |
 | `playwright-trace` | — | Playwright test trace viewer |
 | `infrastructure` | — | Generic system health dashboard |
 

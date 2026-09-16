@@ -17,10 +17,9 @@ Added full E2E Playwright report support to dashboar (2026-06-25).
 - `fixtures/e2e-aggregate/report.json` — 6-run aggregate fixture (mixed passed/failed/flaky)
 - `fixtures/e2e-aggregate/future.json` — schemaVersion "99" for unsupported-version UI testing
 - `fixtures/e2e-run/example.json` — Per-run fixture with 4 failed tests + trace/screenshot artifacts
-- `fixtures/review-audit/example.json` — 5-review audit fixture with feedback and downstream impact
 
 **Modified:**
-- `src/reports/index.ts` — Added `e2e-aggregate` registry entry; added `fixtures: ['example']` to `review-audit`
+- `src/reports/index.ts` — Added the E2E report registry entry.
 - `src/reports/pr-review/types.ts` — Added `workspace?: string | null` to `PrReview` (was used in DetailView but missing from type)
 - `src/reports/pr-review/DetailView.tsx` — Removed dead `ModelMeta` function (logic was inlined in `ModelChips`)
 - `src/lib/schemaVersion.test.ts` — Updated tests: version "2" IS now supported (SUPPORTED_VERSIONS has 1, 2, legacy)

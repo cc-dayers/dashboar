@@ -1,6 +1,6 @@
 import { getCopilotBillingUsage, getTokenUsage, type PrReview, type ReviewFinding, type DownstreamImpactSummary, type ModelUsageEntry, type TokenUsage } from './types'
 import { S } from '../../lib/designTokens'
-import { fmtMs, fmtTokens } from '../../lib/format'
+import { fmtAiCreditsWithUsd, fmtMs, fmtTokens } from '../../lib/format'
 import { authorBg, initials } from '../../lib/avatar'
 import { hatStyle, resultPill, PROVIDER_COLOR as SHARED_PROVIDER_COLOR } from '../../lib/reviewStyles'
 import MetricCard from '../../components/report-ui/MetricCard'
@@ -243,10 +243,6 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
   )
 }
 
-function fmtCredits(value: number) {
-  return value.toLocaleString('en-US', { maximumFractionDigits: 2 })
-}
-
 function UsageTelemetryCard({ usage, estimatedCostUsd }: { usage: TokenUsage; estimatedCostUsd: number | null }) {
   const cells = [
     { label: 'Prompt packet', value: usage.promptTokensEstimated, suffix: 'estimated' },
@@ -398,7 +394,7 @@ export default function DetailView({ pr, onBack }: Props) {
               ? [tokenUsage.inputTokens == null ? null : `${fmtTokens(tokenUsage.inputTokens)} in`, tokenUsage.outputTokens == null ? null : `${fmtTokens(tokenUsage.outputTokens)} out`].filter(Boolean).join(' · ') || 'provider measured'
               : tokenUsage?.source === 'estimated' ? 'prompt estimate only' : 'provenance unavailable'}
           />
-          <MetricCard label={billingLabel} value={billingUsage ? fmtCredits(billingUsage.value) : '—'} sub={billingUsage ? 'attributed to this review' : 'attribution unavailable'} accent={billingUsage ? '#7c3aed' : undefined} explanation={METRIC_EXPLANATIONS.reviewCredits} />
+          <MetricCard label={billingLabel} value={billingUsage ? fmtAiCreditsWithUsd(billingUsage.value) : '—'} sub={billingUsage ? 'attributed to this review' : 'attribution unavailable'} accent={billingUsage ? '#7c3aed' : undefined} explanation={METRIC_EXPLANATIONS.reviewCredits} />
         </div>
 
         {tokenUsage && <UsageTelemetryCard usage={tokenUsage} estimatedCostUsd={pr.estimatedCostUsd} />}

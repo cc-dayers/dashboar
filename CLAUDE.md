@@ -39,7 +39,7 @@ Every report type is registered here with:
 - `schemaVersions` — maps version strings to public schema URLs (optional)
 - `fixtures` — list of fixture filenames available under `fixtures/{type}/`
 
-Registered types: `pr-review`, `playwright-trace`, `review-audit`.
+Registered types: `pr-review`, `playwright-trace`.
 
 ### Report module structure
 

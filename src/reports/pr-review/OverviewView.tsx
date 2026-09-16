@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  Area, AreaChart, Bar, BarChart, CartesianGrid,
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Legend,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { getCopilotBillingUsage, getTokenUsage, type PrReview, type PrReviewReport } from './types'
@@ -10,7 +10,7 @@ import KpiCard from '../../components/report-ui/KpiCard'
 import HBar from '../../components/report-ui/HBar'
 import ChartTip from '../../components/report-ui/ChartTip'
 import { S } from '../../lib/designTokens'
-import { fmtMs, fmtTokensK, shortDate, isoWeekKey } from '../../lib/format'
+import { fmtAiCredits, fmtAiCreditsWithUsd, fmtCompactNumber, fmtMs, fmtTokensK, shortDate, isoWeekKey } from '../../lib/format'
 import { hatStyle } from '../../lib/reviewStyles'
 import { METRIC_EXPLANATIONS } from './metricDefinitions'
 import MetricLabel from '../../components/report-ui/MetricLabel'
@@ -23,8 +23,6 @@ function percentile(xs: number[], value: number) {
   const sorted = [...xs].sort((a, b) => a - b)
   return sorted[Math.min(sorted.length - 1, Math.ceil(value * sorted.length) - 1)]
 }
-function fmtCredits(value: number) { return value.toLocaleString('en-US', { maximumFractionDigits: 2 }) }
-
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -69,12 +67,12 @@ export default function OverviewView({ report, reportId }: Props) {
   const evidenceConfidence = mean(reviews.map(r => r.accuracyRating))
   const medianTimeMs   = percentile(reviews.map(r => r.timeToReviewMs), 0.5)
   const p90TimeMs      = percentile(reviews.map(r => r.timeToReviewMs), 0.9)
-  const changesCount   = reviews.filter(r => r.result === 'changes-requested').length
   const groundedReviews = reviews.filter(r => r.diffGrounding)
   const degradedGroundingCount = groundedReviews.filter(r => r.diffGrounding?.degraded || !r.diffGrounding?.enforced).length
-  const attentionCount = reviews.filter(r =>
-    r.result === 'changes-requested' || r.diffGrounding?.degraded || r.diffGrounding?.enforced === false,
-  ).length
+  const healthyGroundingCount = groundedReviews.length - degradedGroundingCount
+  const groundingHealth = groundedReviews.length > 0
+    ? Math.round((healthyGroundingCount / groundedReviews.length) * 100)
+    : null
 
   // ── Avg review time trend — current window vs the immediately preceding
   // equal-length window. For "All" there's no natural preceding window of
@@ -106,7 +104,7 @@ export default function OverviewView({ report, reportId }: Props) {
   const billingSub = authoritativeUsage
     ? `GitHub ${authoritativeUsage.scopeType} · ${shortDate(authoritativeUsage.reportStartDay)} – ${shortDate(authoritativeUsage.reportEndDay)} · ${authoritativeUsage.userCount} users`
     : 'official GitHub usage unavailable'
-  const attributedCreditsValue = billingReviews.length > 0 ? fmtCredits(totalAiCredits) : '—'
+  const attributedCreditsValue = billingReviews.length > 0 ? fmtAiCreditsWithUsd(totalAiCredits) : '—'
   const attributedCreditsSub = billingReviews.length > 0
     ? `${billingReviews.length} of ${reviews.length} PRs · ${Math.round((billingReviews.length / reviews.length) * 100)}% coverage`
     : 'per-review attribution unavailable'
@@ -327,7 +325,7 @@ export default function OverviewView({ report, reportId }: Props) {
               </span>
             )}</>}
           />
-          <KpiCard label="Needs Attention" value={String(attentionCount)} sub={`${changesCount} changes · ${degradedGroundingCount} grounding`} accent={attentionCount > 0 ? '#dc2626' : '#16a34a'} explanation={METRIC_EXPLANATIONS.needsAttention} />
+          <KpiCard label="Grounding Health" value={groundingHealth == null ? '—' : `${groundingHealth}%`} sub={groundedReviews.length === 0 ? 'telemetry unavailable' : `${healthyGroundingCount} healthy · ${degradedGroundingCount} degraded`} accent={groundingHealth === 100 ? '#16a34a' : '#d97706'} explanation={METRIC_EXPLANATIONS.groundingHealth} />
           <KpiCard label="Review-agent AIC" value={attributedCreditsValue} sub={attributedCreditsSub} accent="#7c3aed" explanation={METRIC_EXPLANATIONS.reviewAic} />
         </div>
 
@@ -344,8 +342,7 @@ export default function OverviewView({ report, reportId }: Props) {
               <strong style={{ color: S.fgSec }}><MetricLabel explanation={METRIC_EXPLANATIONS.organizationAic}>Organization Copilot Usage</MetricLabel></strong> · {billingSub}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-              <strong style={{ color: '#7c3aed', fontVariantNumeric: 'tabular-nums' }}>{fmtCredits(authoritativeUsage.totalAiCreditsUsed)}</strong>
-              <span style={{ color: S.fgMuted, fontSize: '11px' }}>AIC</span>
+              <strong style={{ color: '#7c3aed', fontVariantNumeric: 'tabular-nums' }}>{fmtAiCreditsWithUsd(authoritativeUsage.totalAiCreditsUsed)}</strong>
             </div>
           </div>
         )}
@@ -425,16 +422,10 @@ export default function OverviewView({ report, reportId }: Props) {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={tokenData} margin={{ top: 6, right: 8, bottom: 0, left: -4 }}>
-                  <defs>
-                    <linearGradient id="tokenGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.18} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
+                <AreaChart data={tokenData} margin={{ top: 6, right: 8, bottom: 0, left: 4 }}>
                   <CartesianGrid {...GRID} />
                   <XAxis dataKey="date" tick={AXIS} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                  <YAxis tick={AXIS} axisLine={false} tickLine={false} tickFormatter={v => fmtTokensK(v)} width={40} />
+                  <YAxis tick={AXIS} axisLine={false} tickLine={false} tickFormatter={fmtCompactNumber} width={48} />
                   <Tooltip content={({ active, payload }) => {
                     if (!active || !payload?.length) return null
                     const d = payload[0]?.payload as typeof tokenData[0]
@@ -450,7 +441,7 @@ export default function OverviewView({ report, reportId }: Props) {
                         <div style={{ color: S.fgSec, fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
                           {d.title.length > 52 ? d.title.slice(0, 50) + '…' : d.title}
                         </div>
-                        <div style={{ color: '#6366f1', fontWeight: 700 }}>{d.tokens == null ? 'tokens unavailable' : `${fmtTokensK(d.tokens)} tokens`}</div>
+                        <div style={{ color: '#6366f1', fontWeight: 700 }}>{d.tokens == null ? 'tokens unavailable' : `${fmtTokensK(d.tokens)} total tokens`}</div>
                         <div style={{ color: S.fgMuted, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>{d.source}</div>
                         {d.input != null && <div style={{ color: S.fgSubtle, fontSize: '11px', marginTop: '4px' }}>{fmtTokensK(d.input)} input{d.output == null ? '' : ` · ${fmtTokensK(d.output)} output`}</div>}
                         {d.cacheRead != null && <div style={{ color: S.fgSubtle, fontSize: '11px' }}>{fmtTokensK(d.cacheRead)} cache read</div>}
@@ -459,15 +450,20 @@ export default function OverviewView({ report, reportId }: Props) {
                       </div>
                     )
                   }} />
+                  <Legend iconType="line" wrapperStyle={{ fontSize: '11px', color: S.fgMuted }} />
                   <Area
                     type="monotone"
-                    dataKey="tokens"
+                    dataKey="input"
+                    name="Input"
                     stroke="#6366f1"
                     strokeWidth={2}
-                    fill="url(#tokenGrad)"
+                    fill="#6366f1"
+                    fillOpacity={0.06}
                     dot={tokenData.length <= 30 ? { r: 3, fill: '#6366f1', strokeWidth: 0 } : false}
                     activeDot={{ r: 5, fill: '#6366f1', stroke: S.surface, strokeWidth: 2 }}
                   />
+                  <Area type="monotone" dataKey="output" name="Output" stroke="#0ea5e9" strokeWidth={2} fill="#0ea5e9" fillOpacity={0.04} dot={false} />
+                  <Area type="monotone" dataKey="cacheRead" name="Cache read" stroke="#16a34a" strokeWidth={2} fill="#16a34a" fillOpacity={0.04} dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -488,7 +484,7 @@ export default function OverviewView({ report, reportId }: Props) {
                   </defs>
                   <CartesianGrid {...GRID} />
                   <XAxis dataKey="date" tick={AXIS} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                  <YAxis tick={AXIS} axisLine={false} tickLine={false} tickFormatter={value => fmtCredits(value)} width={38} />
+                  <YAxis tick={AXIS} axisLine={false} tickLine={false} tickFormatter={fmtAiCredits} width={42} />
                   <Tooltip content={({ active, payload }) => {
                     if (!active || !payload?.length) return null
                     const d = payload[0]?.payload as typeof billingData[0]
@@ -504,7 +500,7 @@ export default function OverviewView({ report, reportId }: Props) {
                         <div style={{ color: S.fgSec, fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
                           {d.title.length > 52 ? d.title.slice(0, 50) + '…' : d.title}
                         </div>
-                        <div style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtCredits(d.usage)} {billingUnitLabel}</div>
+                        <div style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtAiCreditsWithUsd(d.usage)}</div>
                       </div>
                     )
                   }} />

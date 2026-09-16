@@ -1,4 +1,6 @@
-/** Formatting helpers shared by pr-review and review-audit views. */
+/** Formatting helpers shared by report views. */
+
+export const AI_CREDIT_USD_RATE = 0.01
 
 export function fmtMs(ms: number) {
   const m = Math.floor(ms / 60000)
@@ -12,6 +14,26 @@ export function fmtTokens(n: number) {
 
 export function fmtTokensK(n: number) {
   return `${(n / 1000).toFixed(1)}k`
+}
+
+export function fmtCompactNumber(n: number) {
+  return new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    maximumFractionDigits: n >= 100_000 ? 0 : 1,
+  }).format(n)
+}
+
+export function fmtAiCredits(value: number) {
+  return Math.round(value).toLocaleString('en-US')
+}
+
+export function fmtAiCreditsWithUsd(value: number) {
+  return `${fmtAiCredits(value)} AIC · ≈${(value * AI_CREDIT_USD_RATE).toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
 }
 
 export function shortDate(isoDate: string) {

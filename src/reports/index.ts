@@ -54,20 +54,6 @@ export const registry: Record<string, RegistryEntry> = {
     fixtures: ['example', 'report', 'future'],
     docs: '/docs/playwright-trace.md',
   },
-  'review-audit': {
-    component: lazy(() => import('./review-audit/Dashboard')),
-    label: 'Review Audit',
-    description: 'PR review audit: per-review feedback, improvement signals, downstream impact, and summary stats.',
-    schemaVersions: {
-      '4':      '/schemas/review-audit.v4.schema.json',
-      '3':      '/schemas/review-audit.v3.schema.json',
-      '2':      '/schemas/review-audit.v2.schema.json',
-      '1':      '/schemas/review-audit.v1.schema.json',
-      'legacy': '/schemas/review-audit.v1.schema.json',
-    },
-    fixtures: ['example', 'v4'],
-    docs: '/docs/review-audit.md',
-  },
 }
 
 export const DEFAULT_TYPE = 'pr-review'
