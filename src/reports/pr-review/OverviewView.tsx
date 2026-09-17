@@ -44,6 +44,7 @@ const RANGE_OPTIONS = [
 
 export default function OverviewView({ report, reportId }: Props) {
   const [filterDays, setFilterDays] = useState<number | null>(null)
+  const [activeTokenIndex, setActiveTokenIndex] = useState<number | null>(null)
 
   const activePeriodLabel = filterDays == null
     ? report.period
@@ -240,6 +241,57 @@ export default function OverviewView({ report, reportId }: Props) {
     result:     r.result,
     }
   })
+  const activeTokenPoint = activeTokenIndex == null ? null : tokenData[activeTokenIndex] ?? null
+  const activeTokenPosition = activeTokenIndex == null
+    ? 0
+    : tokenData.length <= 1
+    ? 50
+    : (activeTokenIndex / (tokenData.length - 1)) * 100
+
+  const tokenReviewTooltip = activeTokenPoint && (() => {
+    const d = activeTokenPoint
+    const dotColor = d.result === 'approved' ? '#16a34a' : d.result === 'changes-requested' ? '#dc2626' : '#d97706'
+    return (
+      <div
+        role="tooltip"
+        style={{
+          position: 'absolute', top: '8px', left: `${activeTokenPosition}%`,
+          transform: activeTokenPosition > 50 ? 'translateX(-100%)' : undefined,
+          background: S.surface, border: `1px solid ${S.border}`, borderRadius: '8px',
+          padding: '9px 12px', fontSize: '12px', boxShadow: '0 4px 16px rgba(0,0,0,.12)',
+          maxWidth: '230px', pointerEvents: 'none', zIndex: 2,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
+          <span style={{ fontFamily: 'ui-monospace,monospace', color: S.fgMuted, fontSize: '11px' }}>{d.pr}</span>
+          <span style={{ fontSize: '10px', fontWeight: 600, color: dotColor, background: dotColor + '18', borderRadius: '4px', padding: '1px 5px' }}>
+            {d.result === 'changes-requested' ? 'changes' : d.result}
+          </span>
+        </div>
+        <div style={{ color: S.fgSec, fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
+          {d.title.length > 52 ? d.title.slice(0, 50) + '…' : d.title}
+        </div>
+        <div style={{ color: '#6366f1', fontWeight: 700 }}>
+          {d.tokens == null ? 'tokens unavailable' : `${fmtTokensK(d.tokens)} total tokens`}
+          {d.aic != null && (
+            <>
+              {' - '}
+              <span style={{ color: '#7c3aed' }}>{fmtAiCredits(d.aic)} AIC</span>
+              <span style={{ color: S.fgMuted, fontSize: '11px', fontWeight: 600 }}>
+                {' '}≈{(d.aic * AI_CREDIT_USD_RATE).toLocaleString('en-US', {
+                  style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2,
+                })}
+              </span>
+            </>
+          )}
+        </div>
+        <div style={{ color: S.fgMuted, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>{d.source}</div>
+        {d.input != null && <div style={{ color: S.fgSubtle, fontSize: '11px', marginTop: '4px' }}>{fmtTokensK(d.input)} input{d.output == null ? '' : ` · ${fmtTokensK(d.output)} output`}</div>}
+        {d.cacheRead != null && <div style={{ color: S.fgSubtle, fontSize: '11px' }}>{fmtTokensK(d.cacheRead)} cache read</div>}
+        {d.prompt != null && <div style={{ color: S.fgSubtle, fontSize: '11px' }}>{fmtTokensK(d.prompt)} prompt packet estimate</div>}
+      </div>
+    )
+  })()
 
   const billingData = billingReviews.map(({ review, usage }) => ({
       date:   shortDate(review.reviewedAt.slice(0, 10)),
@@ -397,7 +449,7 @@ export default function OverviewView({ report, reportId }: Props) {
         </div>
 
         {/* Reviews by period + token usage */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px', marginBottom: '12px' }}>
           <Card title={periodChartTitle} sub="stacked by outcome">
             {periodData.length === 0 ? (
               <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: S.fgSubtle, fontSize: '12px' }}>
@@ -428,56 +480,18 @@ export default function OverviewView({ report, reportId }: Props) {
             )}
           </Card>
 
-          <Card title="Token Traffic per Review" sub="provider totals when available; estimates are labeled">
+          <Card title="Token Traffic per Review" sub="move across the chart to inspect the nearest review · provider totals when available; estimates are labeled">
             {tokenData.length === 0 ? (
               <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: S.fgSubtle, fontSize: '12px' }}>
                 No reviews in this range
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={tokenData} margin={{ top: 6, right: 8, bottom: 0, left: 4 }}>
+              <div style={{ position: 'relative' }}>
+                <ResponsiveContainer width="100%" height={240}>
+                  <AreaChart data={tokenData} accessibilityLayer margin={{ top: 10, right: 10, bottom: 0, left: 4 }}>
                   <CartesianGrid {...GRID} />
                   <XAxis dataKey="date" tick={AXIS} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                   <YAxis tick={AXIS} axisLine={false} tickLine={false} tickFormatter={fmtCompactNumber} width={48} />
-                  <Tooltip content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null
-                    const d = payload[0]?.payload as typeof tokenData[0]
-                    const dotColor = d.result === 'approved' ? '#16a34a' : d.result === 'changes-requested' ? '#dc2626' : '#d97706'
-                    return (
-                      <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: '8px', padding: '9px 12px', fontSize: '12px', boxShadow: '0 4px 16px rgba(0,0,0,.12)', maxWidth: '230px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
-                          <span style={{ fontFamily: 'ui-monospace,monospace', color: S.fgMuted, fontSize: '11px' }}>{d.pr}</span>
-                          <span style={{ fontSize: '10px', fontWeight: 600, color: dotColor, background: dotColor + '18', borderRadius: '4px', padding: '1px 5px' }}>
-                            {d.result === 'changes-requested' ? 'changes' : d.result}
-                          </span>
-                        </div>
-                        <div style={{ color: S.fgSec, fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
-                          {d.title.length > 52 ? d.title.slice(0, 50) + '…' : d.title}
-                        </div>
-                        <div style={{ color: '#6366f1', fontWeight: 700 }}>
-                          {d.tokens == null ? 'tokens unavailable' : `${fmtTokensK(d.tokens)} total tokens`}
-                          {d.aic != null && (
-                            <>
-                              {' - '}
-                              <span style={{ color: '#7c3aed' }}>{fmtAiCredits(d.aic)} AIC</span>
-                              <span style={{ color: S.fgMuted, fontSize: '11px', fontWeight: 600 }}>
-                                {' '}≈{(d.aic * AI_CREDIT_USD_RATE).toLocaleString('en-US', {
-                                  style: 'currency',
-                                  currency: 'USD',
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        <div style={{ color: S.fgMuted, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>{d.source}</div>
-                        {d.input != null && <div style={{ color: S.fgSubtle, fontSize: '11px', marginTop: '4px' }}>{fmtTokensK(d.input)} input{d.output == null ? '' : ` · ${fmtTokensK(d.output)} output`}</div>}
-                        {d.cacheRead != null && <div style={{ color: S.fgSubtle, fontSize: '11px' }}>{fmtTokensK(d.cacheRead)} cache read</div>}
-                        {d.prompt != null && <div style={{ color: S.fgSubtle, fontSize: '11px' }}>{fmtTokensK(d.prompt)} prompt packet estimate</div>}
-                      </div>
-                    )
-                  }} />
                   <Legend iconType="line" wrapperStyle={{ fontSize: '11px', color: S.fgMuted }} />
                   <Area
                     type="monotone"
@@ -487,13 +501,39 @@ export default function OverviewView({ report, reportId }: Props) {
                     strokeWidth={2}
                     fill="#6366f1"
                     fillOpacity={0.06}
-                    dot={tokenData.length <= 30 ? { r: 3, fill: '#6366f1', strokeWidth: 0 } : false}
-                    activeDot={{ r: 5, fill: '#6366f1', stroke: S.surface, strokeWidth: 2 }}
+                    dot={{ r: tokenData.length <= 60 ? 2.5 : 1.5, fill: '#6366f1', stroke: S.surface, strokeWidth: 1 }}
+                    activeDot={{ r: 6, fill: '#6366f1', stroke: S.surface, strokeWidth: 2 }}
                   />
                   <Area type="monotone" dataKey="output" name="Output" stroke="#0ea5e9" strokeWidth={2} fill="#0ea5e9" fillOpacity={0.04} dot={false} />
                   <Area type="monotone" dataKey="cacheRead" name="Cache read" stroke="#16a34a" strokeWidth={2} fill="#16a34a" fillOpacity={0.04} dot={false} />
-                </AreaChart>
-              </ResponsiveContainer>
+                  </AreaChart>
+                </ResponsiveContainer>
+                <div
+                  data-testid="token-review-hover-layer"
+                  tabIndex={0}
+                  aria-label="Token traffic by review. Move the pointer or use left and right arrow keys to inspect reviews."
+                  onPointerMove={event => {
+                    const bounds = event.currentTarget.getBoundingClientRect()
+                    const ratio = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width))
+                    setActiveTokenIndex(Math.round(ratio * (tokenData.length - 1)))
+                  }}
+                  onPointerLeave={() => setActiveTokenIndex(null)}
+                  onFocus={() => setActiveTokenIndex(index => index ?? 0)}
+                  onBlur={() => setActiveTokenIndex(null)}
+                  onKeyDown={event => {
+                    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+                    event.preventDefault()
+                    const step = event.key === 'ArrowRight' ? 1 : -1
+                    setActiveTokenIndex(index => Math.max(0, Math.min(tokenData.length - 1, (index ?? 0) + step)))
+                  }}
+                  style={{ position: 'absolute', top: '10px', right: '10px', bottom: '36px', left: '56px', cursor: 'crosshair', outlineOffset: '2px' }}
+                >
+                  {activeTokenPoint && (
+                    <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${activeTokenPosition}%`, borderLeft: '1px dashed #7c3aed', pointerEvents: 'none' }} />
+                  )}
+                  {tokenReviewTooltip}
+                </div>
+              </div>
             )}
           </Card>
         </div>
