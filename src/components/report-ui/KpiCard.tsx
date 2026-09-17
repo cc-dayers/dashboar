@@ -4,7 +4,7 @@ import MetricLabel from './MetricLabel'
 
 interface Props {
   label:  string
-  value:  string
+  value:  ReactNode
   sub?:   ReactNode
   accent?: string
   explanation?: string

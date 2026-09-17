@@ -10,7 +10,7 @@ import KpiCard from '../../components/report-ui/KpiCard'
 import HBar from '../../components/report-ui/HBar'
 import ChartTip from '../../components/report-ui/ChartTip'
 import { S } from '../../lib/designTokens'
-import { fmtAiCredits, fmtAiCreditsWithUsd, fmtCompactNumber, fmtMs, fmtTokensK, shortDate, isoWeekKey } from '../../lib/format'
+import { AI_CREDIT_USD_RATE, fmtAiCredits, fmtAiCreditsWithUsd, fmtCompactNumber, fmtMs, fmtTokensK, shortDate, isoWeekKey } from '../../lib/format'
 import { hatStyle } from '../../lib/reviewStyles'
 import { METRIC_EXPLANATIONS } from './metricDefinitions'
 import MetricLabel from '../../components/report-ui/MetricLabel'
@@ -104,7 +104,19 @@ export default function OverviewView({ report, reportId }: Props) {
   const billingSub = authoritativeUsage
     ? `GitHub ${authoritativeUsage.scopeType} · ${shortDate(authoritativeUsage.reportStartDay)} – ${shortDate(authoritativeUsage.reportEndDay)} · ${authoritativeUsage.userCount} users`
     : 'official GitHub usage unavailable'
-  const attributedCreditsValue = billingReviews.length > 0 ? fmtAiCreditsWithUsd(totalAiCredits) : '—'
+  const attributedCreditsValue = billingReviews.length > 0 ? (
+    <>
+      <span style={{ display: 'block', whiteSpace: 'nowrap' }}>{fmtAiCredits(totalAiCredits)} AIC</span>
+      <span style={{ display: 'block', color: '#a78bfa', fontSize: '20px', marginTop: '3px', whiteSpace: 'nowrap' }}>
+        ≈{(totalAiCredits * AI_CREDIT_USD_RATE).toLocaleString('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}
+      </span>
+    </>
+  ) : '—'
   const attributedCreditsSub = billingReviews.length > 0
     ? `${billingReviews.length} of ${reviews.length} PRs · ${Math.round((billingReviews.length / reviews.length) * 100)}% coverage`
     : 'per-review attribution unavailable'
@@ -213,6 +225,7 @@ export default function OverviewView({ report, reportId }: Props) {
   // ── Token + Copilot billing usage per review
   const tokenData = reviews.map(r => {
     const usage = getTokenUsage(r)
+    const billingUsage = getCopilotBillingUsage(r)
     return {
     date:       shortDate(r.reviewedAt.slice(0, 10)),
     tokens:     usage?.totalTokens ?? null,
@@ -221,7 +234,7 @@ export default function OverviewView({ report, reportId }: Props) {
     cacheRead:  usage?.cacheReadTokens ?? null,
     prompt:     usage?.promptTokensEstimated ?? null,
     source:     usage?.source ?? 'unknown',
-    cost:       r.estimatedCostUsd,
+    aic:        billingUsage?.value ?? null,
     pr:         `#${r.prNumber}`,
     title:      r.prTitle,
     result:     r.result,
@@ -441,12 +454,27 @@ export default function OverviewView({ report, reportId }: Props) {
                         <div style={{ color: S.fgSec, fontWeight: 500, lineHeight: 1.35, marginBottom: '6px' }}>
                           {d.title.length > 52 ? d.title.slice(0, 50) + '…' : d.title}
                         </div>
-                        <div style={{ color: '#6366f1', fontWeight: 700 }}>{d.tokens == null ? 'tokens unavailable' : `${fmtTokensK(d.tokens)} total tokens`}</div>
+                        <div style={{ color: '#6366f1', fontWeight: 700 }}>
+                          {d.tokens == null ? 'tokens unavailable' : `${fmtTokensK(d.tokens)} total tokens`}
+                          {d.aic != null && (
+                            <>
+                              {' - '}
+                              <span style={{ color: '#7c3aed' }}>{fmtAiCredits(d.aic)} AIC</span>
+                              <span style={{ color: S.fgMuted, fontSize: '11px', fontWeight: 600 }}>
+                                {' '}≈{(d.aic * AI_CREDIT_USD_RATE).toLocaleString('en-US', {
+                                  style: 'currency',
+                                  currency: 'USD',
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </span>
+                            </>
+                          )}
+                        </div>
                         <div style={{ color: S.fgMuted, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>{d.source}</div>
                         {d.input != null && <div style={{ color: S.fgSubtle, fontSize: '11px', marginTop: '4px' }}>{fmtTokensK(d.input)} input{d.output == null ? '' : ` · ${fmtTokensK(d.output)} output`}</div>}
                         {d.cacheRead != null && <div style={{ color: S.fgSubtle, fontSize: '11px' }}>{fmtTokensK(d.cacheRead)} cache read</div>}
                         {d.prompt != null && <div style={{ color: S.fgSubtle, fontSize: '11px' }}>{fmtTokensK(d.prompt)} prompt packet estimate</div>}
-                        <div style={{ color: S.fgSubtle, fontSize: '11px', marginTop: '2px' }}>{d.cost == null ? 'token cost unavailable' : `$${d.cost.toFixed(3)} estimated token cost`}</div>
                       </div>
                     )
                   }} />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { PrReview, PrReviewReport } from './types'
+import { getCopilotBillingUsage, type PrReview, type PrReviewReport } from './types'
 import OverviewView from './OverviewView'
 import DetailView from './DetailView'
 import ReportSidebar from '../../components/ReportSidebar'
@@ -12,6 +12,7 @@ import DocsModal from '../../components/DocsModal'
 import { authorBg, initials } from '../../lib/avatar'
 import { useSidebarWidth } from '../../hooks/useSidebarWidth'
 import type { RefreshStatus } from '../index'
+import { fmtAiCredits } from '../../lib/format'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -175,6 +176,7 @@ function SidebarLink({ active, onClick, children }: { active: boolean; onClick: 
 
 function SidebarPrItem({ r, active, onClick }: { r: PrReview; active: boolean; onClick: () => void }) {
   const [hovered, setHovered] = useState(false)
+  const billingUsage = getCopilotBillingUsage(r)
   return (
     <div
       onClick={onClick}
@@ -187,15 +189,22 @@ function SidebarPrItem({ r, active, onClick }: { r: PrReview; active: boolean; o
         transition: 'background 0.1s',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
-        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: sColor(r.result), flexShrink: 0 }} />
-        <span style={{ color: 'var(--color-sidebar-muted)', fontSize: '10px', fontFamily: 'ui-monospace,monospace' }}>#{r.prNumber}</span>
-        {r.targetRelease && (
-          <span style={{ color: 'var(--color-sidebar-muted)', fontSize: '10px', fontFamily: 'ui-monospace,monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            → {r.targetRelease}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', alignItems: 'center', columnGap: '6px', marginBottom: '3px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
+          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: sColor(r.result), flexShrink: 0 }} />
+          <span style={{ color: 'var(--color-sidebar-muted)', fontSize: '10px', fontFamily: 'ui-monospace,monospace', flexShrink: 0 }}>#{r.prNumber}</span>
+          {r.targetRelease && (
+            <span style={{ color: 'var(--color-sidebar-muted)', fontSize: '10px', fontFamily: 'ui-monospace,monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              → {r.targetRelease}
+            </span>
+          )}
+        </div>
+        {billingUsage ? (
+          <span style={{ color: '#7c3aed', fontSize: '10px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            {fmtAiCredits(billingUsage.value)} AIC
           </span>
-        )}
-        <span style={{ color: 'var(--color-sidebar-secondary)', fontSize: '10px', marginLeft: 'auto', flexShrink: 0 }}>{fmtShort(r.reviewedAt)}</span>
+        ) : <span />}
+        <span style={{ color: 'var(--color-sidebar-secondary)', fontSize: '10px', justifySelf: 'end', whiteSpace: 'nowrap' }}>{fmtShort(r.reviewedAt)}</span>
       </div>
       <div style={{ color: 'var(--color-sidebar-secondary)', fontSize: '11px', lineHeight: 1.4, overflow: 'hidden', maxHeight: '2.8em' }}>
         {r.prTitle.length > 55 ? r.prTitle.slice(0, 53) + '…' : r.prTitle}
