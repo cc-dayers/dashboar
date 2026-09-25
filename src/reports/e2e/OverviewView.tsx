@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { E2eAggregateReport, E2eRunEntry, E2eRunStatus } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
 import { S } from '../../lib/designTokens'
-import FlakyTests from './FlakyTests'
+import FlakyTests, { FlakySuiteFilter } from './FlakyTests'
 
 // ── Exported helpers (used by Dashboard sidebar) ──────────────────────────────
 
@@ -197,7 +197,7 @@ function Panel({ title, right, children, flex, minHeight, pad }: {
       flex, minHeight: minHeight ? `${minHeight}px` : undefined,
     }}>
       <header style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px',
         padding: '10px 14px', borderBottom: `1px solid ${S.divider}`, flexShrink: 0,
       }}>
         <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: S.fgMuted }}>
@@ -472,6 +472,16 @@ function OutcomeMix({ b }: { b: Bucket }) {
   )
 }
 
+function FlakyTestsPanel({ runs, onSelectRun, wide }: { runs: E2eRunEntry[]; onSelectRun: (run: E2eRunEntry) => void; wide: boolean }) {
+  const [selectedSuite, setSelectedSuite] = useState<string | null>(null)
+  return (
+    <Panel title="Top flakiest tests" right={<FlakySuiteFilter runs={runs} selectedSuite={selectedSuite} onChange={setSelectedSuite} />}
+      flex={wide ? 1 : undefined} minHeight={wide ? 260 : 300}>
+      <FlakyTests runs={runs} onSelectRun={onSelectRun} selectedSuite={selectedSuite} />
+    </Panel>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -561,13 +571,7 @@ export default function OverviewView({ report, onSelectRun }: Props) {
             flex: wide ? 1 : undefined, flexShrink: wide ? 1 : 0, minHeight: 0,
             display: 'grid', gridTemplateColumns: wide ? 'minmax(0, 1fr) 320px' : '1fr', gap: '12px',
           }}>
-            <Panel
-              title="Top flakiest tests"
-              flex={wide ? 1 : undefined}
-              minHeight={wide ? 260 : 300}
-            >
-              <FlakyTests key={`${range}:${updatedAt ?? ''}`} runs={runs} onSelectRun={onSelectRun} />
-            </Panel>
+            <FlakyTestsPanel key={`${range}:${updatedAt ?? ''}`} runs={runs} onSelectRun={onSelectRun} wide={wide} />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
               <Panel title="Test outcome mix" right={<span style={{ fontSize: '11px', color: S.fgSubtle }}>{overall.total.toLocaleString()} tests</span>}>

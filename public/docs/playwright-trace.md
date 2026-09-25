@@ -15,7 +15,10 @@ individual test.
   clicking a card jumps to that suite's most recent run in the sidebar.
 - Top flakiest tests ranks individual tests by the number of runs in which they
   were marked flaky. The list loads test names from the per-run reports for
-  runs with flakes; clicking a test opens its latest flaky run. If a run's
+  runs with flakes. Filter by suite (such as @core, @regression, or @smoke) to
+  recalculate the ranking for that suite without loading the details again.
+  Each test shows the suites where it flaked in the selected time range;
+  clicking it opens its latest flaky run in the selected suite. If a run's
   details cannot be loaded, the list indicates that results are partial.
 - The sidebar lists one row per logical run — a CI build fans out into a
   separate report per browser target (its own blob, own pass/fail counts), but

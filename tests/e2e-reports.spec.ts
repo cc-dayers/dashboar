@@ -12,6 +12,87 @@ function runFixture() {
 }
 
 test.describe('Playwright trace dashboard — top flakiest tests', () => {
+  test('shows a spinner until flaky test details have loaded', async ({ page }) => {
+    let releaseArtifact!: () => void
+    const artifactReady = new Promise<void>(resolve => { releaseArtifact = resolve })
+    await page.route('**/api/get-blob?*', route => route.fulfill({ json: { runs: [
+      { id: 'slow', suiteName: 'E2E Core', status: 'flaky', generatedAt: '2026-06-25T12:00:00Z', reportBlobPath: 'slow.json', summary: { total: 1, passed: 0, failed: 0, skipped: 0, flaky: 1 } },
+    ] } }))
+    await page.route('**/api/get-artifact?*', async route => {
+      await artifactReady
+      await route.fulfill({ json: { tests: [{ title: 'Slow flaky test', file: 'slow.spec.ts', status: 'flaky' }] } })
+    })
+
+    try {
+      await page.goto('/?report=playwright-trace&id=slow&_fixture=dev')
+      const panel = page.getByRole('main').getByText('Top flakiest tests').locator('..').locator('..')
+      const loading = panel.getByRole('status', { name: 'Loading flaky test details' })
+      await expect(loading.locator('.animate-spin')).toBeVisible()
+      await expect(panel.getByText('Loading flaky test details…')).toHaveCount(0)
+    } finally {
+      releaseArtifact()
+    }
+
+    await expect(page.getByRole('button', { name: /Slow flaky test/ })).toBeVisible()
+    await expect(page.getByRole('status', { name: 'Loading flaky test details' })).toHaveCount(0)
+  })
+
+  test('filters by suite, shows all flaky suites on a test and reuses fetched details', async ({ page }) => {
+    const runs = [
+      { id: 'core-1', suiteName: 'E2E Core', status: 'passed', generatedAt: '2026-06-25T08:00:00Z', reportBlobPath: 'core-1.json', summary: { total: 1, passed: 0, failed: 0, skipped: 0, flaky: 1 } },
+      { id: 'core-2', suiteName: 'E2E Core', status: 'passed', generatedAt: '2026-06-25T09:00:00Z', reportBlobPath: 'core-2.json', summary: { total: 1, passed: 0, failed: 0, skipped: 0, flaky: 1 } },
+      { id: 'smoke', suiteName: 'Nightly', playwrightCommand: 'npx playwright test --grep "@smoke"', status: 'passed', generatedAt: '2026-06-25T10:00:00Z', reportBlobPath: 'smoke.json', summary: { total: 1, passed: 0, failed: 0, skipped: 0, flaky: 1 } },
+      { id: 'regression', suiteName: 'E2E', suiteSlug: 'e2e-regression-Chromium_Desktop', status: 'passed', generatedAt: '2026-06-25T11:00:00Z', reportBlobPath: 'regression.json', summary: { total: 1, passed: 0, failed: 0, skipped: 0, flaky: 1 } },
+    ]
+    let requests = 0
+    await page.route('**/api/get-blob?*', route => route.fulfill({ json: { updatedAt: '2026-06-25T11:00:00Z', runs } }))
+    await page.route('**/api/get-artifact?*', route => {
+      requests++
+      const blobPath = new URL(route.request().url()).searchParams.get('blobPath')
+      const title = blobPath === 'regression.json' ? 'Regression-only test' : 'Shared flaky test'
+      return route.fulfill({ json: { tests: [{ title, file: 'shared.spec.ts', status: 'flaky' }] } })
+    })
+
+    await page.goto('/?report=playwright-trace&id=suites&_fixture=dev')
+    const panel = page.getByRole('main').getByText('Top flakiest tests').locator('..').locator('..')
+    const filters = panel.getByRole('group', { name: 'Filter flaky tests by suite' })
+    await expect(panel.locator('header').getByRole('group', { name: 'Filter flaky tests by suite' })).toBeVisible()
+    await expect(panel.getByText('Ranked by flaky occurrences in the selected range')).toHaveCount(0)
+    const titleBounds = await panel.getByText('Top flakiest tests').boundingBox()
+    const filterBounds = await filters.boundingBox()
+    expect(titleBounds && filterBounds && Math.abs(titleBounds.y - filterBounds.y)).toBeLessThan(18)
+    const shared = panel.getByRole('button', { name: /Shared flaky test/ })
+    await expect(shared).toContainText('3 flakes')
+    await expect(shared).toContainText('Core')
+    await expect(shared).toContainText('Smoke')
+    const initialRequests = requests
+    await expect(filters.getByRole('button', { name: '@core' })).toBeVisible()
+    await expect(filters.getByRole('button', { name: '@regression' })).toBeVisible()
+    await expect(filters.getByRole('button', { name: '@smoke' })).toBeVisible()
+
+    await filters.getByRole('button', { name: '@core' }).click()
+    await expect(filters.getByRole('button', { name: '@core' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(shared).toContainText('2 flakes')
+    await expect(shared).toContainText('Smoke') // still shows other suites where this test flaked
+    await expect(panel.getByRole('button', { name: /Regression-only test/ })).toHaveCount(0)
+
+    await filters.getByRole('button', { name: '@smoke' }).click()
+    await expect(shared).toContainText('1 flake')
+    await filters.getByRole('button', { name: '@regression' }).click()
+    await expect(shared).toHaveCount(0)
+    const regressionOnly = panel.getByRole('button', { name: /Regression-only test/ })
+    await expect(regressionOnly).toContainText('1 flake')
+    await expect(regressionOnly).toContainText('Regression')
+    await filters.getByRole('button', { name: 'All suites' }).click()
+    await expect(shared).toContainText('3 flakes')
+    expect(requests).toBe(initialRequests)
+
+    await page.setViewportSize({ width: 390, height: 800 })
+    await expect(filters.getByRole('button', { name: '@smoke' })).toBeVisible()
+    const headerFits = await panel.locator('header').evaluate(header => header.scrollWidth <= header.clientWidth)
+    expect(headerFits).toBe(true)
+  })
+
   test('ranks test names across runs, filters by time and opens the latest flaky run', async ({ page }) => {
     const runs = [
       { id: 'older', suiteName: 'Older suite', status: 'passed', generatedAt: '2026-06-23T12:00:00Z', reportBlobPath: 'older.json', summary: { total: 2, passed: 0, failed: 0, skipped: 0, flaky: 2 } },
@@ -27,7 +108,7 @@ test.describe('Playwright trace dashboard — top flakiest tests', () => {
 
     await page.goto('/?report=playwright-trace&id=ranked&_fixture=dev')
     const panel = page.getByRole('main').getByText('Top flakiest tests').locator('..').locator('..')
-    await page.getByRole('button', { name: 'ALL' }).click()
+    await page.getByRole('button', { name: 'ALL', exact: true }).click()
     const first = panel.getByRole('button', { name: /Checkout › retries/ })
     await expect(first).toContainText('2 flakes')
     await expect(panel.getByRole('button', { name: /Login › races/ })).toContainText('1 flake')
