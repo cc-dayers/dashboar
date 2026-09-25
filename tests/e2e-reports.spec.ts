@@ -11,6 +11,55 @@ function runFixture() {
   return JSON.parse(fs.readFileSync(p, 'utf-8')) as unknown
 }
 
+test.describe('Playwright trace dashboard — top flakiest tests', () => {
+  test('ranks test names across runs, filters by time and opens the latest flaky run', async ({ page }) => {
+    const runs = [
+      { id: 'older', suiteName: 'Older suite', status: 'passed', generatedAt: '2026-06-23T12:00:00Z', reportBlobPath: 'older.json', summary: { total: 2, passed: 0, failed: 0, skipped: 0, flaky: 2 } },
+      { id: 'newer', suiteName: 'Newer suite', status: 'passed', generatedAt: '2026-06-25T12:00:00Z', reportBlobPath: 'newer.json', summary: { total: 1, passed: 0, failed: 0, skipped: 0, flaky: 1 } },
+    ]
+    await page.route('**/api/get-blob?*', route => route.fulfill({ json: { updatedAt: '2026-06-25T12:00:00Z', runs } }))
+    await page.route('**/api/get-artifact?*', route => {
+      const older = new URL(route.request().url()).searchParams.get('blobPath') === 'older.json'
+      return route.fulfill({ json: { tests: older
+        ? [{ title: 'Checkout › retries', file: 'checkout.spec.ts', status: 'flaky' }, { title: 'Login › races', file: 'login.spec.ts', status: 'flaky' }]
+        : [{ title: 'Checkout › retries', file: 'checkout.spec.ts', status: 'flaky' }] } })
+    })
+
+    await page.goto('/?report=playwright-trace&id=ranked&_fixture=dev')
+    const panel = page.getByRole('main').getByText('Top flakiest tests').locator('..').locator('..')
+    await page.getByRole('button', { name: 'ALL' }).click()
+    const first = panel.getByRole('button', { name: /Checkout › retries/ })
+    await expect(first).toContainText('2 flakes')
+    await expect(panel.getByRole('button', { name: /Login › races/ })).toContainText('1 flake')
+    await page.getByRole('button', { name: '24H' }).click()
+    await expect(panel.getByRole('button', { name: /Checkout › retries/ })).toContainText('1 flake')
+    await expect(panel.getByRole('button', { name: /Login › races/ })).toHaveCount(0)
+    await panel.getByRole('button', { name: /Checkout › retries/ }).click()
+    await expect(page.getByTitle('Back to overview')).toBeVisible()
+    await expect(page.getByRole('main').getByText('Newer suite', { exact: true }).first()).toBeVisible()
+  })
+
+  test('shows an honest empty or partial state when test details are missing', async ({ page }) => {
+    await page.route('**/api/get-blob?*', route => route.fulfill({ json: { runs: [
+      { id: 'missing', suiteName: 'No detail', status: 'flaky', generatedAt: '2026-06-25T12:00:00Z', summary: { total: 1, passed: 0, failed: 0, skipped: 0, flaky: 1 } },
+    ] } }))
+    await page.goto('/?report=playwright-trace&id=missing&_fixture=dev')
+    await expect(page.getByText('Flaky test details are unavailable for these runs.')).toBeVisible()
+    await expect(page.getByText('Partial results · details unavailable for 1 run.')).toBeVisible()
+  })
+
+  test('does not fetch details when the selected range has no flakes', async ({ page }) => {
+    let requests = 0
+    await page.route('**/api/get-blob?*', route => route.fulfill({ json: { runs: [
+      { id: 'clean', suiteName: 'Clean suite', status: 'passed', generatedAt: '2026-06-25T12:00:00Z', summary: { total: 1, passed: 1, failed: 0, skipped: 0, flaky: 0 } },
+    ] } }))
+    await page.route('**/api/get-artifact?*', route => { requests++; return route.fulfill({ json: { tests: [] } }) })
+    await page.goto('/?report=playwright-trace&id=clean&_fixture=dev')
+    await expect(page.getByText('No flaky tests in this range.')).toBeVisible()
+    expect(requests).toBe(0)
+  })
+})
+
 test.describe('Playwright trace dashboard — overview', () => {
   test('loads the overview with run stats', async ({ page }) => {
     await page.goto(PLAYWRIGHT_TRACE_URL)

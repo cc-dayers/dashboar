@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { ReactNode } from 'react'
 import type { E2eAggregateReport, E2eRunEntry, E2eRunStatus } from './types'
 import PanelTopBar from '../../components/PanelTopBar'
 import { S } from '../../lib/designTokens'
+import FlakyTests from './FlakyTests'
 
 // ── Exported helpers (used by Dashboard sidebar) ──────────────────────────────
 
@@ -182,49 +183,6 @@ const BROWSER_ORDER = ['chromium', 'edge', 'firefox', 'webkit']
 function browserRank(name: string): number {
   const i = BROWSER_ORDER.indexOf(name.toLowerCase())
   return i === -1 ? BROWSER_ORDER.length : i
-}
-
-// ── Chart bucketing ───────────────────────────────────────────────────────────
-
-const NICE_STEPS_MS = [
-  15 * 60_000, 30 * 60_000, 3_600_000, 2 * 3_600_000, 3 * 3_600_000,
-  6 * 3_600_000, 12 * 3_600_000, 86_400_000, 2 * 86_400_000, 7 * 86_400_000,
-]
-
-// Picks a round bucket width that yields roughly `target` columns across the span.
-function chooseStep(span: number, target: number): number {
-  const ideal = span / target
-  for (const s of NICE_STEPS_MS) if (s >= ideal) return s
-  return NICE_STEPS_MS[NICE_STEPS_MS.length - 1]
-}
-
-function niceCeil(v: number): number {
-  if (v <= 5) return Math.max(1, Math.ceil(v))
-  const mag  = Math.pow(10, Math.floor(Math.log10(v)))
-  const norm = v / mag
-  const step = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10
-  return step * mag
-}
-
-interface Column { t0: number; t1: number; failed: number; flaky: number; runs: number; redRuns: number }
-
-function buildColumns(runs: E2eRunEntry[], tMin: number, tMax: number, target: number): { cols: Column[]; step: number } {
-  const step = chooseStep(Math.max(1, tMax - tMin), target)
-  const start = Math.floor(tMin / step) * step
-  const n     = Math.max(1, Math.ceil((tMax - start) / step))
-  const cols: Column[] = Array.from({ length: n }, (_, i) => ({
-    t0: start + i * step, t1: start + (i + 1) * step, failed: 0, flaky: 0, runs: 0, redRuns: 0,
-  }))
-  for (const r of runs) {
-    const t = timeOf(r.generatedAt)
-    if (!Number.isFinite(t)) continue
-    const i = Math.min(cols.length - 1, Math.max(0, Math.floor((t - start) / step)))
-    cols[i].failed += r.summary?.failed ?? 0
-    cols[i].flaky  += r.summary?.flaky ?? 0
-    cols[i].runs   += 1
-    cols[i].redRuns += isFailedStatus(runEffectiveStatus(r)) ? 1 : 0
-  }
-  return { cols, step }
 }
 
 // ── Primitives ────────────────────────────────────────────────────────────────
@@ -410,154 +368,6 @@ function Metric({ n, label, color }: { n: number; label: string; color: string }
   )
 }
 
-// ── Failure chart + run ribbons ───────────────────────────────────────────────
-//
-// Pass rate barely moves (92–97%) so it plots as a flat line. Failure and flake
-// *counts* swing 0→10 per run, so they get the Y axis instead. Ribbons below
-// share the same x domain, showing per-run status and cadence.
-
-const GUTTER = 104
-
-function FailureChart({ runs, suites, suiteRuns, tMin, tMax, targetCols, onOpen }: {
-  runs: E2eRunEntry[]
-  suites: string[]
-  suiteRuns: Map<string, E2eRunEntry[]>
-  tMin: number; tMax: number; targetCols: number
-  onOpen: (r: E2eRunEntry) => void
-}) {
-  const { cols, step } = buildColumns(runs, tMin, tMax, targetCols)
-  const peak   = Math.max(...cols.map(c => c.failed + c.flaky), 0)
-  const yMax   = niceCeil(Math.max(1, peak))
-  const domain0 = cols[0].t0
-  const domain1 = cols[cols.length - 1].t1
-  const span    = Math.max(1, domain1 - domain0)
-
-  const gridLines = [1, 0.75, 0.5, 0.25, 0]
-  const showHours = step < 86_400_000
-  const tickEvery = Math.max(1, Math.ceil(cols.length / 7))
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, padding: '10px 14px 8px' }}>
-      {/* Plot */}
-      <div style={{ flex: 1, minHeight: '120px', display: 'flex', gap: '8px' }}>
-        {/* Y axis */}
-        <div style={{ width: `${GUTTER}px`, flexShrink: 0, position: 'relative' }}>
-          {gridLines.map(g => (
-            <span key={g} style={{
-              position: 'absolute', right: 0, top: `${(1 - g) * 100}%`, transform: 'translateY(-50%)',
-              fontSize: '10px', color: S.fgSubtle, fontVariantNumeric: 'tabular-nums',
-            }}>
-              {Math.round(yMax * g)}
-            </span>
-          ))}
-          <span style={{
-            position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
-            fontSize: '10px', color: S.fgMuted, textTransform: 'uppercase', letterSpacing: '0.06em',
-          }}>
-            tests
-          </span>
-        </div>
-
-        {/* Columns */}
-        <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
-          {gridLines.map(g => (
-            <div key={g} style={{
-              position: 'absolute', left: 0, right: 0, top: `${(1 - g) * 100}%`, height: '1px',
-              background: g === 0 ? S.border : S.divider, opacity: g === 0 ? 1 : 0.55,
-            }} />
-          ))}
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', gap: '2px' }}>
-            {cols.map((c, i) => {
-              const bad = c.failed + c.flaky
-              const h   = (bad / yMax) * 100
-              return (
-                <div
-                  key={i}
-                  title={`${new Date(c.t0).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}\n${c.runs} runs${c.redRuns ? ` · ${c.redRuns} red` : ''}\n${c.failed} failed · ${c.flaky} flaky`}
-                  style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', minWidth: 0 }}
-                >
-                  {bad > 0 ? (
-                    <div style={{ height: `${h}%`, display: 'flex', flexDirection: 'column', minHeight: '2px' }}>
-                      <div style={{ height: `${(c.flaky / bad) * 100}%`, background: C.flaky }} />
-                      <div style={{ height: `${(c.failed / bad) * 100}%`, background: C.fail }} />
-                    </div>
-                  ) : (
-                    // Faint stub distinguishes "ran, all clean" from "no runs at all".
-                    <div style={{ height: '2px', background: c.runs > 0 ? C.pass : S.border, opacity: c.runs > 0 ? 0.75 : 0.5 }} />
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Ribbons */}
-      <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '5px', flexShrink: 0 }}>
-        {suites.map(suite => {
-          const rs = byTime(suiteRuns.get(suite) ?? [])
-          const rank = (r: E2eRunEntry) => {
-            const e = runEffectiveStatus(r)
-            return isFailedStatus(e) ? 2 : e === 'flaky' ? 1 : 0
-          }
-          const ordered = [...rs].sort((a, z) => rank(a) - rank(z))
-          const red = rs.filter(r => isFailedStatus(runEffectiveStatus(r))).length
-          return (
-            <div key={suite} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <div style={{ width: `${GUTTER}px`, flexShrink: 0, textAlign: 'right' }}>
-                <div style={{ fontSize: '11px', fontWeight: 600, color: S.fgSec, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {suite}
-                </div>
-                <div style={{ fontSize: '9.5px', color: S.fgSubtle, fontVariantNumeric: 'tabular-nums' }}>
-                  {rs.length} runs{red > 0 ? ` · ${red} red` : ''}
-                </div>
-              </div>
-              <div style={{
-                flex: 1, position: 'relative', height: '20px', minWidth: 0,
-                background: `color-mix(in srgb, ${S.border} 35%, transparent)`, borderRadius: '4px', overflow: 'hidden',
-              }}>
-                {ordered.map((r, i) => {
-                  const t   = timeOf(r.generatedAt)
-                  const eff = runEffectiveStatus(r)
-                  const bad = isFailedStatus(eff)
-                  return (
-                    <div
-                      key={r.reportBlobPath ?? i}
-                      onClick={() => onOpen(r)}
-                      title={`${STATUS_LABEL[eff] ?? eff} · ${fmtWhen(r.generatedAt)}\n${browserName(r.matrixLabel)}${r.branch ? ` · ${r.branch}` : ''}\n${r.summary?.passed ?? 0}/${r.summary?.total ?? 0} passed`}
-                      style={{
-                        position: 'absolute', top: 0, bottom: 0,
-                        left: `${((t - domain0) / span) * 100}%`, transform: 'translateX(-50%)',
-                        width: bad ? '5px' : '3px', background: runStatusColor(eff),
-                        opacity: bad ? 1 : 0.65, cursor: 'pointer', borderRadius: '1px',
-                      }}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* X axis */}
-      <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexShrink: 0 }}>
-        <div style={{ width: `${GUTTER}px`, flexShrink: 0 }} />
-        <div style={{ flex: 1, display: 'flex', gap: '2px', minWidth: 0 }}>
-          {cols.map((c, i) => (
-            <div key={i} style={{ flex: 1, minWidth: 0, fontSize: '9.5px', color: S.fgSubtle, whiteSpace: 'nowrap' }}>
-              {i % tickEvery === 0
-                ? new Date(c.t0).toLocaleString('en-US',
-                    showHours ? { month: 'short', day: 'numeric', hour: 'numeric' } : { month: 'short', day: 'numeric' })
-                : ''}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Needs attention ───────────────────────────────────────────────────────────
 //
 // A ranked list rather than a suite × browser matrix: coverage is sparse, so a
@@ -662,19 +472,6 @@ function OutcomeMix({ b }: { b: Bucket }) {
   )
 }
 
-function ChartLegend() {
-  return (
-    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-      {[{ c: C.fail, l: 'failed' }, { c: C.flaky, l: 'flaky' }].map(i => (
-        <span key={i.l} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: S.fgSubtle }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: i.c }} />
-          {i.l}
-        </span>
-      ))}
-    </div>
-  )
-}
-
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -693,16 +490,12 @@ export default function OverviewView({ report, onSelectRun }: Props) {
   }, [])
 
   const allRuns = report.reviews ?? report.runs ?? []
-  const runs    = filterByRange(allRuns, range)
+  const runs    = useMemo(() => filterByRange(allRuns, range), [allRuns, range])
 
   const suiteRuns = groupRuns(runs, suiteKey)
   const suites    = [...suiteRuns.keys()].sort((a, b) => suiteRuns.get(b)!.length - suiteRuns.get(a)!.length)
 
   const overall = bucketOf(runs)
-  const times   = runs.map(r => timeOf(r.generatedAt)).filter(Number.isFinite)
-  const tMin    = times.length > 0 ? Math.min(...times) : 0
-  const tMax    = times.length > 0 ? Math.max(...times) : 1
-
   const passRate  = pct(overall.passed, overall.total)
   const updatedAt = report.updatedAt ?? report.generatedAt
   const empty     = allRuns.length === 0 || runs.length === 0
@@ -763,22 +556,17 @@ export default function OverviewView({ report, onSelectRun }: Props) {
             ))}
           </div>
 
-          {/* Chart + rail */}
+          {/* Flaky tests + rail */}
           <div style={{
             flex: wide ? 1 : undefined, flexShrink: wide ? 1 : 0, minHeight: 0,
             display: 'grid', gridTemplateColumns: wide ? 'minmax(0, 1fr) 320px' : '1fr', gap: '12px',
           }}>
             <Panel
-              title="Failures & flakes over time"
-              right={<ChartLegend />}
+              title="Top flakiest tests"
               flex={wide ? 1 : undefined}
               minHeight={wide ? 260 : 300}
             >
-              <FailureChart
-                runs={runs} suites={suites} suiteRuns={suiteRuns}
-                tMin={tMin} tMax={tMax} targetCols={wide ? 44 : 20}
-                onOpen={onSelectRun}
-              />
+              <FlakyTests key={`${range}:${updatedAt ?? ''}`} runs={runs} onSelectRun={onSelectRun} />
             </Panel>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>

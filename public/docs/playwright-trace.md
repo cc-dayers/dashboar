@@ -7,14 +7,16 @@ individual test.
 ## Overview
 
 - A 24H/7D/30D/ALL time-range toggle filters everything below it — the KPI
-  summary, suite cards, and browser matrix all recompute for the selected
+  summary, suite cards, and top flaky tests all recompute for the selected
   window. The window is anchored to the newest run in the report (not
   wall-clock time), so historical/fixture reports still show data.
 - KPI summary (runs, pass rate, tests, flaky) for the selected range.
-- One card per suite with pass rate/failed/flaky and a trend sparkline;
+- One card per suite with pass rate/failed/flaky and browser breakdown;
   clicking a card jumps to that suite's most recent run in the sidebar.
-- A browser matrix table (runs, avg duration, failed, flaky, pass rate, trend)
-  breaking down results by browser.
+- Top flakiest tests ranks individual tests by the number of runs in which they
+  were marked flaky. The list loads test names from the per-run reports for
+  runs with flakes; clicking a test opens its latest flaky run. If a run's
+  details cannot be loaded, the list indicates that results are partial.
 - The sidebar lists one row per logical run — a CI build fans out into a
   separate report per browser target (its own blob, own pass/fail counts), but
   those targets are grouped into a single row (matched by build + suite) with
