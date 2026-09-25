@@ -92,6 +92,10 @@ function TypeEntry({
   const [fixturesOpen, setFixturesOpen] = useState(false)
   const hasFixtures = entry.fixtures && entry.fixtures.length > 0
   const hasStorage  = storageReports.length > 0
+  const exampleId = entry.fixtures?.includes('example') ? 'example' : entry.fixtures?.[0]
+  const typeHref = hasStorage
+    ? reportHref(reportType, storageReports[0].storagePath, storageReports[0].id)
+    : import.meta.env.DEV && exampleId ? fixtureHref(exampleId, reportType) : `/?report=${encodeURIComponent(reportType)}`
 
   return (
     <div className={`px-5 py-4${isLast ? '' : ' border-b border-border-subtle'}`}>
@@ -103,9 +107,14 @@ function TypeEntry({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <code className="text-xs font-mono text-accent-foreground bg-accent-surface px-1.5 py-0.5 rounded">{reportType}</code>
-            <span className="text-sm font-semibold text-foreground">{entry.label}</span>
+            <a href={typeHref} className="text-sm font-semibold text-foreground hover:text-accent transition-colors">
+              {entry.label}
+            </a>
           </div>
           <p className="text-xs text-foreground-muted mt-1 leading-snug">{entry.description}</p>
+          {!hasStorage && !isLoading && import.meta.env.DEV && exampleId && (
+            <p className="text-xs text-foreground-muted mt-1">Opens a local example until storage is configured.</p>
+          )}
         </div>
       </div>
 

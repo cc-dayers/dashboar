@@ -272,7 +272,7 @@ async function handleListBlobs(
 
   if (!baseUrl || entries.length === 0) {
     res.writeHead(200)
-    return res.end(JSON.stringify({ blobs: [] }))
+    return res.end(JSON.stringify({ blobs: [], error: 'Storage is not configured. Set AZURE_BLOB_BASE_URL and REPORT_NAMES to browse live reports.' }))
   }
 
   const settled = await Promise.allSettled(

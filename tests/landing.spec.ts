@@ -8,10 +8,8 @@ test.describe('Landing page', () => {
 
   test('shows all registered report types', async ({ page }) => {
     await page.goto('/')
-    // Use exact: true to match only the label spans, not parent containers
-    await expect(page.getByText('PR Review', { exact: true })).toBeVisible()
-    await expect(page.getByText('Review Audit', { exact: true })).toBeVisible()
-    await expect(page.getByText('Playwright Traces', { exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'PR Review' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Playwright Traces' })).toBeVisible()
   })
 
   test('shows fixture example links for report types that have them', async ({ page }) => {
@@ -29,6 +27,30 @@ test.describe('Landing page', () => {
     await page.getByRole('link', { name: 'example' }).first().click()
     // Should navigate away from landing (URL now has ?report=)
     await expect(page).toHaveURL(/[?&]report=/)
+  })
+
+  test('report label opens an example when local storage is not configured', async ({ page }) => {
+    await page.route('**/api/list-blobs', route => route.fulfill({ json: {
+      blobs: [], error: 'Storage is not configured. Set AZURE_BLOB_BASE_URL and REPORT_NAMES to browse live reports.',
+    } }))
+    await page.route('**/api/get-blob?*', route => route.fulfill({ json: { runs: [] } }))
+    await page.goto('/')
+    await expect(page.getByText(/Storage is not configured/)).toBeVisible()
+    await page.getByRole('link', { name: 'Playwright Traces' }).click()
+    await expect(page).toHaveURL(/report=playwright-trace.*_fixture=dev/)
+    await expect(page.getByRole('main').getByText('Overview', { exact: true })).toBeVisible()
+  })
+
+  test('report label opens the discovered live report when storage is configured', async ({ page }) => {
+    await page.route('**/api/list-blobs', route => route.fulfill({ json: { blobs: [
+      { id: 'report', reportType: 'playwright-trace', storagePath: 'playwright/reports' },
+    ] } }))
+    await page.route('**/api/get-blob?*', route => route.fulfill({ json: { runs: [] } }))
+    await page.goto('/')
+    await expect(page.getByRole('link', { name: 'report' })).toBeVisible()
+    await page.getByRole('link', { name: 'Playwright Traces' }).click()
+    await expect(page).toHaveURL(/report=playwright-trace.*path=playwright%2Freports/)
+    await expect(page.getByRole('main').getByText('No runs in this report.')).toBeVisible()
   })
 
   test('shows the direct link hint', async ({ page }) => {

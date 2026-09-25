@@ -93,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const entries = parseReportNames()
 
   if (!baseUrl || entries.length === 0) {
-    return res.status(200).json({ blobs: [] })
+    return res.status(200).json({ blobs: [], error: 'Storage is not configured. Set AZURE_BLOB_BASE_URL and REPORT_NAMES to browse live reports.' })
   }
 
   const settled = await Promise.allSettled(
