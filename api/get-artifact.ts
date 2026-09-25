@@ -1,7 +1,18 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { resolveBlobPath } from '../src/lib/resolveBlobPath.ts'
 
 const CORS_ORIGIN = 'https://trace.playwright.dev'
+
+// Keep this inside the serverless function: Vercel's ESM runtime does not
+// include the shared TypeScript helper when packaging this endpoint.
+function resolveBlobPath(blobPath: string, reportType: string, reportNames: string): string {
+  const entry = reportNames.split(',').map(s => s.trim()).find(s => s.startsWith(`${reportType}:`))
+  if (!entry) return blobPath
+  const storagePath = entry.slice(reportType.length + 1).split(':')[0]
+  const container = storagePath.split('/')[0]
+  return container && blobPath !== container && !blobPath.startsWith(`${container}/`)
+    ? `${container}/${blobPath}`
+    : blobPath
+}
 
 function isAuthenticated(cookieHeader: string | string[] | undefined): boolean {
   const authHash = process.env['AUTH_HASH']
