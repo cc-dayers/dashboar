@@ -3,6 +3,7 @@ import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as nodeUrl from 'node:url'
 import * as path from 'node:path'
+import { resolveBlobPath } from '../src/lib/resolveBlobPath'
 
 config({ path: '.env.local' })
 config()
@@ -348,7 +349,8 @@ async function handleGetArtifact(
   }
 
   const sasToken   = resolveToken(reportType)
-  const artifactUrl = buildArtifactUrl(baseUrl, blobPath, sasToken)
+  const fullPath   = resolveBlobPath(blobPath, reportType, process.env['REPORT_NAMES'] ?? '')
+  const artifactUrl = buildArtifactUrl(baseUrl, fullPath, sasToken)
   console.log(`[api/get-artifact] fetching → ${artifactUrl.replace(/sig=[^&]+/, 'sig=***')}`)
 
   try {

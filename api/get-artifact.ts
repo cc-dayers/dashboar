@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { resolveBlobPath } from '../src/lib/resolveBlobPath'
 
 const CORS_ORIGIN = 'https://trace.playwright.dev'
 
@@ -88,10 +89,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const sasToken = resolveToken(reportType)
+  const fullPath = resolveBlobPath(blobPath, reportType, process.env['REPORT_NAMES'] ?? '')
 
   let artifactUrl: string
   try {
-    artifactUrl = buildArtifactUrl(baseUrl, blobPath, sasToken)
+    artifactUrl = buildArtifactUrl(baseUrl, fullPath, sasToken)
   } catch {
     return res.status(500).json({ error: 'Server misconfiguration: AZURE_BLOB_BASE_URL is not a valid URL' })
   }
