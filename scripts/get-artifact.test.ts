@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import handler from '../api/get-artifact'
 import { resolveBlobPath } from '../src/lib/resolveBlobPath'
+
+// tsx resolves extensionless imports, but Vercel's ESM runtime cannot.
+if (Number(process.versions.node.split('.')[0]) >= 22) {
+  const moduleLoad = spawnSync(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', 'await import("./api/get-artifact.ts")'], { encoding: 'utf8' })
+  assert.equal(moduleLoad.status, 0, moduleLoad.stderr)
+}
 
 const names = 'pr-review:cc-review-agent/reports,playwright-trace:playwright/reports:report'
 assert.equal(resolveBlobPath('reports/suite/build/report.json', 'playwright-trace', names), 'playwright/reports/suite/build/report.json')

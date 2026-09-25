@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { resolveBlobPath } from '../src/lib/resolveBlobPath'
+import { resolveBlobPath } from '../src/lib/resolveBlobPath.ts'
 
 const CORS_ORIGIN = 'https://trace.playwright.dev'
 
